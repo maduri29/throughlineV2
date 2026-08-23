@@ -33,6 +33,7 @@ export default function App() {
   const undo = useGraphStore((s) => s.undo);
   const redo = useGraphStore((s) => s.redo);
   const forceSave = useGraphStore((s) => s.forceSave);
+  const exportProject = useGraphStore((s) => s.exportProject);
   const projectId = useGraphStore((s) => s.projectId);
   const [lens, setLens] = useState<Lens>("map");
   const [level, setLevel] = useState<"library" | "workspace">("workspace");
@@ -94,6 +95,15 @@ export default function App() {
             ? `Error: ${useGraphStore.getState().bootError ?? "unknown"}`
             : SAVE_LABEL[status]}
         </span>
+        {level === "workspace" && (
+          <button
+            className="tln-btn"
+            onClick={exportProject}
+            title="Download a lossless backup of this story graph"
+          >
+            Back up
+          </button>
+        )}
         <button className="tln-btn" onClick={undo} disabled={!canUndo} title="Ctrl+Z">
           ↶
         </button>

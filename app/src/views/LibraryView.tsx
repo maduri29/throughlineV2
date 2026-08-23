@@ -1,16 +1,50 @@
-// Library (T4 level 1): all stories on this machine; open or create.
-import { useState } from "react";
+// Library (T4 level 1): all stories on this machine; open, create, back up.
+import { type ChangeEvent, useState } from "react";
+import { describeUsage } from "../data/durability";
 import { useGraphStore } from "../store";
 
 export default function LibraryView() {
   const projects = useGraphStore((s) => s.projects);
   const switchProject = useGraphStore((s) => s.switchProject);
   const createProject = useGraphStore((s) => s.createProject);
+  const importProject = useGraphStore((s) => s.importProject);
+  const durability = useGraphStore((s) => s.durability);
   const [title, setTitle] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const onImport = (event: ChangeEvent<HTMLInputElement>): void => {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // let the same file be chosen twice
+    if (!file) return;
+    setImportError(null);
+    void file.text().then(async (text) => {
+      setImportError(await importProject(text));
+    });
+  };
 
   return (
     <div className="tln-library">
       <h1 className="tln-library__head">Your stories</h1>
+
+      <div className="tln-library__bar">
+        <label className="tln-btn">
+          Import backup…
+          <input type="file" accept=".json,application/json" hidden onChange={onImport} />
+        </label>
+        {/* Storage lives in this browser. Say so plainly rather than implying
+            a cloud that does not exist. */}
+        <span className="tln-library__note">
+          {durability === null
+            ? "Checking storage…"
+            : durability.persisted
+              ? `Stored in this browser, protected from automatic cleanup${
+                  describeUsage(durability) ? ` · ${describeUsage(durability)}` : ""
+                }`
+              : "Stored in this browser — not yet protected from automatic cleanup. Export a backup."}
+        </span>
+      </div>
+
+      {importError && <p className="tln-library__error">Import failed — {importError}</p>}
       <div className="tln-library__grid">
         {projects.map((p) => (
           <button key={p.id} className="tln-storycard" onClick={() => void switchProject(p.id)}>

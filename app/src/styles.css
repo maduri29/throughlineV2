@@ -1364,3 +1364,24 @@ body,
   background: #5b74e0;
   flex: 1;
 }
+
+/* Library backup bar. Storage is local, so the app must say where work lives
+   and whether it is protected — silence would imply a cloud that is not there. */
+.tln-library__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  flex-wrap: wrap;
+}
+
+.tln-library__note {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.tln-library__error {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--danger);
+}

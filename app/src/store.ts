@@ -3,6 +3,8 @@
 import { create } from "zustand";
 import { demoGraph, uuidv7 } from "./demo";
 import { splitSceneChunks } from "./data/fountain";
+import { requestDurableStorage, type Durability } from "./data/durability";
+import { buildEnvelope, downloadEnvelope, parseEnvelope } from "./data/envelope";
 import { dbDelete, dbGetAll, dbPut, metaGet, metaSet } from "./data/idb";
 import { scopeToProject } from "./data/scopes";
 import {
@@ -46,6 +48,12 @@ type Actions = {
   importFountain: (text: string) => number;
   switchProject: (id: string) => Promise<void>;
   createProject: (title: string) => Promise<void>;
+  /** Storage bucket status; null until boot has asked. */
+  durability: Durability | null;
+  /** Lossless graph export (ADR-0001 envelope). */
+  exportProject: () => void;
+  /** Lossless graph import; returns an error string, or null on success. */
+  importProject: (text: string) => Promise<string | null>;
   undo: () => void;
   redo: () => void;
   forceSave: () => Promise<void>;
@@ -186,6 +194,7 @@ function commit(
 
 export const useGraphStore = create<State & Actions>()((set, get) => ({
   status: "booting",
+  durability: null,
   projects: [],
   projectId: null,
   nodes: {},
@@ -197,6 +206,9 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
 
   boot: async () => {
     set({ status: "booting" });
+    // Ask for the persistent storage bucket before the first write. Never
+    // blocks boot: a refusal is normal on a first visit, not an error.
+    void requestDurableStorage().then((d) => set({ durability: d }));
     try {
       let nodesArr = await dbGetAll<GraphNode>("nodes");
       let edgesArr = await dbGetAll<GraphEdge>("edges");
@@ -267,6 +279,61 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   },
 
   /** Fresh story: written through immediately; no undo entry (nothing to undo back over). */
+  exportProject: () => {
+    const s = get();
+    const project = s.projectId ? s.nodes[s.projectId] : undefined;
+    if (!project) return;
+    downloadEnvelope(buildEnvelope(project, s.nodes, s.edges));
+  },
+
+  /**
+   * Import as a NEW project rather than merging into the open one. Ids in the
+   * file are kept, so re-importing the same export twice would collide; a fresh
+   * project id is minted for the container and the incoming nodes are re-parented
+   * to it, which makes import idempotent-ish and never destructive to existing work.
+   */
+  importProject: async (text) => {
+    const parsed = parseEnvelope(text);
+    if (!parsed.ok) return parsed.error;
+
+    const { project, nodes, edges } = parsed.envelope;
+    const newProjectId = uuidv7();
+    const remap = new Map<string, string>([[project.id, newProjectId]]);
+    for (const n of nodes) remap.set(n.id, uuidv7());
+
+    const container: GraphNode = { ...project, id: newProjectId };
+    const rebuilt: GraphNode[] = [container];
+    for (const n of nodes) {
+      const copy: GraphNode = { ...n, id: remap.get(n.id) as string };
+      if (n.parentId) copy.parentId = remap.get(n.parentId) ?? newProjectId;
+      if (n.order)
+        copy.order = n.order.map((id) => remap.get(id)).filter((x): x is string => Boolean(x));
+      rebuilt.push(copy);
+    }
+    if (container.order) {
+      container.order = container.order
+        .map((id) => remap.get(id))
+        .filter((x): x is string => Boolean(x));
+    }
+    const rebuiltEdges: GraphEdge[] = edges.map((e) => ({
+      ...e,
+      id: uuidv7(),
+      from: remap.get(e.from) as string,
+      to: remap.get(e.to) as string,
+    }));
+
+    try {
+      // Write before switching: a failed write must leave the open project intact.
+      await dbPut("nodes", rebuilt);
+      await dbPut("edges", rebuiltEdges);
+    } catch {
+      return "Could not write the imported project to local storage.";
+    }
+    set({ projects: [...get().projects, container] });
+    await get().switchProject(newProjectId);
+    return null;
+  },
+
   createProject: async (title) => {
     const node: GraphNode = { id: uuidv7(), type: "project", title };
     await dbPut("nodes", [node]);
