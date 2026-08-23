@@ -6,6 +6,7 @@ import CharactersView from "./views/CharactersView";
 import ScriptView from "./views/ScriptView";
 import LibraryView from "./views/LibraryView";
 import Inspector from "./views/Inspector";
+import ConnectionAdd from "./views/ConnectionAdd";
 import Palette from "./views/Palette";
 
 const SAVE_LABEL: Record<string, string> = {
@@ -122,7 +123,12 @@ export default function App() {
             {lens === "characters" ? <CharactersView /> : null}
             {lens === "script" ? <ScriptView /> : null}
           </div>
-          {lens !== "script" && lens !== "characters" ? <Inspector /> : null}
+          {lens !== "script" && lens !== "characters" ? (
+            <div className="tln-dock">
+              <Inspector />
+              <ConnectionAdd />
+            </div>
+          ) : null}
         </div>
       )}
       <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jumpTo} />
