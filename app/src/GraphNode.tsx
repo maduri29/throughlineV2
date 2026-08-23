@@ -3,6 +3,8 @@ import type { Node, NodeProps } from "@xyflow/react";
 
 export type CardData = {
   kind: "scene" | "flashback" | "pill";
+  /** Story-object type, purely for colour (see .tln-card--t-* in styles.css). */
+  nodeType?: string;
   title: string;
   badge?: string;
   synopsis?: string;
@@ -14,7 +16,11 @@ export type CardFlowNode = Node<CardData, "card">;
  *  Handles are live — drag-connect opens the legality picker (T5 contract). */
 export default function GraphCard({ data }: NodeProps<CardFlowNode>) {
   return (
-    <div className={`tln-card tln-card--${data.kind}`}>
+    <div
+      className={`tln-card tln-card--${data.kind}${
+        data.nodeType ? ` tln-card--t-${data.nodeType}` : ""
+      }`}
+    >
       <Handle type="target" position={Position.Left} />
       <div className="tln-card__head">
         <span className="tln-card__title">{data.title}</span>

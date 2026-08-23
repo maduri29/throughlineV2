@@ -65,7 +65,7 @@ function TimelineInner() {
           source: e.from,
           target: e.to,
           style: {
-            stroke: e.type === "flashback_of" ? "#b98a1f" : "#9aa2ad",
+            stroke: e.type === "flashback_of" ? "#e8912d" : "#7c8aa8",
             strokeDasharray: e.type === "precedes" ? undefined : "5 4",
           },
         })),
@@ -86,7 +86,7 @@ function TimelineInner() {
         onPaneClick={() => select([])}
         nodesDraggable={false}
       >
-        <Background color="#e4ddd0" gap={18} />
+        <Background color="#dfe4f4" gap={18} />
         <Controls />
       </ReactFlow>
     </div>

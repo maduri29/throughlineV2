@@ -2,6 +2,7 @@
 // divider, collapsible preview, graph-owned locked slug, full-template
 // skeletons with bracketed hints, whole-project .fountain export.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import FountainEditor from "../editor/FountainEditor";
 import { useGraphStore } from "../store";
 import {
   downloadFountain,
@@ -181,11 +182,10 @@ export default function ScriptView() {
             </button>
           </div>
           {scene ? (
-            <textarea
+            <FountainEditor
               className="tln-script__ta"
               value={text}
-              spellCheck={false}
-              onChange={(e) => scheduleScene(scene.id, e.target.value)}
+              onChange={(v) => scheduleScene(scene.id, v)}
               onBlur={() => flushScene(scene.id)}
             />
           ) : (

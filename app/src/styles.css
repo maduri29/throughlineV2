@@ -1,10 +1,37 @@
 :root {
-  --bg: #f4f1ea;
-  --ink: #2a2d33;
-  --dim: #7a7f87;
+  /* "Prism" palette. Cool near-white ground so saturated hues stay readable,
+     with one dedicated hue per story object -- the Map is a colour-coded graph,
+     not a field of identical cards. Semantic hues are reused verbatim by the
+     matching edge type in MapView so a rose edge always means "character". */
+
+  /* ground + text */
+  --bg: #f6f7fb;
   --card: #ffffff;
-  --line: #ddd6c8;
-  --fb: #b98a1f;
+  --panel: #fbfcff;
+  --ink: #171d2e;
+  --ink-2: #3d4761;
+  --dim: #7b8499;
+  --line: #e3e7f2;
+  --line-strong: #ccd3e5;
+
+  /* brand */
+  --accent: #5b5bd6;
+
+  /* one hue per story object */
+  --scene: #4f6ef7;
+  --flashback: #e8912d;
+  --character: #e0457b;
+  --location: #12a074;
+  --theme: #8b5cf6;
+  --episode: #0ea5b7;
+
+  /* status */
+  --ok: #16a34a;
+  --warn: #c98a12;
+  --danger: #d94436;
+
+  /* kept: older rules still reference --fb for flashback chrome */
+  --fb: #e8912d;
 }
 
 html,
@@ -34,15 +61,15 @@ body,
 .tln-save {
   margin-left: auto;
   font-size: 11px;
-  color: #3d8f5f;
+  color: #16a34a;
 }
 
 .tln-save--dirty {
-  color: #a08c28;
+  color: #c98a12;
 }
 
 .tln-save--error {
-  color: #b3452f;
+  color: #d94436;
 }
 
 .tln-save--saving,
@@ -81,11 +108,11 @@ body,
   z-index: 10;
   display: flex;
   gap: 6px;
-  background: #fffdf8ee;
+  background: #ffffffee;
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 4px 8px;
-  box-shadow: 0 2px 10px rgb(60 50 20 / 10%);
+  box-shadow: 0 2px 10px rgb(30 40 90 / 9%);
 }
 
 .tln-chip {
@@ -94,8 +121,8 @@ body,
   font-size: 11px;
   padding: 3px 12px;
   border-radius: 999px;
-  color: #4a4436;
-  background: #f0ead9;
+  color: #3d4761;
+  background: #e9edfa;
 }
 
 .tln-chip--off {
@@ -115,7 +142,7 @@ body,
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 10px;
-  box-shadow: 0 8px 30px rgb(40 32 14 / 22%);
+  box-shadow: 0 8px 30px rgb(25 35 80 / 20%);
   padding: 6px;
   min-width: 180px;
   transform: translateY(8px);
@@ -142,8 +169,8 @@ body,
 }
 
 .tln-picker__opt:hover {
-  background: #eef3f8;
-  color: var(--accent, #3d7fb5);
+  background: #eaefff;
+  color: var(--accent, #4f6ef7);
 }
 
 .tln-picker__none {
@@ -174,8 +201,8 @@ body,
   display: flex;
   align-items: center;
   gap: 14px;
-  background: #2b2620ee;
-  color: #f0e9de;
+  background: #1f2740ee;
+  color: #eef1f8;
   font-size: 12px;
   padding: 7px 14px;
   border-radius: 8px;
@@ -186,14 +213,14 @@ body,
   all: unset;
   cursor: pointer;
   font-weight: 700;
-  color: #ffd98a;
+  color: #ffd166;
 }
 
 /* Lens tabs */
 .tln-lens-tabs {
   display: flex;
   gap: 2px;
-  background: #ece5d4;
+  background: #e6eafa;
   border-radius: 8px;
   padding: 2px;
 }
@@ -204,13 +231,14 @@ body,
   font-size: 12px;
   padding: 3px 14px;
   border-radius: 6px;
-  color: #5a5344;
+  color: #4a5470;
 }
 
 .tln-lens-tab--on {
-  background: var(--card, #fffdf8);
-  box-shadow: 0 1px 4px rgb(60 50 20 / 15%);
+  background: var(--card, #ffffff);
+  box-shadow: 0 1px 4px rgb(30 40 90 / 12%);
   font-weight: 600;
+  color: var(--accent);
 }
 
 /* Script lens */
@@ -222,7 +250,7 @@ body,
 
 .tln-script__rail {
   width: 220px;
-  border-right: 1px solid var(--line, #ddd4c0);
+  border-right: 1px solid var(--line, #e3e7f2);
   overflow-y: auto;
   padding: 8px 6px;
   display: flex;
@@ -233,7 +261,7 @@ body,
 .tln-script__railhead {
   font-size: 10px;
   letter-spacing: 0.12em;
-  color: #9a9077;
+  color: #7b8499;
   padding: 2px 6px 8px;
 }
 
@@ -246,11 +274,11 @@ body,
 }
 
 .tln-script__item:hover {
-  background: #f2ecdd;
+  background: #eef1fb;
 }
 
 .tln-script__item--on {
-  background: #e8eef5;
+  background: #e5eafe;
 }
 
 .tln-script__ep {
@@ -258,12 +286,12 @@ body,
   font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #9a9077;
+  color: #7b8499;
 }
 
 .tln-script__ttl {
   font-size: 12px;
-  color: #3c362a;
+  color: #3d4761;
 }
 
 .tln-script__main {
@@ -284,7 +312,7 @@ body,
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--line, #ddd4c0);
+  border-bottom: 1px solid var(--line, #e3e7f2);
 }
 
 .tln-slug {
@@ -293,9 +321,9 @@ body,
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.02em;
-  color: #4a4436;
-  background: #f4efe2;
-  border: 1px dashed #cfc5ab;
+  color: #3d4761;
+  background: #eef1fb;
+  border: 1px dashed #c3ccea;
   border-radius: 6px;
   padding: 4px 10px;
   user-select: none;
@@ -309,7 +337,7 @@ body,
   font-family: "Courier New", Courier, monospace;
   font-size: 14px;
   line-height: 1.45;
-  color: #2e2a20;
+  color: #232b42;
 }
 
 .tln-script__ta {
@@ -324,26 +352,27 @@ body,
 .tln-script__divider {
   width: 7px;
   cursor: col-resize;
-  background: #e7dfcd;
-  border-left: 1px solid var(--line, #ddd4c0);
-  border-right: 1px solid var(--line, #ddd4c0);
+  background: #dfe4f4;
+  border-left: 1px solid var(--line, #e3e7f2);
+  border-right: 1px solid var(--line, #e3e7f2);
 }
 
 .tln-script__divider:hover {
-  background: #d8cdb2;
+  background: #ccd3e5;
 }
 
 .tln-script__preview {
   flex: 1;
   min-width: 160px;
   padding: 18px 26px;
-  background: #fbf8f0;
+  background: #fbfcff;
 }
 
 .tln-f-slug {
   font-weight: 700;
   text-transform: uppercase;
   margin: 14px 0 10px;
+  color: var(--scene);
 }
 
 .tln-f-action {
@@ -354,27 +383,34 @@ body,
 .tln-f-cue {
   text-transform: uppercase;
   margin: 12px 0 0 18%;
+  font-weight: 700;
+  color: #d6336c;
 }
 
 .tln-f-paren {
   margin: 0 0 0 24%;
-  color: #6b6350;
+  font-style: italic;
+  color: #8a93a8;
 }
 
 .tln-f-dlg {
   margin: 2px 0 8px 18%;
   white-space: pre-wrap;
+  color: #2b3450;
 }
 
 .tln-f-trans {
   text-transform: uppercase;
   text-align: right;
   margin: 12px 0;
+  font-weight: 700;
+  color: var(--location);
 }
 
 .tln-f-center {
   text-align: center;
   margin: 10px 0;
+  color: #4a5470;
 }
 
 .tln-f-lyric {
@@ -383,21 +419,21 @@ body,
 }
 
 .tln-f-break {
-  border-top: 2px solid #b9ae92;
+  border-top: 2px solid #b6bed6;
   margin: 22px auto;
   width: 32%;
 }
 
 .tln-f-forced {
-  outline: 1px dotted #b9ae92;
+  outline: 1px dotted #b6bed6;
   outline-offset: 3px;
 }
 
 .tln-f-note {
   display: inline-block;
-  background: #fdf3cf;
-  border: 1px solid #e4d191;
-  color: #7a6420;
+  background: #fff3d6;
+  border: 1px solid #f0d79a;
+  color: #9a6a12;
   border-radius: 4px;
   font-size: 11px;
   padding: 0 5px;
@@ -407,8 +443,8 @@ body,
 
 .tln-f-dual {
   display: inline-block;
-  background: #e3ecf7;
-  color: #33629c;
+  background: #eaefff;
+  color: #4f6ef7;
   border-radius: 4px;
   font-size: 10px;
   padding: 0 6px;
@@ -419,8 +455,129 @@ body,
 
 .tln-script__empty {
   padding: 30px;
-  color: #9a9077;
+  color: #7b8499;
   font-size: 13px;
+}
+
+/* FountainEditor: CodeMirror 6 mount replacing the old <textarea>. Reuses the
+   .tln-script__ta rule above (flex/overflow/font/colour) for the host div; the
+   selectors below only size CodeMirror's own inner elements to fill it and
+   colour its live highlighting. Two classes deep (.tln-script__ta .cm-content
+   etc.) beats CodeMirror's own injected base theme on specificity regardless
+   of which stylesheet loads last. */
+.tln-script__ta {
+  display: flex;
+  flex-direction: column;
+  /* The rule above this one still carries the old <textarea>'s inner padding.
+     CodeMirror needs it on .cm-content instead, or the gutter gets pushed off
+     the pane edge and the padded strip stops being clickable-to-focus. */
+  padding: 0;
+}
+
+.tln-script__ta .cm-editor {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.tln-script__ta .cm-scroller {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #232b42;
+}
+
+.tln-script__ta .cm-content {
+  padding: 18px 22px;
+}
+
+.tln-script__ta .cm-gutters {
+  background: #eef1fb;
+  color: #a8b1c9;
+  border-right: 1px solid #e3e7f2;
+}
+
+.tln-script__ta .cm-activeLineGutter {
+  background: #e2e7fb;
+  color: #5c6580;
+}
+
+.tln-script__ta .cm-activeLine {
+  background: rgba(91, 91, 214, 0.07);
+}
+
+/* Live syntax colours, ported from the Test123 Fountain editor's palette and
+   re-tuned for the Prism ground defined in :root. Hues are kept DISTINCT rather than harmonised: the point of
+   highlighting is that a cue, a transition and an action line are told apart
+   at a glance, so blending them into the surrounding browns defeats it.
+
+   Colour/weight only -- deliberately no vertical margin on any of these.
+   CodeMirror measures line height for cursor and scroll positioning, and a
+   margin on .cm-line would desync that math; the preview's indentation
+   (.tln-f-cue/.tln-f-dlg's left-margin staircase) is a preview-only look. */
+.tln-cm-heading {
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #111726;
+}
+
+.tln-cm-section {
+  font-weight: 700;
+  color: #4f6ef7;
+}
+
+.tln-cm-synopsis {
+  font-style: italic;
+  color: #8b5cf6;
+}
+
+.tln-cm-cue {
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #d6336c;
+}
+
+.tln-cm-dlg {
+  color: #2b3450;
+}
+
+.tln-cm-paren {
+  font-style: italic;
+  color: #8a93a8;
+}
+
+.tln-cm-trans {
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #12a074;
+}
+
+.tln-cm-center {
+  font-style: italic;
+  color: #4a5470;
+}
+
+.tln-cm-lyric {
+  font-style: italic;
+  color: #9a6a12;
+}
+
+.tln-cm-break {
+  color: #b6bed6;
+}
+
+.tln-cm-boneyard {
+  font-style: italic;
+  color: #a8b1c9;
+}
+
+/* Tinted like the preview's note chips (.tln-f-note) so an inline [[note]]
+   reads as the same object in both panes. */
+.tln-cm-note {
+  color: #9a6a12;
+  background: #fff3d6;
+  border-radius: 3px;
+  padding: 0 2px;
 }
 
 .tln-script__collapse {
@@ -430,8 +587,8 @@ body,
   top: 50%;
   right: 0;
   transform: translateY(-50%);
-  background: #ece5d4;
-  border: 1px solid var(--line, #ddd4c0);
+  background: #e6eafa;
+  border: 1px solid var(--line, #e3e7f2);
   border-right: none;
   border-radius: 6px 0 0 6px;
   padding: 10px 4px;
@@ -455,8 +612,8 @@ body,
 /* Inspector */
 .tln-inspector {
   width: 260px;
-  border-left: 1px solid var(--line, #ddd4c0);
-  background: #faf6ec;
+  border-left: 1px solid var(--line, #e3e7f2);
+  background: #f9fafe;
   padding: 12px;
   overflow-y: auto;
   display: flex;
@@ -470,7 +627,7 @@ body,
 }
 
 .tln-inspector__hint {
-  color: #9a9077;
+  color: #7b8499;
   font-size: 12px;
 }
 
@@ -478,16 +635,16 @@ body,
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #9a9077;
+  color: #7b8499;
 }
 
 .tln-inspector__title {
   font-size: 15px;
   font-weight: 700;
-  color: #3c362a;
+  color: #3d4761;
   background: transparent;
   border: none;
-  border-bottom: 1px dashed #cfc5ab;
+  border-bottom: 1px dashed #c3ccea;
   padding: 2px 0 4px;
   outline: none;
 }
@@ -496,7 +653,7 @@ body,
 .tln-inspector__field input:focus,
 .tln-inspector__field textarea:focus,
 .tln-inspector__field select:focus {
-  border-color: #3d7fb5;
+  border-color: #4f6ef7;
 }
 
 .tln-inspector__field {
@@ -506,7 +663,7 @@ body,
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #9a9077;
+  color: #7b8499;
 }
 
 .tln-inspector__field input,
@@ -516,9 +673,9 @@ body,
   font-size: 13px;
   text-transform: none;
   letter-spacing: normal;
-  color: #3c362a;
-  background: #fffdf8;
-  border: 1px solid var(--line, #ddd4c0);
+  color: #3d4761;
+  background: #ffffff;
+  border: 1px solid var(--line, #e3e7f2);
   border-radius: 6px;
   padding: 5px 7px;
   outline: none;
@@ -541,21 +698,21 @@ body,
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #fffdf8;
-  border: 1px solid var(--line, #ddd4c0);
+  background: #ffffff;
+  border: 1px solid var(--line, #e3e7f2);
   border-radius: 6px;
   padding: 3px 7px;
   font-size: 11px;
 }
 
 .tln-inspector__etype {
-  color: #7a6f58;
+  color: #5c6580;
   min-width: 86px;
 }
 
 .tln-inspector__eother {
   flex: 1;
-  color: #3c362a;
+  color: #3d4761;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -564,13 +721,13 @@ body,
 .tln-inspector__edel {
   all: unset;
   cursor: pointer;
-  color: #b0655c;
+  color: #d94436;
   font-size: 10px;
 }
 
 .tln-inspector__none {
   font-size: 11px;
-  color: #b3a98f;
+  color: #a8b1c9;
 }
 
 /* Timeline */
@@ -593,27 +750,27 @@ body,
 .tln-chars--empty {
   display: grid;
   place-items: center;
-  color: #9a9077;
+  color: #7b8499;
   font-size: 13px;
 }
 
 .tln-charcard {
-  background: var(--card, #fffdf8);
-  border: 1px solid var(--line, #ddd4c0);
+  background: var(--card, #ffffff);
+  border: 1px solid var(--line, #e3e7f2);
   border-radius: 12px;
   padding: 14px;
-  box-shadow: 0 2px 10px rgb(60 50 20 / 8%);
+  box-shadow: 0 2px 10px rgb(30 40 90 / 7%);
 }
 
 .tln-charcard__name {
   font-weight: 700;
   font-size: 15px;
-  color: #3c362a;
+  color: #3d4761;
 }
 
 .tln-charcard__syn {
   font-size: 11px;
-  color: #7a6f58;
+  color: #5c6580;
   margin-top: 4px;
 }
 
@@ -622,7 +779,7 @@ body,
   font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #9a9077;
+  color: #7b8499;
 }
 
 .tln-charcard__scenes {
@@ -636,19 +793,19 @@ body,
   all: unset;
   cursor: pointer;
   font-size: 11px;
-  background: #eef3f8;
-  color: #33629c;
+  background: #eaefff;
+  color: #4f6ef7;
   border-radius: 5px;
   padding: 2px 8px;
 }
 
 .tln-charcard__scene:hover {
-  background: #dde9f5;
+  background: #dbe4ff;
 }
 
 .tln-charcard__none {
   font-size: 11px;
-  color: #b3a98f;
+  color: #a8b1c9;
 }
 
 .tln-charcard__rels {
@@ -660,8 +817,8 @@ body,
 
 .tln-charcard__rel {
   font-size: 11px;
-  background: #f3edfa;
-  color: #6b4f96;
+  background: #f3ecfd;
+  color: #8b5cf6;
   border-radius: 5px;
   padding: 2px 8px;
 }
@@ -675,7 +832,7 @@ body,
 
 .tln-library__head {
   font-size: 22px;
-  color: #3c362a;
+  color: #3d4761;
   margin: 0 0 20px;
 }
 
@@ -689,11 +846,11 @@ body,
 .tln-storycard {
   all: unset;
   cursor: pointer;
-  background: var(--card, #fffdf8);
-  border: 1px solid var(--line, #ddd4c0);
+  background: var(--card, #ffffff);
+  border: 1px solid var(--line, #e3e7f2);
   border-radius: 14px;
   padding: 22px 18px;
-  box-shadow: 0 2px 12px rgb(60 50 20 / 8%);
+  box-shadow: 0 2px 12px rgb(30 40 90 / 7%);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -702,18 +859,18 @@ body,
 
 .tln-storycard:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgb(60 50 20 / 14%);
+  box-shadow: 0 6px 18px rgb(30 40 90 / 12%);
 }
 
 .tln-storycard__title {
   font-weight: 700;
   font-size: 17px;
-  color: #3c362a;
+  color: #3d4761;
 }
 
 .tln-storycard__by {
   font-size: 12px;
-  color: #9a9077;
+  color: #7b8499;
 }
 
 .tln-storycard--new {
@@ -731,10 +888,10 @@ body,
 .tln-storycard__input {
   font-family: inherit;
   font-size: 14px;
-  color: #3c362a;
+  color: #3d4761;
   background: transparent;
   border: none;
-  border-bottom: 1px dashed #cfc5ab;
+  border-bottom: 1px dashed #c3ccea;
   outline: none;
   padding: 2px 0 4px;
 }
@@ -756,12 +913,12 @@ body,
   width: 220px;
   font-size: 11px;
   color: var(--ink);
-  box-shadow: 0 1px 3px rgb(60 50 20 / 12%);
+  box-shadow: 0 1px 3px rgb(30 40 90 / 10%);
 }
 
 .tln-card--flashback {
   border-style: dashed;
-  border-color: #d9c184;
+  border-color: #f3c97e;
 }
 
 .tln-card--pill {
@@ -779,7 +936,7 @@ body,
 
 .tln-card__title {
   font-weight: 650;
-  color: #1e2c3a;
+  color: #141b2c;
 }
 
 .tln-card__badge {
@@ -787,15 +944,72 @@ body,
   font-size: 9px;
   padding: 1px 6px;
   border-radius: 999px;
-  background: #eef3f8;
-  color: #3d7fb5;
-  border: 1px solid #d7e4ef;
+  background: #eaefff;
+  color: #4f6ef7;
+  border: 1px solid #ccd8ff;
 }
 
 .tln-card--flashback .tln-card__badge {
-  background: #faf3df;
-  color: #8a6a14;
-  border-color: #ead9a8;
+  background: #fff3de;
+  color: #a86a10;
+  border-color: #f6ddab;
+}
+
+/* One hue per story object. Set as local custom properties so the pill rules
+   below can reference them generically instead of repeating a block per type. */
+.tln-card--t-scene {
+  --type: var(--scene);
+  --type-bg: #eaefff;
+}
+
+.tln-card--t-episode {
+  --type: var(--episode);
+  --type-bg: #e4f8fb;
+}
+
+.tln-card--t-character {
+  --type: var(--character);
+  --type-bg: #fdeaf2;
+}
+
+.tln-card--t-location {
+  --type: var(--location);
+  --type-bg: #e6f8f1;
+}
+
+.tln-card--t-theme {
+  --type: var(--theme);
+  --type-bg: #f1ebfe;
+}
+
+.tln-card--t-project {
+  --type: var(--accent);
+  --type-bg: #ebebfc;
+}
+
+.tln-card--t-seed {
+  --type: var(--warn);
+  --type-bg: #fdf4e2;
+}
+
+.tln-card--pill {
+  background: var(--type-bg, var(--card));
+  border-color: var(--type, var(--line));
+  font-weight: 600;
+}
+
+.tln-card--pill .tln-card__title {
+  color: var(--type, var(--ink));
+}
+
+/* Scenes carry their hue as a spine rather than a fill, so the synopsis text
+   keeps full contrast against white. */
+.tln-card--scene {
+  border-left: 3px solid var(--scene);
+}
+
+.tln-card--flashback {
+  border-left: 3px solid var(--flashback);
 }
 
 .tln-card__syn {

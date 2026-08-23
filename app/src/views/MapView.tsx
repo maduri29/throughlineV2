@@ -20,18 +20,18 @@ import type { EdgeType, GraphNode } from "../types";
 const nodeTypes = { card: GraphCard } satisfies NodeTypes;
 
 const EDGE_STROKE: Record<string, string> = {
-  precedes: "#9aa2ad",
-  contains: "#d3ccbc",
-  flashback_of: "#b98a1f",
-  sets_up: "#c96f6f",
-  parallels: "#7a8794",
-  appears_in: "#c56a2b",
-  takes_place_at: "#3d8f5f",
-  embodies: "#8460b8",
-  relates_to: "#98a0a8",
-  foreshadows: "#a5686f",
-  grew_into: "#7a998f",
-  related_to: "#aab2ba",
+  precedes: "#7c8aa8",
+  contains: "#c9d1e6",
+  flashback_of: "#e8912d",
+  sets_up: "#e5556f",
+  parallels: "#00a3b5",
+  appears_in: "#e0457b",
+  takes_place_at: "#12a074",
+  embodies: "#8b5cf6",
+  relates_to: "#9aa3ba",
+  foreshadows: "#d6336c",
+  grew_into: "#0ea5b7",
+  related_to: "#9aa3ba",
 };
 
 const CHIPS = ["scene", "character", "location", "theme", "flashback"] as const;
@@ -76,7 +76,7 @@ function layout(nodes: GraphNode[], orderFor: (id: string) => string[]): CardFlo
       id: ep.id,
       type: "card",
       position: { x: ei * COL_W, y: BAND_TOP },
-      data: { kind: "pill", title: ep.title },
+      data: { kind: "pill", nodeType: "episode", title: ep.title },
       draggable: false,
       selectable: false,
     });
@@ -121,7 +121,7 @@ function layout(nodes: GraphNode[], orderFor: (id: string) => string[]): CardFlo
       id: o.id,
       type: "card",
       position: { x: -280, y: 20 + oi * 56 },
-      data: { kind: "pill", title: o.title },
+      data: { kind: "pill", nodeType: o.type, title: o.title },
       draggable: false,
     });
   }
@@ -195,7 +195,7 @@ function MapInner() {
           target: e.to,
           label: e.label,
           style: {
-            stroke: EDGE_STROKE[e.type] ?? "#999999",
+            stroke: EDGE_STROKE[e.type] ?? "#9aa3ba",
             strokeWidth: 1.5,
             ...(e.type === "flashback_of" || e.type === "sets_up"
               ? { strokeDasharray: "5 4" }
@@ -325,7 +325,7 @@ function MapInner() {
           onPaneClick={() => select([])}
           onConnectEnd={onConnectEnd}
         >
-          <Background color="#e4ddd0" gap={18} />
+          <Background color="#dfe4f4" gap={18} />
           <Controls />
         </ReactFlow>
       </div>

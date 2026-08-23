@@ -251,6 +251,151 @@ function collectParagraph(lines: string[], start: number): string {
   return lines.slice(start, paragraphEnd(lines, start)).join("\n").trim();
 }
 
+/* --------------------------- editor classification ------------------------- */
+// Powers the live in-editor highlighting in ../editor/FountainEditor. Deliberately
+// a separate pass from parseFountain (rather than shared code) because this needs
+// a LINE-addressable result for CodeMirror decorations, while parseFountain
+// collapses each paragraph into one element -- but every rule below (regexes,
+// blank-neighbour conditions, the boneyard "exact `*/` line" quirk, the
+// exactly-one-blank-line cue heuristic) is a deliberate mirror of parseFountain's,
+// so what a writer sees highlighted while typing never disagrees with what
+// renderPreview/assembleExport will actually do with that text. If parseFountain's
+// line rules change, update both.
+
+export type LineKind = ElType | "boneyard" | "blank";
+export type LineSpan = { from: number; to: number; kind: LineKind };
+
+export function classifySceneLines(text: string): LineSpan[] {
+  const lines = text.split("\n");
+  const offsets: number[] = [];
+  for (let at = 0, k = 0; k < lines.length; k++) {
+    offsets.push(at);
+    at += (lines[k] ?? "").length + 1;
+  }
+
+  const at = (k: number): string => lines[k] ?? "";
+  const blank = (k: number): boolean => at(k).trim() === "";
+  const span = (i: number, kind: LineKind): LineSpan => {
+    const from = offsets[i] ?? text.length;
+    return { from, to: from + at(i).length, kind };
+  };
+
+  const out: LineSpan[] = [];
+  let dialogueMode = false;
+  let boneyard = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = at(i);
+
+    // Once inside a boneyard, parseFountain skips straight to its closing line
+    // without evaluating anything else about the lines in between -- including
+    // blank-line/dialogueMode resets -- so this branch must run before those checks.
+    if (boneyard) {
+      out.push(span(i, "boneyard"));
+      if (raw === "*/") boneyard = false; // parseFountain requires an exact "*/" line
+      continue;
+    }
+    if (raw.trim() === "") {
+      dialogueMode = false;
+      out.push(span(i, "blank"));
+      continue;
+    }
+    if (raw.startsWith("/*")) {
+      out.push(span(i, "boneyard"));
+      boneyard = true; // same-line "/* ... */" does not close it -- parseFountain quirk
+      continue;
+    }
+
+    if (/^#{1,6}\s*\S/.test(raw)) {
+      out.push(span(i, "section"));
+      continue;
+    }
+    if (/^={3,}$/.test(raw.trim())) {
+      out.push(span(i, "page_break"));
+      continue;
+    }
+    if (raw.startsWith("=")) {
+      out.push(span(i, "synopsis"));
+      continue;
+    }
+    if (raw.startsWith("~")) {
+      out.push(span(i, "lyric"));
+      continue;
+    }
+    if (/^>.*<$/.test(raw.trim())) {
+      out.push(span(i, "centered"));
+      continue;
+    }
+    if (/^[.]([A-Za-z0-9])/.test(raw)) {
+      out.push(span(i, "scene_heading"));
+      dialogueMode = false;
+      continue;
+    }
+    if (raw.startsWith("!")) {
+      out.push(span(i, "action"));
+      dialogueMode = false;
+      continue;
+    }
+    if (raw.startsWith("@")) {
+      out.push(span(i, "character"));
+      dialogueMode = true;
+      continue;
+    }
+    if (raw.startsWith(">") && raw.trim().length > 1) {
+      out.push(span(i, "transition"));
+      dialogueMode = false;
+      continue;
+    }
+    if (HEADING_RE.test(raw) && (i === 0 || blank(i - 1)) && blank(i + 1)) {
+      out.push(span(i, "scene_heading"));
+      dialogueMode = false;
+      continue;
+    }
+    if (/^[A-Z0-9\s()'!,.-]+TO:\s*$/.test(raw) && blank(i - 1) && blank(i + 1)) {
+      out.push(span(i, "transition"));
+      dialogueMode = false;
+      continue;
+    }
+
+    const prevBlankExactlyOne = i === 0 || (blank(i - 1) && !blank(i - 2));
+    const isCue =
+      /^[A-Z0-9\s().,'\u2019#\-/&"!?^]+$/.test(raw) &&
+      /[A-Z]/.test(raw) &&
+      prevBlankExactlyOne &&
+      !blank(i + 1);
+    if (isCue && !dialogueMode) {
+      out.push(span(i, "character"));
+      dialogueMode = true;
+      continue;
+    }
+
+    if (dialogueMode && /^\(.+\)$/.test(raw.trim())) {
+      out.push(span(i, "parenthetical"));
+      continue;
+    }
+    if (dialogueMode) {
+      out.push(span(i, "dialogue"));
+      continue;
+    }
+
+    out.push(span(i, "action"));
+    dialogueMode = false;
+  }
+
+  return out;
+}
+
+/** Same non-greedy `[[note]]` pattern as extractNotes, for an inline overlay
+ *  decoration -- unlike extractNotes, this does not strip the note out. */
+export function findNoteRanges(text: string): Array<{ from: number; to: number }> {
+  const out: Array<{ from: number; to: number }> = [];
+  for (const m of text.matchAll(/\[\[.+?\]\]/g)) {
+    if (m.index === undefined) continue;
+    out.push({ from: m.index, to: m.index + m[0].length });
+  }
+  return out;
+}
+
 /* --------------------------------- preview -------------------------------- */
 
 const esc = (s: string): string =>
