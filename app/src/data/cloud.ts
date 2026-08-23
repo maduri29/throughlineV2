@@ -346,6 +346,17 @@ export async function signIn(email: string): Promise<string | null> {
 export async function signInWithGitHub(): Promise<string | null> {
   const c = getClient();
   if (!c) return "Sync is not configured.";
+
+  // Pre-flight, because signInWithOAuth navigates the whole browser: with the
+  // provider disabled Supabase answers the authorize endpoint with raw JSON,
+  // which replaces the app with `{"code":400,…}` on screen. Checking first keeps
+  // the failure inside the dialog where it can be explained. The message is
+  // Supabase's own so explainAuthError gives it the same guidance either way.
+  const providers = await enabledProviders();
+  if (providers !== null && !providers.includes("github")) {
+    return "Unsupported provider: provider is not enabled";
+  }
+
   const { error } = await c.auth.signInWithOAuth({
     provider: "github",
     options: { redirectTo: location.origin },
