@@ -38,6 +38,9 @@ const CHIPS = ["scene", "character", "location", "theme", "flashback"] as const;
 type Chip = (typeof CHIPS)[number];
 type Filters = Record<Chip, boolean>;
 
+/** Entity types the "+" menu can create from the Map. */
+const ADDABLE = ["character", "location", "theme", "seed", "episode"] as const;
+
 const ALL_ON: Filters = {
   scene: true,
   character: true,
@@ -144,6 +147,7 @@ function MapInner() {
   const edgeMap = useGraphStore((s) => s.edges);
   const projectId = useGraphStore((s) => s.projectId);
   const addScene = useGraphStore((s) => s.addScene);
+  const addNodeOfType = useGraphStore((s) => s.addNodeOfType);
   const connect = useGraphStore((s) => s.connect);
   const deleteSelection = useGraphStore((s) => s.deleteSelection);
   const select = useGraphStore((s) => s.select);
@@ -152,6 +156,7 @@ function MapInner() {
 
   const [filters, setFilters] = useState<Filters>(ALL_ON);
   const [pending, setPending] = useState<Pending | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastSeq = useRef(1);
 
@@ -229,6 +234,7 @@ function MapInner() {
         deleteWithToast();
       } else if (e.key === "Escape") {
         setPending(null);
+        setAddOpen(false);
         select([]);
       } else if (e.key === "Tab") {
         e.preventDefault();
@@ -250,6 +256,7 @@ function MapInner() {
   const onDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       if ((e.target as HTMLElement).closest(".tln-card")) return;
+      if ((e.target as HTMLElement).closest(".tln-addmenu")) return;
       const p = screenToFlow({ x: e.clientX, y: e.clientY });
       const s = useGraphStore.getState();
       if (p.y < LANE_Y_MAX) {
@@ -302,6 +309,31 @@ function MapInner() {
             {c.charAt(0).toUpperCase() + c.slice(1)}
           </button>
         ))}
+        <div className="tln-addmenu">
+          <button
+            className="tln-chip tln-addmenu__btn"
+            title="Add entity"
+            onClick={() => setAddOpen((o) => !o)}
+          >
+            + Add
+          </button>
+          {addOpen ? (
+            <div className="tln-addmenu__list">
+              {ADDABLE.map((t) => (
+                <button
+                  key={t}
+                  className="tln-addmenu__opt"
+                  onClick={() => {
+                    addNodeOfType(t);
+                    setAddOpen(false);
+                  }}
+                >
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </div>
       <div className="tln-flow">
         <ReactFlow

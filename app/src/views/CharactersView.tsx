@@ -7,6 +7,7 @@ export default function CharactersView() {
   const nodes = useGraphStore((s) => s.nodes);
   const edges = useGraphStore((s) => s.edges);
   const select = useGraphStore((s) => s.select);
+  const addNodeOfType = useGraphStore((s) => s.addNodeOfType);
 
   const characters = useMemo(
     () => Object.values(nodes).filter((n) => n.type === "character"),
@@ -38,7 +39,15 @@ export default function CharactersView() {
 
   if (characters.length === 0) {
     return (
-      <div className="tln-chars tln-chars--empty">No characters yet — add one on the Map rail.</div>
+      <div className="tln-chars tln-chars--empty">
+        No characters yet.
+        <button
+          className="tln-newcard tln-newcard--solo"
+          onClick={() => addNodeOfType("character")}
+        >
+          + New character
+        </button>
+      </div>
     );
   }
 
@@ -75,6 +84,9 @@ export default function CharactersView() {
           </div>
         );
       })}
+      <button className="tln-newcard" onClick={() => addNodeOfType("character")}>
+        + New character
+      </button>
     </div>
   );
 }

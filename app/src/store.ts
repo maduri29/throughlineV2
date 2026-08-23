@@ -12,7 +12,7 @@ import {
   type NodeMaps,
   type Op,
 } from "./data/ops";
-import type { EdgeType, GraphEdge, GraphNode } from "./types";
+import type { EdgeType, GraphEdge, GraphNode, NodeType } from "./types";
 
 export type SaveState = "booting" | "saved" | "saving" | "dirty" | "error";
 
@@ -39,6 +39,8 @@ type Actions = {
   deleteEdge: (id: string) => void;
   setOrder: (containerId: string, order: string[]) => void;
   addScene: (parentId: string, opts?: { flashback?: boolean }) => string;
+  /** Create any entity type with sensible defaults; episodes nest under the project. */
+  addNodeOfType: (type: Exclude<NodeType, "project">) => string;
   switchProject: (id: string) => Promise<void>;
   createProject: (title: string) => Promise<void>;
   undo: () => void;
@@ -274,6 +276,33 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   addNode: (partial) => {
     const node: GraphNode = { id: uuidv7(), title: partial.title, ...partial };
     commit(set, get, `Add ${partial.type} “${partial.title}”`, [{ t: "addNode", node }]);
+    return node.id;
+  },
+
+  addNodeOfType: (type) => {
+    const s = get();
+    const title = `New ${type}`;
+    if (type === "episode") {
+      if (!s.projectId || !s.nodes[s.projectId]) return "";
+      const project = s.nodes[s.projectId] as GraphNode;
+      const node: GraphNode = { id: uuidv7(), type, title, parentId: project.id };
+      const edge: GraphEdge = { id: uuidv7(), type: "contains", from: project.id, to: node.id };
+      commit(set, get, "Add episode", [
+        { t: "addNode", node },
+        { t: "addEdge", edge },
+        {
+          t: "patchNode",
+          id: project.id,
+          patch: { order: [...(project.order ?? []), node.id] },
+          prev: { order: project.order },
+        },
+      ]);
+      set({ selection: [node.id] });
+      return node.id;
+    }
+    const node: GraphNode = { id: uuidv7(), type, title, synopsis: "" };
+    commit(set, get, `Add ${type}`, [{ t: "addNode", node }]);
+    set({ selection: [node.id] });
     return node.id;
   },
 

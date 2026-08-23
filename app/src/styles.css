@@ -130,6 +130,45 @@ body,
   text-decoration: line-through;
 }
 
+.tln-addmenu {
+  position: relative;
+}
+
+.tln-addmenu__btn {
+  background: #dfe6ff;
+  font-weight: 600;
+}
+
+.tln-addmenu__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 32;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgb(25 35 80 / 20%);
+  padding: 4px;
+  min-width: 130px;
+}
+
+.tln-addmenu__opt {
+  all: unset;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--ink);
+}
+
+.tln-addmenu__opt:hover {
+  background: #eaefff;
+  color: var(--accent, #4f6ef7);
+}
+
 .tln-picker-backdrop {
   position: fixed;
   inset: 0;
@@ -752,6 +791,30 @@ body,
   place-items: center;
   color: #7b8499;
   font-size: 13px;
+}
+
+.tln-newcard {
+  all: unset;
+  cursor: pointer;
+  min-height: 90px;
+  border: 1.5px dashed #b9c3e0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6a76a0;
+  font-size: 13px;
+}
+
+.tln-newcard:hover {
+  border-color: var(--accent, #4f6ef7);
+  color: var(--accent, #4f6ef7);
+  background: #f4f7ff;
+}
+
+.tln-newcard--solo {
+  padding: 14px 22px;
+  border-radius: 10px;
 }
 
 .tln-charcard {
