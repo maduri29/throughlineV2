@@ -46,3 +46,7 @@ producing anything. Full log: **`SCAFFOLD.md`** at repo root.
 
 Unblocks nothing further in wayfinder — this closes the last open task ticket; remaining
 work is grilling contracts (T4 keyboard remainder, T5, T6) then the execution phase.
+
+**Addendum (same day):** relocated again at human request — live repo is now
+`C:\Users\madur\work\throughline` (git history intact, `abcacc4`). `SCAFFOLD.md` at repo
+root carries the full log with updated paths.

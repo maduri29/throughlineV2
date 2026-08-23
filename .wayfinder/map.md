@@ -29,12 +29,10 @@ multi-project library) with a Fountain textarea editor and `.fountain` export.
   react/unicorn/typescript/oxc explicitly). React **19** + `@xyflow/react` **12.11.x** +
   zustand (state layer) over a custom **normalized IndexedDB** adapter per ADR-0001
   (the earlier idb-keyval plan is dropped).
-- **Repo location**: the repo relocates from `OneDrive\Desktop\Throughline` to
-  **`C:\dev\throughline`** at scaffold time (OneDrive watcher/EPERM failure class). The
-  `.wayfinder/` folder moves with the repo; future sessions run from the new path.
-  **Status: DONE via COPY-first (T7 closed)** — `C:\dev\throughline` is the live repo and
-  tracker source of truth; the OneDrive folder is a frozen snapshot pending human blessing
-  of the switchover.
+- **Repo location**: the repo lives at **`C:\Users\madur\work\throughline`** — scaffolded
+  COPY-first at `C:\dev\throughline` (T7), then moved to `work\throughline` at human request
+  same day. This is the live repo and tracker source of truth; future sessions run from
+  here. The OneDrive folder is a frozen snapshot pending deletion.
 - **Map lens direction (human review of `prototype/map-rework.html`, 2026-08-22)**:
   **Beat board × Storyline** — rich light-theme beat cards living in permanent episode
   bands + flashback lane, Tidy layout default with a Filters toolbar; the Constellation's
