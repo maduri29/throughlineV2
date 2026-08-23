@@ -32,12 +32,76 @@ export function readConfig(): { url: string; key: string } | null {
   }
 }
 
-export function writeConfig(url: string, key: string): void {
-  localStorage.setItem(URL_KEY, url.trim().replace(/\/+$/, ""));
-  localStorage.setItem(PUB_KEY, key.trim());
+let client: SupabaseClient | null = null;
+
+/** Role claim of a legacy JWT key, or null if `key` is not a readable JWT. */
+function jwtRole(key: string): string | null {
+  const parts = key.split(".");
+  if (parts.length !== 3 || !parts[1]) return null;
+  try {
+    const json = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    const role: unknown = (JSON.parse(json) as Record<string, unknown>)["role"];
+    return typeof role === "string" ? role : null;
+  } catch {
+    return null; // not a JWT we can read; fall through to the other checks
+  }
 }
 
-let client: SupabaseClient | null = null;
+/**
+ * Reject bad config *before* it is stored. Returns a problem, or null if usable.
+ *
+ * The important case is the secret key. The publishable key is safe in a client
+ * bundle only because RLS scopes every row to auth.uid(); a secret key BYPASSES
+ * row level security entirely, so storing one here would expose every row of
+ * every user to anything running on this page. The dashboard shows both keys a
+ * few lines apart, which makes it an easy paste to get wrong — so the app has to
+ * catch it rather than trust the person pasting.
+ */
+export function validateConfig(url: string, key: string): string | null {
+  const u = url.trim();
+  const k = key.trim();
+  if (!u) return "Project URL is required.";
+  if (!k) return "Publishable key is required.";
+
+  let parsed: URL;
+  try {
+    parsed = new URL(u);
+  } catch {
+    return "Project URL is not a valid URL — it should look like https://abcdefg.supabase.co";
+  }
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
+    return "Project URL must use https (except a local self-hosted instance).";
+  }
+
+  if (k.startsWith("sb_secret_")) {
+    return "That is the SECRET key — it bypasses row level security and must never go in a browser. Use the publishable (sb_publishable_…) key.";
+  }
+  if (jwtRole(k) === "service_role") {
+    return "That is the service_role key — it bypasses row level security and must never go in a browser. Use the publishable (sb_publishable_…) key.";
+  }
+  if (!k.startsWith("sb_publishable_") && jwtRole(k) !== "anon") {
+    return "That does not look like a publishable key. Copy the key labelled publishable (sb_publishable_…) from Settings → API.";
+  }
+  return null;
+}
+
+/** Stores config, or returns a problem and stores nothing. */
+export function writeConfig(url: string, key: string): string | null {
+  const problem = validateConfig(url, key);
+  if (problem) return problem;
+  localStorage.setItem(URL_KEY, url.trim().replace(/\/+$/, ""));
+  localStorage.setItem(PUB_KEY, key.trim());
+  client = null; // config changed; drop the memoized client so it is rebuilt
+  return null;
+}
+
+/** Forget the project entirely. Local stories are untouched — sync is a tier above them. */
+export function clearConfig(): void {
+  void client?.auth.signOut();
+  localStorage.removeItem(URL_KEY);
+  localStorage.removeItem(PUB_KEY);
+  client = null;
+}
 
 /** Null whenever sync is not configured. Callers must handle null, not assume. */
 export function getClient(): SupabaseClient | null {
@@ -67,7 +131,12 @@ export async function cloudState(): Promise<CloudState> {
 export async function signIn(email: string): Promise<string | null> {
   const c = getClient();
   if (!c) return "Sync is not configured.";
-  const { error } = await c.auth.signInWithOtp({ email });
+  // Come back to wherever the app is actually being served from. This origin
+  // must also be on the project's redirect allow-list, or the link 404s.
+  const { error } = await c.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: location.origin },
+  });
   return error ? error.message : null;
 }
 

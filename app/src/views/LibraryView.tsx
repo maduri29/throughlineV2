@@ -2,6 +2,7 @@
 import { type ChangeEvent, useState } from "react";
 import { describeUsage } from "../data/durability";
 import { useGraphStore } from "../store";
+import SyncPanel from "./SyncPanel";
 
 export default function LibraryView() {
   const projects = useGraphStore((s) => s.projects);
@@ -80,6 +81,8 @@ export default function LibraryView() {
           </button>
         </div>
       </div>
+
+      <SyncPanel />
     </div>
   );
 }

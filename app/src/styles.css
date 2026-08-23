@@ -1385,3 +1385,99 @@ body,
   font-size: 13px;
   color: var(--danger);
 }
+
+/* Cloud sync panel (ADR-0005). Sits below the local library on purpose: local
+   storage is the working store and reads first; the cloud is a tier above it. */
+.tln-sync {
+  max-width: 900px;
+  margin: 34px 0 0;
+  padding: 18px 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.tln-sync__head {
+  font-size: 15px;
+  margin: 0 0 10px;
+  color: var(--ink-2);
+}
+
+.tln-sync__subhead {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  margin: 16px 0 8px;
+}
+
+.tln-sync__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.tln-sync__input {
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--ink);
+  background: var(--card);
+  min-width: 230px;
+}
+
+.tln-sync__note {
+  font-size: 12px;
+  color: var(--dim);
+  margin: 0;
+  max-width: 62ch;
+}
+
+/* Losing work is the failure mode this panel has to warn about, so the warning
+   is a standing part of the layout rather than a transient toast. */
+.tln-sync__warn {
+  font-size: 12px;
+  color: var(--warn);
+  margin: 8px 0 0;
+  max-width: 62ch;
+}
+
+.tln-sync__msg {
+  font-size: 12px;
+  color: var(--ok);
+  margin: 10px 0 0;
+  max-width: 62ch;
+}
+
+.tln-sync__msg--err {
+  color: var(--danger);
+}
+
+.tln-sync__remote {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tln-sync__remote-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.tln-sync__remote-title {
+  font-size: 13px;
+  color: var(--ink);
+  flex: 1;
+}

@@ -136,6 +136,34 @@ async function main(): Promise<void> {
       pills.length > 0 && pills.every((p) => p.cls !== ""),
       `${pills.length} pills, ${distinct.size} distinct colours`,
     );
+
+    /* ---- Library: sync is present, optional, and refuses a secret key ---- */
+    await page.getByTitle("Library / Workspace").click();
+    await page.waitForSelector(".tln-sync", { timeout: 15_000 });
+
+    // The whole point of ADR-0005 is that sync is additive. With no config the
+    // library must still be a working local library, not a sign-in wall.
+    const localCards = await page.locator(".tln-storycard").count();
+    check("library works with no sync configured", localCards > 0, `${localCards} cards`);
+
+    const pushWhenUnconfigured = await page.getByRole("button", { name: /^Push/ }).count();
+    check("no push control before sign-in", pushWhenUnconfigured === 0);
+
+    // Regression guard for the worst mistake this panel can invite: the secret
+    // key bypasses RLS, so it must be refused before it ever reaches storage.
+    await page.getByLabel("Supabase project URL").fill("https://abcdefghijkl.supabase.co");
+    await page.getByLabel("Supabase publishable key").fill("sb_secret_AbCdEf123456");
+    await page.getByRole("button", { name: "Connect", exact: true }).click();
+
+    const refusal = await page.locator(".tln-sync__msg--err").first().textContent();
+    check(
+      "secret key is refused",
+      (refusal ?? "").includes("SECRET"),
+      (refusal ?? "no message").slice(0, 52),
+    );
+
+    const stored = await page.evaluate(() => localStorage.getItem("TLN_SUPABASE_PUBLISHABLE_KEY"));
+    check("refused key was never stored", stored === null, stored === null ? "absent" : "STORED");
   } catch (err) {
     check("run completed without error", false, String(err).slice(0, 120));
   } finally {

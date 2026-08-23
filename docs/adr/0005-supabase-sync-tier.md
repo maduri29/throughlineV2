@@ -63,6 +63,17 @@ findings shaped the design rather than the request:
   separate decision.
 - **Signed-out remains a first-class state.** Sync is additive; no feature may become
   reachable only when signed in, or the local-first claim in `CONTEXT.md` becomes false.
+- **A pull is never destructive.** It arrives as a *new* local story, re-validated through
+  the same `parseEnvelope` importer as a file the user picks, rather than overwriting the
+  local project with the same `local_id`. Overwriting would destroy local edits invisibly and
+  undo (ADR-0003) cannot reach a replaced project, whereas a duplicate story is visible on
+  the shelf and one delete away. The cost — pulling twice gives two copies — is the cheaper
+  failure, and is stated in the UI.
+- **The client refuses a secret key rather than trusting the paste.** `validateConfig`
+  rejects an `sb_secret_` prefix and decodes a legacy JWT to reject `role: service_role`,
+  because such a key bypasses RLS entirely and the dashboard shows it beside the publishable
+  one. Storing it is the single mistake this tier can invite that fails *silently* and
+  exposes every account, so it is guarded in code and covered by tests and a UI assertion.
 - ADR-0002 is unaffected: `@supabase/supabase-js` is a browser library, so no Node runtime
   is introduced and the Bun-native toolchain is unchanged.
 - The product's positioning changes. "Your unproduced scripts never leave your machine" was
