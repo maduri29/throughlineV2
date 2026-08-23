@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Throughline — Prototype</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#101731; --panel2:#141c3a;
+    --line:#232d52; --text:#e7edff; --muted:#8ea0cd; --accent:#7dd3fc;
+    --danger:#fb7185; --radius:12px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    background:radial-gradient(1200px 800px at 70% -10%, #16204a 0%, var(--bg) 55%);
+    color:var(--text); overflow:hidden; user-select:none;
+  }
+  #app{display:flex; flex-direction:column; height:100%}
+
+  /* ---------- top bar ---------- */
+  #topbar{
+    display:flex; align-items:center; gap:10px; padding:8px 14px;
+    background:rgba(13,19,40,.92); border-bottom:1px solid var(--line);
+    flex-wrap:nowrap; z-index:50;
+  }
+  .brand{font-weight:800; letter-spacing:.14em; font-size:13px; white-space:nowrap;
+    background:linear-gradient(90deg,#7dd3fc,#c084fc,#f472b6);
+    -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .brand small{letter-spacing:.05em; font-weight:600}
+  .projname{font-size:12px; color:var(--muted); white-space:nowrap; margin-right:4px}
+  .seg{display:flex; background:var(--panel2); border:1px solid var(--line); border-radius:9px; overflow:hidden}
+  .seg button{
+    appearance:none; border:0; background:transparent; color:var(--muted); cursor:pointer;
+    padding:6px 13px; font-size:12px; font-weight:600;
+  }
+  .seg button.on{background:#1d2952; color:var(--text)}
+  .chiprow{display:flex; gap:5px; overflow-x:auto; max-width:34vw; padding:2px}
+  .chip{border:1px solid var(--line); background:var(--panel2); color:var(--muted);
+    font-size:10.5px; font-weight:600; letter-spacing:.04em; border-radius:999px;
+    padding:4px 9px; cursor:pointer; white-space:nowrap}
+  .chip .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;background:var(--c)}
+  .chip.off{opacity:.35}
+  .spacer{flex:1}
+  .btn{appearance:none; border:1px solid var(--line); background:var(--panel2); color:var(--text);
+    font-size:12px; font-weight:600; border-radius:9px; padding:6px 11px; cursor:pointer; white-space:nowrap}
+  .btn:hover{background:#1d2952}
+  .btn.primary{background:linear-gradient(135deg,#2563eb,#7c3aed); border-color:transparent}
+  .btn.icon{padding:6px 9px}
+  #savestate{font-size:11px; color:var(--muted); min-width:86px; text-align:right; transition:color .2s}
+  #savestate.busy{color:#facc15}
+  .only-map{}
+  body:not([data-view="map"]) .only-map{display:none}
+
+  main{flex:1; display:flex; min-height:0}
+
+  /* ---------- view switching ---------- */
+  body[data-view="timeline"] #stage, body[data-view="timeline"] #chview,
+  body[data-view="characters"] #stage, body[data-view="characters"] #tlview,
+  body[data-view="map"] #tlview, body[data-view="map"] #chview{display:none !important}
+  body[data-view="timeline"] #tlview{display:flex !important}
+  body[data-view="characters"] #chview{display:block !important}
+
+  /* ---------- stage ---------- */
+  #stage{flex:1; position:relative; overflow:hidden; cursor:grab}
+  #stage.panning{cursor:grabbing}
+  #stage.linking{cursor:crosshair}
+  #edgesvg{position:absolute; inset:0; width:100%; height:100%; overflow:visible}
+  #nodeslayer{position:absolute; inset:0; transform-origin:0 0}
+  .node{
+    position:absolute; min-width:172px; max-width:240px; padding:9px 12px 10px;
+    background:rgba(19,27,54,.94); border:1px solid #2a3763; border-radius:var(--radius);
+    box-shadow:0 8px 22px rgba(0,0,0,.45); cursor:pointer;
+  }
+  .node:hover{border-color:#3b4c86}
+  .node.sel{border-color:#8ab4ff; box-shadow:0 0 0 2px rgba(122,167,255,.45), 0 10px 26px rgba(0,0,0,.5)}
+  .node .tag{display:flex; align-items:center; gap:5px; font-size:9px; font-weight:800;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--tc); margin-bottom:4px}
+  .node .tag .dot{width:7px;height:7px;border-radius:50%;background:var(--tc)}
+  .node .n-title{font-size:13px; font-weight:700; line-height:1.25}
+  .node .n-meta{font-size:10.5px; color:var(--muted); margin-top:4px; line-height:1.35}
+  .hp{
+    position:absolute; right:-9px; top:calc(50% - 9px); width:18px; height:18px;
+    border-radius:50%; background:#182148; border:2px solid var(--tc);
+    opacity:0; transition:opacity .12s; cursor:crosshair;
+  }
+  .hp::after{content:""; position:absolute; inset:4px; border-radius:50%; background:var(--tc); opacity:.75}
+  .node:hover .hp{opacity:1}
+
+  .elabel{font-size:10px; fill:#aab8e0; paint-order:stroke; stroke:#0b1020; stroke-width:3px;
+    text-anchor:middle; pointer-events:all; cursor:pointer}
+  path.line{fill:none; stroke-opacity:.85; stroke-width:1.8}
+  path.line.sel{stroke-width:3.2; stroke-opacity:1}
+  path.hit{fill:none; stroke:transparent; stroke-width:16; pointer-events:stroke; cursor:pointer}
+  #templink{fill:none; stroke:#7dd3fc; stroke-width:2; stroke-dasharray:6 5; pointer-events:none}
+
+  #legend{position:absolute; left:12px; bottom:12px; font-size:10px; color:var(--muted);
+    background:rgba(13,19,40,.82); border:1px solid var(--line); border-radius:10px; padding:8px 11px;
+    line-height:1.7; pointer-events:none}
+  #legend .li{display:inline-flex; align-items:center; gap:5px}
+  #legend .ld{width:8px;height:8px;border-radius:50%}
+  #hints{position:absolute; right:12px; bottom:12px; font-size:10.5px; color:var(--muted);
+    background:rgba(13,19,40,.82); border:1px solid var(--line); border-radius:10px; padding:7px 11px; pointer-events:none}
+  @media(max-width:1050px){#hints,#legend{display:none}}
+
+  /* ---------- timeline ---------- */
+  #tlview{flex:1; display:none; flex-direction:column; min-width:0}
+  #tlhead{display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line)}
+  #tlhead h3{font-size:13px}
+  #tlspace{flex:1; overflow:auto; position:relative}
+  .tl-card{
+    position:absolute; width:186px; padding:9px 11px; border-radius:11px;
+    background:rgba(19,27,54,.96); border:1px solid #2a3763; cursor:pointer;
+  }
+  .tl-card:hover{border-color:#3b4c86}
+  .tl-card.sel{border-color:#8ab4ff; box-shadow:0 0 0 2px rgba(122,167,255,.45)}
+  .tl-card.flash{border-style:dashed}
+  .tl-card .k{font-size:9px; font-weight:800; letter-spacing:.1em; color:#8ea0cd; text-transform:uppercase}
+  .tl-card .t{font-size:12px; font-weight:700; margin-top:3px; line-height:1.3}
+  .tl-card .m{font-size:10px; color:var(--muted); margin-top:4px}
+  .tl-arrow{position:absolute; color:#41507f; font-size:15px; pointer-events:none}
+  .lane-label{position:absolute; font-size:10px; font-weight:800; letter-spacing:.14em; color:#66799f}
+
+  /* ---------- characters ---------- */
+  #chview{flex:1; display:none; overflow:auto; padding:22px}
+  #chgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(235px,1fr)); gap:14px}
+  .ch-card{background:rgba(19,27,54,.94); border:1px solid #2a3763; border-radius:14px; padding:15px; cursor:pointer}
+  .ch-card:hover{border-color:#3b4c86}
+  .ch-card.sel{border-color:#8ab4ff; box-shadow:0 0 0 2px rgba(122,167,255,.45)}
+  .ch-top{display:flex; align-items:center; gap:11px}
+  .avatar{width:42px;height:42px;border-radius:50%; display:flex;align-items:center;justify-content:center;
+    font-weight:800; font-size:15px; color:#0b1020; flex:none}
+  .ch-name{font-size:14px; font-weight:800}
+  .ch-role{font-size:10px; color:#fda4af; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-top:2px}
+  .ch-stats{font-size:10.5px; color:var(--muted); margin:9px 0 7px}
+  .ch-want{font-size:11.5px; font-style:italic; color:#bcd0ff; line-height:1.4}
+  .ch-arc{font-size:10.5px; color:var(--muted); margin-top:7px; line-height:1.45}
+
+  /* ---------- inspector ---------- */
+  #inspector{width:322px; flex:none; background:rgba(14,20,42,.97); border-left:1px solid var(--line);
+    overflow-y:auto; padding:15px 16px 30px; user-select:text}
+  #inspector .ph{font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#66799f; margin:16px 0 7px; font-weight:800}
+  #inspector .ph:first-child{margin-top:2px}
+  #inspector input,#inspector select,#inspector textarea{
+    width:100%; background:#0d1430; border:1px solid #26325c; color:var(--text); border-radius:8px;
+    padding:7px 9px; font-size:12px; font-family:inherit; outline:none;
+  }
+  #inspector input:focus,#inspector select:focus,#inspector textarea:focus{border-color:#4f6ab8}
+  #inspector textarea{resize:vertical; min-height:58px}
+  #inspector label{display:block; font-size:10.5px; color:var(--muted); margin:9px 0 4px; font-weight:600}
+  .conn-row{display:flex; align-items:center; gap:7px; padding:6px 8px; border:1px solid #26325c;
+    border-radius:8px; margin-bottom:6px; cursor:pointer; font-size:11.5px}
+  .conn-row:hover{background:#17204a}
+  .conn-row .sym{width:20px; text-align:center; flex:none}
+  .conn-row .who{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .conn-row .del{color:#5c6c99; cursor:pointer; padding:0 3px; flex:none}
+  .conn-row .del:hover{color:var(--danger)}
+  .empty{color:#66799f; font-size:11.5px; font-style:italic}
+  #delbtn.armed{background:#7f1d2d; border-color:#b91c3c; color:#ffe4e6}
+  .pair{display:flex; align-items:center; gap:8px; font-size:12px}
+  .pair b{cursor:pointer}
+  .pair b:hover{text-decoration:underline}
+
+  /* ---------- menus & toast ---------- */
+  #menu{position:fixed; z-index:100; min-width:190px; background:#131b3a; border:1px solid #33417a;
+    border-radius:11px; box-shadow:0 16px 40px rgba(0,0,0,.55); padding:6px; display:none}
+  #menu .mi{display:flex; align-items:center; gap:9px; padding:7px 10px; border-radius:8px;
+    cursor:pointer; font-size:12.5px}
+  #menu .mi:hover{background:#20305f}
+  #menu .mi .ic{width:18px; text-align:center}
+  #menu .mtitle{font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:#66799f; padding:5px 10px 3px; font-weight:800}
+  #menu input{width:100%; background:#0d1430; border:1px solid #26325c; color:var(--text);
+    border-radius:8px; padding:7px 9px; font-size:12px; outline:none; margin:4px 0 6px}
+  #toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
+    background:#182457; border:1px solid #33417a; color:var(--text); font-size:12.5px;
+    padding:9px 16px; border-radius:10px; opacity:0; transition:all .25s; z-index:120; pointer-events:none}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body data-view="map">
+<div id="app">
+  <header id="topbar">
+    <div class="brand">THROUGHLINE <small>prototype</small></div>
+    <div class="projname" id="projname"></div>
+    <div class="seg" id="viewswitch">
+      <button data-v="map" class="on">🗺 Map</button>
+      <button data-v="timeline">⏱ Timeline</button>
+      <button data-v="characters">👥 Characters</button>
+    </div>
+    <div class="chiprow only-map" id="chips"></div>
+    <div class="spacer"></div>
+    <button class="btn primary" id="addbtn">＋ Node</button>
+    <span class="only-map">
+      <button class="btn icon" id="zoombtn" title="Zoom out">−</button>
+      <button class="btn icon" id="zoomin" title="Zoom in">＋</button>
+      <button class="btn icon" id="fitbtn" title="Fit to view">⤢</button>
+      <span id="zoompct" style="font-size:11px;color:var(--muted)">100%</span>
+    </span>
+    <button class="btn icon" id="exportbtn" title="Export JSON">⬇</button>
+    <button class="btn icon" id="importbtn" title="Import JSON">⬆</button>
+    <button class="btn icon" id="resetbtn" title="Reset demo">⟲</button>
+    <input type="file" id="fileinput" accept=".json,application/json" style="display:none">
+    <div id="savestate">● saved</div>
+  </header>
+
+  <main>
+    <div id="stage">
+      <svg id="edgesvg"><defs id="defs"></defs><g id="edgeg"></g></svg>
+      <div id="nodeslayer"></div>
+      <div id="legend"></div>
+      <div id="hints">drag background to pan · scroll to zoom · double-click canvas to add · drag ⟳ handle to connect · Del removes</div>
+    </div>
+
+    <div id="tlview">
+      <div id="tlhead">
+        <h3>Timeline</h3>
+        <div class="seg" id="orderswitch">
+          <button data-o="narrative" class="on">Narrative order</button>
+          <button data-o="story">Story order (chronological)</button>
+        </div>
+        <span style="font-size:11px;color:var(--muted)">flashbacks get their own lane — the same graph, seen through time</span>
+      </div>
+      <div id="tlspace"></div>
+    </div>
+
+    <div id="chview"><div id="chgrid"></div></div>
+
+    <aside id="inspector"><div class="empty">Select a node or connection…</div></aside>
+  </main>
+</div>
+
+<div id="menu"></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Throughline prototype — one story graph, three lenses.
+   Single-file, zero dependencies, localStorage persistence.
+   ===================================================================== */
+
+/* ---------------- type metadata ---------------- */
+const TYPES = {
+  seed:      {label:"Idea",      color:"#f59e0b", icon:"💡"},
+  project:   {label:"Project",   color:"#818cf8", icon:"🎯"},
+  episode:   {label:"Episode",   color:"#a78bfa", icon:"📺"},
+  scene:     {label:"Scene",     color:"#38bdf8", icon:"🎬"},
+  character: {label:"Character", color:"#fb7185", icon:"👤"},
+  location:  {label:"Location",  color:"#34d399", icon:"📍"},
+  theme:     {label:"Theme",     color:"#e879f9", icon:"🧭"},
+};
+const EDGE_STYLE = {
+  contains:      {color:"#7c8db5", sym:""},
+  appears_in:    {color:"#38bdf8", sym:""},
+  takes_place_at:{color:"#34d399", sym:""},
+  relates_to:    {color:"#fb7185", sym:"⇄"},
+  precedes:      {color:"#c084fc", sym:"▸▸"},
+  flashback_of:  {color:"#a78bfa", sym:"⏪"},
+  parallels:     {color:"#a78bfa", sym:"∥"},
+  foreshadows:   {color:"#fbbf24", sym:"✦"},
+  embodies:      {color:"#e879f9", sym:"☾"},
+  grew_into:     {color:"#fbbf24", sym:"🌱"},
+  related_to:    {color:"#64748b", sym:"·"},
+};
+
+/* ---------------- demo project: HIGH WATER ---------------- */
+function demoModel(){
+  const N=(id,type,title,body,x,y,f)=>({id,type,title,body:body||"",x,y,f:f||{}});
+  return {
+    name:"HIGH WATER — Limited Series",
+    seq: 100,
+    nodes:[
+      N("n_spark1","seed","The nightly flood","A town that drowns every night at 9pm — and the one man who refuses to leave.",-580,-30,{tags:["origin"]}),
+      N("n_spark2","seed","Mother walked into the sea","She smiled as she went. Nobody followed. Nobody asked why.",-580,140,{tags:["image","backstory"]}),
+      N("n_spark3","seed","Anthology spin-off","One flood-night per decade: 1962 → 2062. Same lighthouse.",-580,330,{tags:["backlog"]}),
+
+      N("n_theme1","theme","What we abandon to survive","",-290,-60,{}),
+      N("n_theme2","theme","Memory is a tide","It returns whether you want it or not.",-290,120,{}),
+
+      N("n_maya","character","Maya Reyes","", -40, 60, {role:"Protagonist", age:34,
+        want:"Map the flood and prove it is man-made",
+        wound:"Watched her mother walk into the water",
+        arc:"From documenting the tide to standing in it"}),
+      N("n_eli","character","Eli Reyes","", -40, 205, {role:"Obstacle / Father", age:68,
+        want:"Keep the lighthouse — and the secret",
+        wound:"He signed the order that drowned Main Street",
+        arc:"Confession as the water rises"}),
+      N("n_sam","character","Sam Okafor","", -40, 350, {role:"Ally", age:29,
+        want:"Finish the documentary before the town gives up",
+        wound:"", arc:"Observer → participant"}),
+      N("n_cole","character","Mayor Ada Cole","", -40, 495, {role:"Antagonist", age:57,
+        want:"Sell the retreat package before the election",
+        wound:"", arc:"The comfortable lie unravels"}),
+
+      N("n_proj","project","HIGH WATER","", 40,-160,{format:"LIMITED_SERIES", genre:"Mystery Drama"}),
+
+      N("n_e1","episode","Nine O'Clock","",350,-150,{num:1}),
+      N("n_e2","episode","Low Tide","",350,-15,{num:2}),
+      N("n_e3","episode","Spring Tide","",350,120,{num:3}),
+
+      N("n_sc1","scene","Cold open: the siren","Streets empty in eleven minutes. One porch light stays on.",650,-190,{ep:"n_e1",order:1,stime:"N1 · 20:49",flashback:false,loc:"n_loc1"}),
+      N("n_sc2","scene","Last dry ferry","Maya arrives; Sam films the 'flood regulars' on the quay.",650,-62,{ep:"n_e1",order:2,stime:"N1 · 16:15",flashback:false,loc:"n_loc1"}),
+      N("n_sc3","scene","1998: her mother's walk","Young Maya watches her mother wade in, smiling.",650,66,{ep:"n_e1",order:3,stime:"1998 · June",flashback:true,loc:"n_loc1"}),
+      N("n_sc4","scene","Lamp room argument","Eli refuses the buyout. Maya finds her mother's tide logs.",650,196,{ep:"n_e1",order:4,stime:"N2 · 22:10",flashback:false,loc:"n_loc2"}),
+      N("n_sc5","scene","Drone over the shallows","Sam's drone reveals car roofs beneath the harbour.",905,-125,{ep:"n_e2",order:5,stime:"N4 · 07:40",flashback:false,loc:"n_loc1"}),
+      N("n_sc6","scene","The early tide","Main Street surfaces for ninety seconds. Maya stands in it.",905,15,{ep:"n_e2",order:6,stime:"N5 · 23:55",flashback:false,loc:"n_loc3"}),
+      N("n_sc7","scene","The vote recording","Ada plays the 1962 tape. Eli names his father's signature.",905,150,{ep:"n_e3",order:7,stime:"N9 · 19:00",flashback:false,loc:"n_loc1"}),
+
+      N("n_loc1","location","Gray Harbour","Lives ashore by day, empties by night.",380,395,{mood:"Wet asphalt and denial"}),
+      N("n_loc2","location","The Lighthouse","Still manned. Illegally.",620,450,{mood:"Brass, mildew, stubbornness"}),
+      N("n_loc3","location","Underwater Main Street","Visible only at spring low tide.",865,500,{mood:"A town holding its breath"}),
+    ],
+    edges:[
+      LK("lk1","n_spark1","n_proj","grew_into"),
+      LK("lk2","n_spark2","n_sc3","grew_into"),
+      LK("lk3","n_proj","n_e1","contains"), LK("lk4","n_proj","n_e2","contains"), LK("lk5","n_proj","n_e3","contains"),
+      LK("lk6","n_e1","n_sc1","contains"), LK("lk7","n_e1","n_sc2","contains"), LK("lk8","n_e1","n_sc3","contains"), LK("lk9","n_e1","n_sc4","contains"),
+      LK("lk10","n_e2","n_sc5","contains"), LK("lk11","n_e2","n_sc6","contains"), LK("lk12","n_e3","n_sc7","contains"),
+      LK("lk13","n_maya","n_sc2","appears_in"), LK("lk14","n_maya","n_sc3","appears_in"), LK("lk15","n_maya","n_sc4","appears_in"), LK("lk16","n_maya","n_sc6","appears_in"),
+      LK("lk17","n_eli","n_sc1","appears_in"), LK("lk18","n_eli","n_sc4","appears_in"), LK("lk19","n_eli","n_sc7","appears_in"),
+      LK("lk20","n_sam","n_sc2","appears_in"), LK("lk21","n_sam","n_sc5","appears_in"),
+      LK("lk22","n_cole","n_sc7","appears_in"),
+      LK("lk23","n_sc1","n_loc1","takes_place_at"), LK("lk24","n_sc2","n_loc1","takes_place_at"), LK("lk25","n_sc3","n_loc1","takes_place_at"),
+      LK("lk26","n_sc4","n_loc2","takes_place_at"), LK("lk27","n_sc5","n_loc1","takes_place_at"), LK("lk28","n_sc6","n_loc3","takes_place_at"),
+      LK("lk29","n_sc7","n_loc1","takes_place_at"),
+      LK("lk30","n_maya","n_eli","relates_to","daughter · estranged"),
+      LK("lk31","n_maya","n_sam","relates_to","allies → something more"),
+      LK("lk32","n_eli","n_cole","relates_to","co-conspirators, 1962 families"),
+      LK("lk33","n_maya","n_theme2","embodies"), LK("lk34","n_eli","n_theme1","embodies"),
+      LK("lk35","n_sc6","n_theme1","embodies"), LK("lk36","n_sc3","n_theme2","embodies"),
+      LK("lk37","n_sc5","n_sc7","foreshadows"),
+      LK("lk38","n_sc3","n_sc6","parallels"),
+      LK("lk39","n_sc3","n_sc4","flashback_of"),
+      LK("lk40","n_sc1","n_sc2","precedes"), LK("lk41","n_sc5","n_sc6","precedes"),
+    ],
+  };
+  function LK(id,from,to,type,label){return {id,from,to,type,label:label||""};}
+}
+const snap = o => JSON.parse(JSON.stringify(o));
+
+/* ---------------- state ---------------- */
+const SAVE_KEY = "throughline.prototype.v1";
+let model = null;
+let view = {tx:0, ty:0, scale:1};
+let sel = {kind:null, id:null};
+let hiddenTypes = new Set();
+let orderMode = "narrative";
+let gesture = null;          // {type:'pan'|'node'|'link', ...}
+let zTop = 10;
+
+/* ---------------- dom handles ---------------- */
+const $ = s => document.querySelector(s);
+const stage=$("#stage"), edgeg=$("#edgeg"), nodeslayer=$("#nodeslayer"),
+      insp=$("#inspector"), menuEl=$("#menu"), toastEl=$("#toast");
+
+/* ---------------- helpers ---------------- */
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function nodeById(id){return model.nodes.find(n=>n.id===id);}
+function edgeById(id){return model.edges.find(e=>e.id===id);}
+function nodeEl(id){return nodeslayer.querySelector(`[data-nid="${id}"]`);}
+function centersOf(n){
+  const el=nodeEl(n.id);
+  const w=el?el.offsetWidth:200, h=el?el.offsetHeight:64;
+  return {cx:n.x+w/2, cy:n.y+h/2, w, h};
+}
+function trimToBorder(c, tx, ty, pad){
+  let dx=tx-c.cx, dy=ty-c.cy;
+  const len=Math.hypot(dx,dy)||1, ux=dx/len, uy=dy/len;
+  const txs=Math.abs(ux)>1e-6 ? (c.w/2+pad)/Math.abs(ux) : Infinity;
+  const tys=Math.abs(uy)>1e-6 ? (c.h/2+pad)/Math.abs(uy) : Infinity;
+  const d=Math.min(txs,tys);
+  return {x:c.cx+ux*d, y:c.cy+uy*d};
+}
+function screenToWorld(cx,cy){
+  const r=stage.getBoundingClientRect();
+  return {x:(cx-r.left-view.tx)/view.scale, y:(cy-r.top-view.ty)/view.scale};
+}
+function centerWorld(){ const r=stage.getBoundingClientRect(); return screenToWorld(r.left+r.width/2, r.top+r.height/2); }
+
+function toast(msg){
+  toastEl.textContent=msg; toastEl.classList.add("show");
+  clearTimeout(toast._t); toast._t=setTimeout(()=>toastEl.classList.remove("show"),1900);
+}
+function flashSave(state){
+  const el=$("#savestate");
+  el.textContent = state==="busy" ? "◌ saving…" : "● saved";
+  el.classList.toggle("busy", state==="busy");
+}
+let saveT=null;
+function persist(){
+  flashSave("busy");
+  clearTimeout(saveT);
+  saveT=setTimeout(()=>{ localStorage.setItem(SAVE_KEY, JSON.stringify(model)); flashSave("ok"); }, 300);
+}
+
+/* ---------------- meta lines ---------------- */
+function epBadge(epId){
+  const e=epId&&nodeById(epId); if(!e) return "";
+  const num=(e.f&&e.f.num)||"?"; return "E"+String(num).padStart(2,"0");
+}
+function metaLine(n){
+  const f=n.f||{};
+  switch(n.type){
+    case "character": return [f.role, f.age?("· "+f.age):""].filter(Boolean).join(" ");
+    case "scene": return [epBadge(f.ep), f.stime, f.flashback?"⏪ flashback":""].filter(Boolean).join(" · ");
+    case "location": return f.mood||"";
+    case "seed": return (f.tags||[]).map(t=>"#"+t).join(" ");
+    case "episode": return f.num?("Episode "+f.num):"";
+    case "project": return [String(f.format||"").replace("_"," "), f.genre].filter(Boolean).join(" · ");
+    default: return "";
+  }
+}
+
+/* ---------------- edge rules ---------------- */
+function edgeOptions(a,b){
+  if(a===b&&a==="character") return [{t:"relates_to",from:a,to:b}];
+  if(a===b&&a==="scene") return [{t:"precedes",from:a,to:b},{t:"parallels",from:a,to:b},{t:"flashback_of",from:a,to:b},{t:"foreshadows",from:a,to:b}];
+  if(a==="character"&&b==="scene") return [{t:"appears_in",from:a,to:b}];
+  if(a==="scene"&&b==="character") return [{t:"appears_in",from:b,to:a}];
+  if(a==="scene"&&b==="location") return [{t:"takes_place_at",from:a,to:b}];
+  if(a==="location"&&b==="scene") return [{t:"takes_place_at",from:b,to:a}];
+  if(a==="project"&&(b==="episode"||b==="scene")) return [{t:"contains",from:a,to:b}];
+  if((a==="episode"&&b==="project")||(a==="scene"&&b==="project")) return [{t:"contains",from:b,to:a}];
+  if(a==="episode"&&b==="scene") return [{t:"contains",from:a,to:b}];
+  if(a==="scene"&&b==="episode") return [{t:"contains",from:b,to:a}];
+  if(b==="theme"&&(a==="character"||a==="scene")) return [{t:"embodies",from:a,to:b}];
+  if(a==="theme"&&(b==="character"||b==="scene")) return [{t:"embodies",from:b,to:a}];
+  if(a==="seed"&&(b==="project"||b==="scene")) return [{t:"grew_into",from:a,to:b}];
+  return [{t:"related_to",from:a,to:b}];
+}
+function edgeVisible(e){
+  const A=nodeById(e.from), B=nodeById(e.to);
+  return !!A && !!B && !hiddenTypes.has(A.type) && !hiddenTypes.has(B.type);
+}
+
+/* ---------------- rendering ---------------- */
+function renderAll(){
+  $("#projname").textContent=model.name;
+  renderNodes(); renderEdges();
+  if(document.body.dataset.view==="timeline") renderTimeline();
+  if(document.body.dataset.view==="characters") renderCharacters();
+  renderInspector();
+  persist();
+}
+function nodeHidden(n){return hiddenTypes.has(n.type);}
+
+function renderNodes(){
+  let html="";
+  for(const n of model.nodes){
+    if(nodeHidden(n)) continue;
+    const T=TYPES[n.type];
+    const meta=metaLine(n);
+    const cls="node t-"+n.type+(sel.kind==="node"&&sel.id===n.id?" sel":"");
+    html+=`<div class="${cls}" data-nid="${n.id}" style="left:${n.x}px;top:${n.y}px;--tc:${T.color}${n.type==="scene"&&n.f.flashback?";border-style:dashed":""}">
+      <div class="tag"><span class="dot"></span>${T.label}</div>
+      <div class="n-title">${esc(n.title)||"<i>untitled</i>"}</div>
+      ${meta?`<div class="n-meta">${esc(meta)}</div>`:""}
+      <span class="hp" title="Drag to connect"></span>
+    </div>`;
+  }
+  nodeslayer.innerHTML=html;
+}
+function edgeGeom(e){
+  const A=nodeById(e.from), B=nodeById(e.to);
+  if(!A||!B) return null;
+  const ca=centersOf(A), cb=centersOf(B);
+  const p1=trimToBorder(ca,cb.cx,cb.cy,8), p2=trimToBorder(cb,ca.cx,ca.cy,10);
+  const dist=Math.hypot(cb.cx-ca.cx,cb.cy-ca.cy);
+  const k=Math.min(140,Math.max(30,dist*0.3));
+  const d=`M ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} C ${(p1.x+k).toFixed(1)} ${p1.y.toFixed(1)}, ${(p2.x-k).toFixed(1)} ${p2.y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  const mx=(p1.x+3*(p1.x+k)+3*(p2.x-k)+p2.x)/8, my=(p1.y+3*p1.y+3*p2.y+p2.y)/8;
+  return {d,mx,my};
+}
+function renderEdges(){
+  let html="";
+  for(const e of model.edges){
+    if(!edgeVisible(e)) continue;
+    const g=edgeGeom(e); if(!g) continue;
+    const st=EDGE_STYLE[e.type]||EDGE_STYLE.related_to;
+    const isSel=sel.kind==="edge"&&sel.id===e.id;
+    const lbl=e.label||st.sym;
+    html+=`<path class="line${isSel?" sel":""}" data-eid="${e.id}" d="${g.d}" stroke="${st.color}" marker-end="url(#arr-${e.type})"/>`;
+    html+=`<path class="hit" data-eid="${e.id}" d="${g.d}"/>`;
+    if(lbl) html+=`<text class="elabel" data-eid="${e.id}" x="${g.mx.toFixed(1)}" y="${(g.my-6).toFixed(1)}">${esc(lbl)}</text>`;
+  }
+  edgeg.innerHTML=html;
+}
+function updateEdgesFor(nodeId){
+  for(const e of model.edges){
+    if(e.from!==nodeId&&e.to!==nodeId) continue;
+    const g=edgeGeom(e); if(!g) continue;
+    edgeg.querySelectorAll(`path[data-eid="${e.id}"],text[data-eid="${e.id}"]`).forEach(el=>{
+      if(el.tagName==="text"){ el.setAttribute("x",g.mx); el.setAttribute("y",g.my-6);} else el.setAttribute("d",g.d);
+    });
+  }
+}
+
+function applyTransform(){
+  const t=`translate(${view.tx}px,${view.ty}px) scale(${view.scale})`;
+  nodeslayer.style.transform=t;
+  edgeg.setAttribute("transform",`translate(${view.tx} ${view.ty}) scale(${view.scale})`);
+  $("#zoompct").textContent=Math.round(view.scale*100)+"%";
+}
+function fit(){
+  const vis=model.nodes.filter(n=>!nodeHidden(n));
+  if(!vis.length){view={tx:0,ty:0,scale:1};applyTransform();return;}
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  for(const n of vis){
+    const c=centersOf(n);
+    minX=Math.min(minX,c.cx-c.w/2); maxX=Math.max(maxX,c.cx+c.w/2);
+    minY=Math.min(minY,c.cy-c.h/2); maxY=Math.max(maxY,c.cy+c.h/2);
+  }
+  const r=stage.getBoundingClientRect(), pad=70;
+  const bw=maxX-minX+pad*2, bh=maxY-minY+pad*2;
+  view.scale=Math.max(0.15,Math.min(1.1,Math.min(r.width/bw,r.height/bh)));
+  view.tx=(r.width-(maxX-minX)*view.scale)/2-minX*view.scale;
+  view.ty=(r.height-(maxY-minY)*view.scale)/2-minY*view.scale;
+  applyTransform();
+}
+function zoomAt(cx,cy,factor){
+  const r=stage.getBoundingClientRect();
+  const mx=cx-r.left,my=cy-r.top;
+  const ns=Math.max(0.15,Math.min(2.6,view.scale*factor));
+  view.tx=mx-(mx-view.tx)*(ns/view.scale);
+  view.ty=my-(my-view.ty)*(ns/view.scale);
+  view.scale=ns; applyTransform();
+}
+
+/* ---------------- selection & inspector ---------------- */
+function select(kind,id){ sel={kind,id}; renderNodes(); renderEdges(); renderInspector(); }
+function clearSel(){ select(null,null); }
+
+function connRows(n){
+  const rows=[];
+  for(const e of model.edges){
+    let other=null,dir="";
+    if(e.from===n.id){other=nodeById(e.to);dir="→";}
+    else if(e.to===n.id){other=nodeById(e.from);dir="←";}
+    if(!other) continue;
+    const st=EDGE_STYLE[e.type]||EDGE_STYLE.related_to;
+    rows.push(`<div class="conn-row" data-ce="${e.id}">
+      <span class="sym" style="color:${st.color}">${st.sym||dir}</span>
+      <span style="color:${TYPES[other.type].color}">${TYPES[other.type].label}</span>
+      <span class="who">${dir} ${esc(other.title)}</span>
+      <span class="del" data-deledge="${e.id}" title="Remove connection">✕</span>
+    </div>`);
+  }
+  return rows.join("")||`<div class="empty">No connections yet — hover a node and drag its ⟳ handle onto another node.</div>`;
+}
+function fieldInput(n,key,label,type,opts){
+  const v=(n.f[key]!=null?n.f[key]:"");
+  if(type==="textarea")
+    return `<label>${label}</label><textarea data-f="${key}" rows="3">${esc(v)}</textarea>`;
+  if(type==="select"){
+    const o=opts.map(x=>`<option value="${esc(x.v)}"${x.v===v?" selected":""}>${esc(x.t)}</option>`).join("");
+    return `<label>${label}</label><select data-f="${key}">${o}</select>`;
+  }
+  if(type==="check")
+    return `<label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" data-f="${key}" style="width:auto" ${v?"checked":""}> ${label}</label>`;
+  return `<label>${label}</label><input type="${type||"text"}" data-f="${key}" value="${esc(v)}" placeholder="${esc(opts&&opts.placeholder||"")}">`;
+}
+function typeFields(n){
+  const f=n.f||{};
+  switch(n.type){
+    case "character":
+      return fieldInput(n,"role","Role","select",[["Protagonist"],["Antagonist"],["Ally"],["Foil"],["Support"]].map(x=>({v:x[0],t:x[0]})))
+        +fieldInput(n,"age","Age","number")
+        +fieldInput(n,"want","Want (conscious goal)","text")
+        +fieldInput(n,"wound","Wound (backstory)","text")
+        +fieldInput(n,"arc","Arc","textarea");
+    case "scene":{
+      const eps=model.nodes.filter(x=>x.type==="episode").map(x=>({v:x.id,t:"E"+String((x.f&&x.f.num)||"?").padStart(2,"0")+" · "+x.title}));
+      const locs=model.nodes.filter(x=>x.type==="location").map(x=>({v:x.id,t:x.title}));
+      return `<div style="display:flex;gap:8px"><div style="flex:1">${fieldInput(n,"order","Narrative order #","number")}</div>
+        <div style="flex:1">${fieldInput(n,"pages","Pages","number")}</div></div>`
+        +fieldInput(n,"stime","Story time (e.g. “N1 · 20:49” or “1998 · June”)","text",{placeholder:"Night 1 · 21:00"})
+        +fieldInput(n,"ep","Episode","select",[{v:"",t:"—"},...eps])
+        +fieldInput(n,"loc","Location","select",[{v:"",t:"—"},...locs])
+        +fieldInput(n,"flashback","Flashback (own timeline lane)","check");
+    }
+    case "episode":{
+      return fieldInput(n,"num","Episode number","number")+fieldInput(n,"logline","Logline","textarea");
+    }
+    case "project":
+      return fieldInput(n,"format","Format","select",[["FEATURE","Feature film"],["LIMITED_SERIES","Limited series"],["EPISODIC","Episodic TV"],["ANTHOLOGY","Anthology"]])
+        +fieldInput(n,"genre","Genre","text");
+    case "location":
+      return fieldInput(n,"mood","Mood / note","text");
+    case "seed":
+      return fieldInput(n,"tags","Tags (comma separated)","text");
+    default: return "";
+  }
+}
+function renderInspector(){
+  if(sel.kind==="edge"){
+    const e=edgeById(sel.id);
+    if(!e){clearSel();return;}
+    const A=nodeById(e.from),B=nodeById(e.to);
+    const opts=edgeOptions(A.type,B.type);
+    const cur=opts.some(o=>o.t===e.type)?null:{t:e.type};
+    const all=[...opts,...(cur?[cur]:[])];
+    insp.innerHTML=`
+      <div class="ph">Connection</div>
+      <div class="pair"><b data-goto="${A.id}">${esc(A.title)}</b><span style="color:#66799f">──▶</span><b data-goto="${B.id}">${esc(B.title)}</b></div>
+      <label>Type</label>
+      <select id="etype">${all.map(o=>`<option value="${o.t}"${o.t===e.type?" selected":""}>${o.t.replace(/_/g," ")}</option>`).join("")}</select>
+      <label>Label</label>
+      <input id="elabel" value="${esc(e.label)}" placeholder="e.g. “daughter · estranged”">
+      <div class="ph">Danger zone</div>
+      <button class="btn" id="deledgebtn" style="width:100%;color:var(--danger)">Delete connection</button>`;
+    $("#etype").onchange=ev=>{e.type=ev.target.value;renderAll();};
+    $("#elabel").oninput=ev=>{e.label=ev.target.value;renderEdges();persist();};
+    $("#deledgebtn").onclick=()=>{
+      model.edges=model.edges.filter(x=>x.id!==e.id);
+      clearSel(); toast("Connection removed");
+    };
+    insp.querySelectorAll("[data-goto]").forEach(b=>b.onclick=()=>select("node",b.dataset.goto));
+    return;
+  }
+  if(sel.kind!=="node"){
+    insp.innerHTML=`<div class="empty">Select a node or connection…<br><br>
+      <span style="font-style:normal;font-size:11px;line-height:1.7;color:#66799f">
+      Double-click empty canvas to add a node.<br>
+      Drag a node's ⟳ handle onto another node to connect them.<br>
+      Try the Timeline tab — toggle Narrative vs Story order.</span></div>`;
+    return;
+  }
+  const n=nodeById(sel.id);
+  if(!n){clearSel();return;}
+  const T=TYPES[n.type];
+  const extra=n.type==="episode"&&n.f!=null?n.body:"";
+  insp.innerHTML=`
+    <div class="ph" style="color:${T.color}">${T.icon} ${T.label}</div>
+    <input data-f="__title" value="${esc(n.title)}" placeholder="Title" style="font-weight:700">
+    <label>Notes</label>
+    <textarea data-f="__body" rows="3" placeholder="Premise, synopsis, private notes…">${esc(n.type==="episode"?extra:n.body)}</textarea>
+    ${typeFields(n)}
+    <div class="ph">Connections · ${countConns(n)}</div>
+    <div id="conns">${connRows(n)}</div>
+    <div class="ph">Danger zone</div>
+    <button class="btn" id="delbtn" style="width:100%;color:var(--danger)">Delete node</button>`;
+  const del=$("#delbtn");
+  del.onclick=()=>{
+    if(!del.classList.contains("armed")){del.classList.add("armed");del.textContent="Really delete? (removes its connections)";setTimeout(()=>{del.classList.remove("armed");del.textContent="Delete node";},2200);return;}
+    deleteNode(n.id);
+  };
+  bindInspectorInputs(n);
+}
+function countConns(n){return model.edges.filter(e=>e.from===n.id||e.to===n.id).length;}
+function bindInspectorInputs(n){
+  insp.querySelectorAll("[data-f]").forEach(inp=>{
+    inp.addEventListener("input",()=>{
+      const k=inp.dataset.f;
+      if(k==="__title") n.title=inp.value;
+      else if(k==="__body") n.body=inp.value;
+      else if(inp.type==="checkbox") n.f[k]=inp.checked;
+      else if(inp.type==="number") n.f[k]=inp.value===""?null:Number(inp.value);
+      else if(k==="tags") n.f[k]=inp.value.split(",").map(s=>s.trim()).filter(Boolean);
+      else n.f[k]=inp.value;
+      // live-update the canvas card without rebuilding (keeps caret)
+      const el=nodeEl(n.id);
+      if(el){
+        el.querySelector(".n-title").innerHTML=esc(n.title)||"<i>untitled</i>";
+        const m=metaLine(n); let me=el.querySelector(".n-meta");
+        if(m){ if(!me){me=document.createElement("div");me.className="n-meta";el.insertBefore(me,el.querySelector(".hp"));} me.textContent=m; }
+        else if(me) me.remove();
+        updateEdgesFor(n.id);
+      }
+      if(document.body.dataset.view==="timeline") renderTimeline();
+      if(document.body.dataset.view==="characters"&&n.type==="character") renderCharacters();
+      persist();
+    });
+  });
+  insp.querySelectorAll("select[data-f]").forEach(sl=>{
+    sl.addEventListener("change",()=>{ n.f[sl.dataset.f]=sl.value||null; renderAll(); });
+  });
+  insp.querySelectorAll("[data-ce]").forEach(row=>{
+    row.addEventListener("click",ev=>{
+      if(ev.target.dataset.deledge){
+        model.edges=model.edges.filter(x=>x.id!==ev.target.dataset.deledge);
+        renderAll(); toast("Connection removed"); return;
+      }
+      select("edge",row.dataset.ce);
+    });
+  });
+}
+function deleteNode(id){
+  model.nodes=model.nodes.filter(n=>n.id!==id);
+  model.edges=model.edges.filter(e=>e.from!==id&&e.to!==id);
+  clearSel(); toast("Node deleted");
+}
+
+/* ---------------- menus ---------------- */
+function closeMenu(){ menuEl.style.display="none"; }
+function showMenu(x,y,items,opt){
+  opt=opt||{};
+  let html=(opt.title?`<div class="mtitle">${opt.title}</div>`:"")+
+    (opt.input?`<input id="menu-input" placeholder="${esc(opt.inputPlaceholder||"")}">`:"");
+  for(const it of items)
+    html+=`<div class="mi" data-mi="${esc(it.label)}"><span class="ic">${it.icon||""}</span>${esc(it.label)}</div>`;
+  menuEl.innerHTML=html; menuEl.style.display="block";
+  const mw=menuEl.offsetWidth, mh=menuEl.offsetHeight;
+  menuEl.style.left=Math.min(x,innerWidth-mw-12)+"px";
+  menuEl.style.top=Math.min(y,innerHeight-mh-12)+"px";
+  menuEl.querySelectorAll("[data-mi]").forEach(el=>{
+    el.onclick=()=>{ const it=items.find(i=>i.label===el.dataset.mi); closeMenu(); it.fn(menuEl._inputValue); };
+  });
+  if(opt.input){
+    const mi=menuEl.querySelector("#menu-input");
+    menuEl._inputValue="";
+    mi.focus();
+    mi.oninput=()=>{ menuEl._inputValue=mi.value; };
+    mi.onkeydown=ev=>{
+      if(ev.key==="Enter"){ const it=items[0]; closeMenu(); it.fn(menuEl._inputValue); }
+      if(ev.key==="Escape") closeMenu();
+    };
+  }
+}
+document.addEventListener("pointerdown",ev=>{ if(!menuEl.contains(ev.target)&&menuEl.style.display==="block") closeMenu(); },true);
+
+/* ---------------- mutations ---------------- */
+function addNodeAt(type,wp,title){
+  const T=TYPES[type];
+  const f={};
+  if(type==="scene"){f.ep=null;f.order=(model.nodes.filter(n=>n.type==="scene").length+1);f.stime="";f.flashback=false;f.loc=null;}
+  if(type==="project") f.format="FEATURE";
+  if(type==="seed") f.tags=[];
+  const n={id:"n"+(model.seq++),type,title:title||("New "+T.label.toLowerCase()),body:"",x:wp.x-95,y:wp.y-28,f};
+  model.nodes.push(n);
+  select("node",n.id);
+  const ti=insp.querySelector('[data-f="__title"]'); if(ti){ti.focus();ti.select();}
+  return n;
+}
+function createEdge(fromId,toId,type,label){
+  const dup=model.edges.some(e=>e.from===fromId&&e.to===toId&&e.type===type);
+  if(dup){toast("Already connected like that");return null;}
+  const e={id:"e"+(model.seq++),from:fromId,to:toId,type,label:label||""};
+  model.edges.push(e);
+  select("edge",e.id);
+  toast((EDGE_STYLE[type].sym||"")+" connected: "+type.replace(/_/g," "));
+  return e;
+}
+
+/* ---------------- gestures ---------------- */
+stage.addEventListener("pointerdown",ev=>{
+  if(ev.button!==0) return;
+  closeMenu();
+  const hp=ev.target.closest(".hp");
+  const nd=ev.target.closest(".node");
+  const ed=ev.target.closest("[data-eid]");
+  stage.setPointerCapture(ev.pointerId);
+
+  if(hp&&nd){
+    gesture={type:"link",from:nd.dataset.nid,startWp:screenToWorld(ev.clientX,ev.clientY)};
+    stage.classList.add("linking");
+    addTempLink(gesture.startWp,gesture.startWp);
+    ev.preventDefault(); return;
+  }
+  if(ed){
+    select("edge",ed.dataset.eid);
+    gesture={type:"none"}; return;
+  }
+  if(nd){
+    const n=nodeById(nd.dataset.nid);
+    select("node",n.id);
+    nd.style.zIndex=++zTop;
+    const wp=screenToWorld(ev.clientX,ev.clientY);
+    gesture={type:"node",id:n.id,swx:wp.x,swy:wp.y,ox:n.x,oy:n.y,moved:false,el:nd};
+    ev.preventDefault(); return;
+  }
+  // background
+  gesture={type:"pan",scx:ev.clientX,scy:ev.clientY,stx:view.tx,sty:view.ty,moved:false};
+});
+stage.addEventListener("pointermove",ev=>{
+  if(!gesture) return;
+  if(gesture.type==="pan"){
+    const dx=ev.clientX-gesture.scx, dy=ev.clientY-gesture.scy;
+    if(Math.hypot(dx,dy)>3) gesture.moved=true;
+    view.tx=gesture.stx+dx; view.ty=gesture.sty+dy; applyTransform();
+  }else if(gesture.type==="node"){
+    const wp=screenToWorld(ev.clientX,ev.clientY);
+    const n=nodeById(gesture.id); if(!n)return;
+    if(Math.hypot(wp.x-gesture.swx,wp.y-gesture.swy)*view.scale>3) gesture.moved=true;
+    n.x=gesture.ox+(wp.x-gesture.swx); n.y=gesture.oy+(wp.y-gesture.swy);
+    gesture.el.style.left=n.x+"px"; gesture.el.style.top=n.y+"px";
+    updateEdgesFor(n.id);
+  }else if(gesture.type==="link"){
+    const wp=screenToWorld(ev.clientX,ev.clientY);
+    addTempLink(gesture.startWp,wp);
+  }
+});
+stage.addEventListener("pointerup",ev=>{
+  if(!gesture) return;
+  const g=gesture; gesture=null;
+  stage.classList.remove("panning","linking");
+  removeTempLink();
+  if(g.type==="pan"&&!g.moved){ clearSel(); }
+  if(g.type==="link"){
+    const dropEl=document.elementFromPoint(ev.clientX,ev.clientY);
+    const nd=dropEl&&dropEl.closest(".node");
+    if(!nd||nd.dataset.nid===g.from){ return; }
+    const A=nodeById(g.from), B=nodeById(nd.dataset.nid);
+    const opts=edgeOptions(A.type,B.type);
+    const items=opts.map(o=>({
+      icon:EDGE_STYLE[o.t].sym||"🔗",
+      label:o.t.replace(/_/g," ")+(o.t==="relates_to"?" …":""),
+      fn:val=>{
+        if(o.t==="relates_to"){
+          showMenu(ev.clientX,ev.clientY,[{icon:"🔗",label:"Create relationship",fn:v=>createEdge(A.id,B.id,"relates_to",v||"")}],{title:`${A.title} ⇄ ${B.title}`,input:true,inputPlaceholder:"Relationship label (optional)"});
+        }else createEdge(o.from,o.to,o.t);
+      }
+    }));
+    showMenu(ev.clientX,ev.clientY,items,{title:"Connect as"});
+  }
+});
+stage.addEventListener("dblclick",ev=>{
+  if(ev.target.closest(".node")||ev.target.closest("[data-eid]")) return;
+  const wp=screenToWorld(ev.clientX,ev.clientY);
+  const items=Object.keys(TYPES).map(k=>({icon:TYPES[k].icon,label:""+TYPES[k].label,fn:()=>addNodeAt(k,wp)}));
+  showMenu(ev.clientX,ev.clientY,items,{title:"Add node"});
+});
+stage.addEventListener("wheel",ev=>{
+  ev.preventDefault();
+  zoomAt(ev.clientX,ev.clientY, ev.deltaY<0?1.12:1/1.12);
+},{passive:false});
+
+/* temp link */
+function addTempLink(a,b){
+  removeTempLink();
+  const p=document.createElementNS("http://www.w3.org/2000/svg","path");
+  p.setAttribute("id","templink");
+  p.setAttribute("d",`M ${a.x} ${a.y} L ${b.x} ${b.y}`);
+  edgeg.appendChild(p);
+}
+function removeTempLink(){ const t=edgeg.querySelector("#templink"); if(t)t.remove(); }
+
+/* keyboard */
+window.addEventListener("keydown",ev=>{
+  const tag=(ev.target.tagName||"").toLowerCase();
+  if(tag==="input"||tag==="textarea"||tag==="select"){
+    if(ev.key==="Escape") ev.target.blur();
+    return;
+  }
+  if(ev.key==="Escape"){ closeMenu(); if(gesture&&gesture.type==="link"){removeTempLink();gesture=null;stage.classList.remove("linking");} else clearSel(); }
+  if((ev.key==="Delete"||ev.key==="Backspace")){
+    if(sel.kind==="node"){deleteNode(sel.id);}
+    else if(sel.kind==="edge"){model.edges=model.edges.filter(x=>x.id!==sel.id);clearSel();}
+  }
+  if(ev.key==="1")setView("map"); if(ev.key==="2")setView("timeline"); if(ev.key==="3")setView("characters");
+});
+
+/* ---------------- timeline view ---------------- */
+function storyKey(s){
+  const t=(s.f&&s.f.stime)||"";
+  let m=t.match(/(\d{4})/);
+  if(m) return parseInt(m[1],10)*10000;
+  m=t.match(/^N\s*(\d+)/i);
+  if(m) return 2000000+parseInt(m[1],10)*10;
+  return 3000000;
+}
+function renderTimeline(){
+  const space=$("#tlspace");
+  const scenes=model.nodes.filter(n=>n.type==="scene"&&!hiddenTypes.has("scene"));
+  const sorted=[...scenes].sort((a,b)=>{
+    const oa=(a.f&&a.f.order)||0, ob=(b.f&&b.f.order)||0;
+    return orderMode==="story" ? storyKey(a)-storyKey(b) : oa-ob;
+  });
+  const W=210,H=158,top=64,left=24;
+  const lanes=sorted.length?Math.max(...sorted.map(s=>(s.f&&s.f.flashback)?1:0))+1:1;
+  for(let ln=0; ln<lanes; ln++)
+    html+=`<div class="lane-label" style="left:${left}px;top:${top+ln*H-26}px">${ln?"FLASHBACKS / PAST":"MAIN STORY"}</div>`;
+  sorted.forEach((s,i)=>{
+    const lane=(s.f&&s.f.flashback)?1:0;
+    const x=left+i*(W+24), y=top+lane*H;
+    const loc=s.f&&s.f.loc?nodeById(s.f.loc):null;
+    html+=`<div class="tl-card${(s.f&&s.f.flashback)?" flash":""}${sel.kind==="node"&&sel.id===s.id?" sel":""}"
+      data-tid="${s.id}" style="left:${x}px;top:${y}px">
+      <div class="k">${esc(epBadge(s.f&&s.f.ep))} · beat ${i+1}${orderMode==="story"?"":" · #"+((s.f&&s.f.order)||"—")}</div>
+      <div class="t">${esc(s.title)}</div>
+      <div class="m">${esc((s.f&&s.f.stime)||"")}${loc?" · 📍 "+esc(loc.title):""}</div>
+    </div>`;
+    if(i<sorted.length-1){
+      html+=`<div class="tl-arrow" style="left:${x+W+4}px;top:${y+H/2-11}px">➜</div>`;
+    }
+  });
+  if(!sorted.length) html+=`<div class="empty" style="position:absolute;left:32px;top:32px">No scenes yet — add some on the Map.</div>`;
+  space.innerHTML=html;
+  space.style.minWidth=(left+sorted.length*(W+24)+80)+"px";
+  space.style.minHeight=(top+lanes*H+40)+"px";
+  space.querySelectorAll("[data-tid]").forEach(c=>c.addEventListener("click",()=>select("node",c.dataset.tid)));
+}
+
+/* ---------------- characters view ---------------- */
+function renderCharacters(){
+  const grid=$("#chgrid");
+  const chars=model.nodes.filter(n=>n.type==="character"&&!hiddenTypes.has("character"));
+  let html="";
+  for(const c of chars){
+    const apps=model.edges.filter(e=>e.type==="appears_in"&&e.from===c.id).length;
+    const rels=model.edges.filter(e=>e.type==="relates_to"&&(e.from===c.id||e.to===c.id)).length;
+    const init=(c.title||"?").split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+    html+=`<div class="ch-card${sel.kind==="node"&&sel.id===c.id?" sel":""}" data-cid="${c.id}">
+      <div class="ch-top">
+        <div class="avatar" style="background:${TYPES.character.color}">${esc(init)}</div>
+        <div><div class="ch-name">${esc(c.title)}</div><div class="ch-role">${esc((c.f&&c.f.role)||"")} ${(c.f&&c.f.age)?"· "+esc(c.f.age):""}</div></div>
+      </div>
+      <div class="ch-stats">🎬 ${apps} scene${apps===1?"":"s"} · ⇄ ${rels} relationship${rels===1?"":"s"}</div>
+      ${c.f&&c.f.want?`<div class="ch-want">“${esc(c.f.want)}”</div>`:""}
+      ${c.f&&c.f.arc?`<div class="ch-arc">${esc(c.f.arc)}</div>`:""}
+    </div>`;
+  }
+  grid.innerHTML=html||`<div class="empty">No characters yet.</div>`;
+  grid.querySelectorAll("[data-cid]").forEach(card=>card.addEventListener("click",()=>select("node",card.dataset.cid)));
+}
+
+/* ---------------- views ---------------- */
+function setView(v){
+  document.body.dataset.view=v;
+  $("#viewswitch").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  if(v==="map"){ applyTransform(); }
+  if(v==="timeline") renderTimeline();
+  if(v==="characters") renderCharacters();
+}
+$("#viewswitch").addEventListener("click",ev=>{
+  const b=ev.target.closest("button"); if(b) setView(b.dataset.v);
+});
+$("#orderswitch").addEventListener("click",ev=>{
+  const b=ev.target.closest("button"); if(!b) return;
+  orderMode=b.dataset.o;
+  $("#orderswitch").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+  renderTimeline();
+});
+
+/* ---------------- filters ---------------- */
+function buildChips(){
+  const counts={};
+  model.nodes.forEach(n=>counts[n.type]=(counts[n.type]||0)+1);
+  $("#chips").innerHTML=Object.keys(TYPES).map(t=>
+    `<button class="chip${hiddenTypes.has(t)?" off":""}" data-t="${t}" style="--c:${TYPES[t].color}">
+      <span class="dot"></span>${TYPES[t].label} ${counts[t]||0}</button>`).join("");
+}
+$("#chips").addEventListener("click",ev=>{
+  const b=ev.target.closest(".chip"); if(!b) return;
+  const t=b.dataset.t;
+  hiddenTypes.has(t)?hiddenTypes.delete(t):hiddenTypes.add(t);
+  buildChips(); renderNodes(); renderEdges();
+});
+
+/* ---------------- top bar actions ---------------- */
+$("#addbtn").addEventListener("click",ev=>{
+  const r=ev.target.getBoundingClientRect();
+  const items=Object.keys(TYPES).map(k=>({icon:TYPES[k].icon,label:TYPES[k].label,fn:()=>addNodeAt(k,centerWorld())}));
+  showMenu(r.left,r.bottom+6,items,{title:"Add node"});
+});
+$("#zoombtn").onclick=()=>{const r=stage.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,1/1.2);};
+$("#zoomin").onclick =()=>{const r=stage.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,1.2);};
+$("#fitbtn").onclick =()=>fit();
+$("#exportbtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(model,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="high-water.throughline.json";
+  a.click(); URL.revokeObjectURL(a.href);
+  toast("Exported JSON");
+};
+$("#importbtn").onclick=()=>$("#fileinput").click();
+$("#fileinput").addEventListener("change",ev=>{
+  const f=ev.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const m=JSON.parse(rd.result);
+      if(!Array.isArray(m.nodes)||!Array.isArray(m.edges)) throw new Error("bad shape");
+      model=m; sel={kind:null,id:null}; hiddenTypes.clear();
+      setView("map"); buildChips(); renderAll(); setTimeout(fit,30);
+      toast("Imported "+f.name);
+    }catch(err){ toast("Import failed: not a Throughline JSON"); }
+  };
+  rd.readAsText(f);
+  ev.target.value="";
+});
+$("#resetbtn").onclick=()=>{
+  if(confirm("Reset to the HIGH WATER demo? Your local changes will be lost.")){
+    localStorage.removeItem(SAVE_KEY);
+    model=demoModel(); sel={kind:null,id:null}; hiddenTypes.clear();
+    setView("map"); buildChips(); renderAll(); setTimeout(fit,30);
+  }
+};
+
+/* ---------------- boot ---------------- */
+function buildDefs(){
+  $("#defs").innerHTML=Object.keys(EDGE_STYLE).map(k=>{
+    const c=EDGE_STYLE[k].color;
+    return `<marker id="arr-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="${c}"/></marker>`;
+  }).join("");
+}
+function buildLegend(){
+  $("#legend").innerHTML=
+    Object.keys(TYPES).map(t=>`<span class="li"><span class="ld" style="background:${TYPES[t].color}"></span>${TYPES[t].label}</span>`).join(" · ")
+    +`<br>`+Object.keys(EDGE_STYLE).filter(k=>EDGE_STYLE[k].sym).map(k=>`${EDGE_STYLE[k].sym} ${k.replace(/_/g," ")}`).join(" · ");
+}
+function loadModel(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(raw){ const m=JSON.parse(raw); if(m&&Array.isArray(m.nodes)) return m; }
+  }catch(e){}
+  return demoModel();
+}
+window.addEventListener("beforeunload",()=>{ clearTimeout(saveT); localStorage.setItem(SAVE_KEY,JSON.stringify(model)); });
+
+buildDefs(); buildLegend();
+model=loadModel();
+buildChips();
+renderAll();
+requestAnimationFrame(()=>fit());
+</script>
+</body>
+</html>

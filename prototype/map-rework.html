@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Throughline — Map lens rework (PROTOTYPE)</title>
+<!--
+  PROTOTYPE (throwaway). Question: which structural direction should the Throughline
+  Map lens take, given three pains — cards too heavy, no sense of order, unclear
+  visual language — at ~120-scene scale?
+  Three variants, switchable via ?variant=A|B|C, ← → keys, or the floating bar:
+    A · Storyline     — always-banded episode columns + flashback lane, slim slug chips
+    B · Constellation — free relationship web, dot nodes, typed-edge color language,
+                        character-trace highlighting
+    C · Beat board    — warm light theme, rich-but-tight beat cards in tidy bands
+  Sample data: HIGH WATER flavored, 26 nodes. No persistence, no build step.
+-->
+<style>
+  :root{
+    --bg:#0f1216; --panel:#161b22; --ink:#e6ebf2; --dim:#8b96a5;
+    --scene:#5aa9e6; --char:#e08e45; --loc:#59b97c; --theme:#b48ce0;
+    --fb:#e0b34d;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+    font:13px/1.45 "Segoe UI",system-ui,sans-serif}
+  #stage{position:absolute;inset:0;transform-origin:0 0}
+  #edges{position:absolute;left:0;top:0;pointer-events:none}
+  .node{position:absolute;cursor:default;user-select:none}
+
+  /* ---------- Variant A · Storyline ---------- */
+  .a-band{position:absolute;border-left:1px dashed #2a3340;padding-left:14px}
+  .a-bandhead{font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:8px}
+  .a-fblane{position:absolute;border-top:1px dashed var(--fb);padding-top:6px}
+  .a-fblanelabel{position:absolute;top:-16px;left:0;font-size:10px;color:var(--fb);letter-spacing:.1em}
+  .a-chip{display:flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:5px;
+    background:#1a212b;border:1px solid #232c38;font-size:11px;color:#cfd8e3;white-space:nowrap}
+  .a-chip.flash{border-color:#5a4a22;background:#211d13}
+  .a-dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .a-num{color:var(--dim);font-size:10px;width:22px;text-align:right;flex:none}
+  .a-charrow{position:absolute;display:flex;gap:4px}
+  .a-char{width:18px;height:18px;border-radius:50%;background:#242d38;border:1px solid #303c4b;
+    color:var(--char);font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:600}
+
+  /* ---------- Variant B · Constellation ---------- */
+  .b-label{position:absolute;font-size:10px;color:var(--dim);text-align:center;white-space:nowrap;transform:translate(-50%,4px)}
+  .b-halo{position:absolute;border-radius:50%;pointer-events:none}
+  .b-legend{position:absolute;right:14px;bottom:52px;background:rgba(15,18,22,.85);border:1px solid #222b36;
+    border-radius:8px;padding:8px 10px;font-size:10px;color:var(--dim)}
+  .b-legend i{display:inline-block;width:14px;height:2px;border-radius:1px;margin-right:5px;vertical-align:middle}
+
+  /* ---------- Variant C · Beat board (light) ---------- */
+  body.c{--bg:#f4f1ea;--panel:#fff;--ink:#2a2d33;--dim:#7a7f87;
+    --scene:#3d7fb5;--char:#c56a2b;--loc:#3d8f5f;--theme:#8460b8;--fb:#b98a1f;}
+  .c-bandhead{position:absolute;font-size:10px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+  .c-bandhead b{color:var(--ink)}
+  .c-card{position:absolute;background:#fff;border:1px solid #ddd6c8;border-radius:8px;
+    box-shadow:0 1px 3px rgba(60,50,20,.12);padding:8px 10px;font-size:11px}
+  .c-card .slug{font-weight:650;font-size:11px;color:#1e2c3a}
+  .c-card .syn{color:var(--dim);margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .c-meta{display:flex;gap:5px;margin-top:6px;align-items:center}
+  .c-badge{font-size:9px;padding:1px 6px;border-radius:999px;background:#eef3f8;color:#3d7fb5;border:1px solid #d7e4ef}
+  .c-badge.fb{background:#faf3df;color:#8a6a14;border-color:#ead9a8}
+  .c-avatars{margin-left:auto;display:flex}
+  .c-av{width:16px;height:16px;border-radius:50%;background:#efe6d8;border:1px solid #dccdb4;color:#a05f1e;
+    font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-left:-5px}
+  .c-card.flash{border-style:dashed;border-color:#d9c184}
+
+  /* chrome */
+  #bar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:2px;
+    background:#0b0d10ee;border:1px solid #333e4c;border-radius:999px;padding:5px 8px;z-index:50;box-shadow:0 6px 24px #000a}
+  body.c #bar{background:#ffffffee;border-color:#cfc8ba}
+  #bar button{all:unset;cursor:pointer;padding:4px 12px;color:#cfd8e3;font-size:14px;border-radius:999px}
+  body.c #bar button{color:#333}
+  #bar button:hover{background:#1c242e}
+  #bar .vname{min-width:230px;text-align:center;font-size:12px;color:#fff}
+  body.c #bar .vname{color:#222}
+  #watermark{position:fixed;top:12px;right:-34px;transform:rotate(35deg);background:#b3452f;color:#fff;
+    font-size:10px;font-weight:700;letter-spacing:.2em;padding:4px 40px;z-index:60}
+  #toolbar{position:fixed;top:10px;left:12px;display:flex;gap:6px;z-index:40;align-items:center}
+  #toolbar .tb{background:#161c24cc;border:1px solid #26303c;color:#cfd8e3;border-radius:7px;
+    padding:5px 10px;font-size:11px;cursor:pointer}
+  body.c #toolbar .tb{background:#ffffffdd;border-color:#d8d0c0;color:#444}
+  #toolbar .tb.on{background:#2a3540;color:#fff}
+  #hint{position:fixed;bottom:56px;left:50%;transform:translateX(-50%);font-size:10px;color:#5c6875;z-index:40}
+</style>
+</head>
+<body>
+<div id="stage"><svg id="edges"></svg><div id="nodes"></div></div>
+<div id="toolbar"></div>
+<div id="watermark">PROTOTYPE</div>
+<div id="hint">drag = pan · wheel = zoom · ← → = switch variant</div>
+<div id="bar">
+  <button id="prev">‹</button><div class="vname" id="vname"></div><button id="next">›</button>
+</div>
+<script>
+"use strict";
+addEventListener("error",e=>{document.body.insertAdjacentHTML("beforeend",
+ '<pre id="ERR">JS ERROR: '+e.message+" @line "+e.lineno+"</pre>")});
+/* ================= sample data (HIGH WATER flavored) ================= */
+const CHARS={maya:"Maya",eli:"Eli",sam:"Sam",cole:"Cole"};
+const LOCS={boat:"Boathouse",shall:"Shallows",ranch:"Ranch",road:"County Rd"};
+const S=[]; // scenes: id, ep(1..3), day(story day), tod, loc, beat, syn, cast[]
+const mk=(ep,day,tod,loc,beat,syn,cast)=>S.push({id:"s"+S.length,ep,day,tod,loc,beat,syn,cast});
+// E1 — s0..s8
+mk(1,1,"NIGHT","boat","Storm tips","Maya drags the airboat onto the lift as the surge hits.",["maya","eli"]);
+mk(1,1,"NIGHT","shall","Headcount","Eli counts boats twice; one is missing.",["eli","sam"]);
+mk(1,2,"DAWN","shall","Flare","A flare arcs over the shallows. Nobody radioed it in.",["maya","sam"]);
+mk(1,2,"DAY","road","Roadblock","Cole turns the county truck around without a word.",["cole"]);
+mk(1,2,"DAY","boat","Manifest","Maya finds Cole's name on a manifest that shouldn't exist.",["maya","cole"]);
+mk(1,3,"NIGHT","ranch","Porch lie","Eli promises the family answers he doesn't have.",["eli"]);
+mk(1,3,"DAY","shall","Dredge","Sam's crew drags the shallows at low tide.",["sam"]);
+mk(1,4,"DUSK","road","Tail lights","Maya tails Cole's truck to the county yard.",["maya","cole"]);
+mk(1,4,"NIGHT","boat","Log book","Two log books, one storm.",["maya"]);
+// E2 — s9..s16
+mk(2,5,"DAWN","boat","Warranty","The insurance man photographs rust like evidence.",["maya"]);
+mk(2,5,"DAY","road","Detour","Cole reroutes dredge permits through a dead LLC.",["cole"]);
+mk(2,6,"DAY","shall","Catch","Sam nets a gate hinge stamped with the county seal.",["sam"]);
+mk(2,6,"NIGHT","boat","Radio silence","Maya calls the yard; someone hangs up mid-ring.",["maya","eli"]);
+mk(2,7,"DAY","ranch","Deed","Eli learns the ranch was collateral all along.",["eli"]);
+mk(2,7,"DUSK","road","Convoy","Trucks move at dusk with their plates taped.",["cole","sam"]);
+mk(2,8,"NIGHT","shall","Buoy","A strobe buoy marks nothing on any chart.",["maya","sam"]);
+mk(2,8,"NIGHT","boat","Split","Maya and Eli split over going to the feds.",["maya","eli"]);
+// E3 — s17..s23
+mk(3,9,"DAY","road","Hearing","The county hearing is a staged play with one missing actor.",["cole","eli"]);
+mk(3,9,"DAY","shall","Bloom","The algae bloom arrives early, like a witness.",["sam"]);
+mk(3,10,"NIGHT","boat","Tape","Maya plays the yard recording to a silent garage.",["maya"]);
+mk(3,10,"DUSK","ranch","Offer","Cole offers Eli the ranch back, signed clean.",["cole","eli"]);
+mk(3,11,"NIGHT","shall","Cross-check","Sam matches hinge stamps to the sunken gate.",["sam"]);
+mk(3,11,"DAY","road","Arrest","Cole surrenders before the cuff is offered.",["cole"]);
+mk(3,12,"DAWN","boat","Launch","Maya launches alone into a flat, honest morning.",["maya"]);
+// Flashbacks (lane)
+const FB=[{id:"f1",day:-9,tod:"DAY",loc:"ranch",beat:"Solo run",syn:"Nine-year-old Maya steers the airboat solo, laughing.",cast:["maya"]},
+          {id:"f2",day:-2,tod:"DUSK",loc:"ranch",beat:"The signature",syn:"Dad signs something at the kitchen table, not reading it.",cast:["maya","eli"]}];
+
+/* edges: [type, from, to] — sample of the 12-type vocabulary */
+const e1=S.filter(s=>s.ep===1),e2=S.filter(s=>s.ep===2),e3=S.filter(s=>s.ep===3);
+const seq=arr=>arr.slice(0,-1).map((s,i)=>["precedes",arr[i].id,arr[i+1].id]);
+const EDGES=[
+ ...seq(e1),...seq(e2),...seq(e3),
+ ["flashback_of","f1","s23"],["flashback_of","f2","s13"],
+ ["sets_up","s4","s17"],["sets_up","s10","s20"],
+ ["parallels","s2","s21"],
+ ["appears_in","maya","s3"],["appears_in","maya","s15"],["appears_in","cole","s21"],
+ ["appears_in","sam","s11"],["appears_in","eli","s12"],
+ ["takes_place_at","s0","boat"],["takes_place_at","s6","shall"],["takes_place_at","s13","ranch"],
+ ["embodies","maya","water"],["embodies","eli","duty"],
+];
+const TYPES={maya:{n:"Maya",t:"char"},eli:{n:"Eli",t:"char"},sam:{n:"Sam",t:"char"},cole:{n:"Cole",t:"char"},
+ boat:{n:"Boathouse",t:"loc"},shall:{n:"Shallows",t:"loc"},ranch:{n:"Ranch",t:"loc"},road:{n:"County Rd",t:"loc"},
+ water:{n:"The Water",t:"theme"},duty:{n:"Duty",t:"theme"}};
+FB.forEach(f=>TYPES[f.id]={n:f.beat,t:"fb"});
+S.forEach(s=>TYPES[s.id]={n:s.beat,t:"scene"});
+
+const ECOL={precedes:"#5b6874",flashback_of:"#e0b34d",sets_up:"#c96f6f",parallels:"#9aa7b4",
+ appears_in:"#e08e45",takes_place_at:"#59b97c",embodies:"#b48ce0"};
+const EPNAMES={1:"EPISODE 1 · RISE",2:"EPISODE 2 · PRESSURE",3:"EPISODE 3 · BREACH"};
+
+/* ================= tiny pan/zoom ================= */
+let vx=30,vy=20,vs=1,panning=false,px=0,py=0;
+const stage=document.getElementById("stage");
+function apply(){stage.style.transform=`translate(${vx}px,${vy}px) scale(${vs})`}
+addEventListener("wheel",e=>{e.preventDefault();const r=stage.getBoundingClientRect();
+ const k=e.deltaY<0?1.12:1/1.12,mx=e.clientX-r.left,my=e.clientY-r.top;
+ vx=mx-(mx-vx)*k;vy=my-(my-vy)*k;vs=Math.min(2.5,Math.max(.25,vs*k));apply();},{passive:false});
+addEventListener("mousedown",e=>{if(e.target.closest(".node,#bar,#toolbar,.tb"))return;
+ panning=true;px=e.clientX;py=e.clientY});
+addEventListener("mousemove",e=>{if(!panning)return;vx+=e.clientX-px;vy+=e.clientY-py;px=e.clientX;py=e.clientY;apply()});
+addEventListener("mouseup",()=>panning=false);
+
+/* ================= layout: episode bands + fb lane ================= */
+const BW=250,X0=30,Y0=140,LH=32;
+function pos(){
+ const P={};
+ for(let ep=1;ep<=3;ep++)S.filter(s=>s.ep===ep).forEach((s,i)=>{P[s.id]={x:X0+(ep-1)*BW,y:Y0+i*LH}});
+ FB.forEach((f,i)=>{P[f.id]={x:X0+i*BW+70,y:100}});
+ return P;
+}
+
+/* ================= VARIANT A · Storyline ================= */
+function renderA(){
+ document.body.className="";
+ const P=pos();let h="";
+ for(let ep=1;ep<=3;ep++){
+  const n=S.filter(s=>s.ep===ep).length;
+  h+=`<div class="a-band" style="left:${X0+(ep-1)*BW}px;top:118px;height:${n*LH+26}px;width:${BW-40}px">
+      <div class="a-bandhead">${EPNAMES[ep]} · ${n}</div></div>`;
+ }
+ h+=`<div class="a-fblane" style="left:${X0}px;top:120px;width:${BW*3-70}px"><div class="a-fblanelabel">FLASHBACK LANE</div></div>`;
+ [...S.map(s=>({s,fb:false})),...FB.map(f=>({s:f,fb:true}))].forEach(({s,fb})=>{const p=P[s.id];
+  h+=`<div class="node a-chip${fb?" flash":""}" style="left:${p.x}px;top:${p.y}px" title="${s.syn}">
+      <span class="a-dot" style="background:var(--${fb?"fb":"scene"})"></span>
+      <span class="a-num">D${s.day}</span>${LOCS[s.loc]} · ${s.tod} — ${s.beat}</div>`;});
+ for(let ep=1;ep<=3;ep++){const cs=[...new Set(S.filter(x=>x.ep===ep).flatMap(x=>x.cast))];
+  h+=`<div class="a-charrow" style="left:${X0+(ep-1)*BW+14}px;top:142px">${cs.map(c=>`<div class="a-char" title="${CHARS[c]}">${CHARS[c][0]}</div>`).join("")}</div>`;}
+ document.getElementById("nodes").innerHTML=h;
+ const svg=document.getElementById("edges");
+ svg.setAttribute("width",BW*3);svg.setAttribute("height",Y0+9*LH+60);
+ drawEdges(P,{chip:true});
+ toolbar(`<button class="tb" onclick="alert('In v1: re-runs band layout from Narrative Order.')">Tidy ↺</button>
+   <button class="tb" onclick="alert('In v1: free-drag mode; bands fade to dotted guides.')">Free ✋</button>
+   <button class="tb" onclick="alert('Filter chips: Scene / Character / Location / Theme / Flashback')">Filters ▾</button>`);
+ name("A · Storyline — banded flow, slim chips");
+}
+
+/* ================= VARIANT B · Constellation ================= */
+let trace=null;
+function renderB(){
+ document.body.className="";
+ const P={};const R=225,cx=440,cy=330;
+ e1.forEach((s,i)=>{const a=-2.3+i*.42;P[s.id]={x:cx+Math.cos(a)*R*1.28,y:cy+Math.sin(a)*R}});
+ e2.forEach((s,i)=>{const a=-.55+i*.4;P[s.id]={x:cx+Math.cos(a)*R*1.06,y:cy+Math.sin(a)*R*1.04+30}});
+ e3.forEach((s,i)=>{const a=.85+i*.38;P[s.id]={x:cx+Math.cos(a)*R*1.22,y:cy+Math.sin(a)*R+.62*R}});
+ FB.forEach((f,i)=>{P[f.id]={x:cx-270-i*95,y:cy-195}});
+ Object.keys(CHARS).forEach((k,i)=>P[k]={x:cx+[-45,65,170,-150][i],y:cy+[215,240,208,192][i]});
+ Object.keys(LOCS).forEach((k,i)=>P[k]={x:cx+[-190,-60,80,215][i]*.82,y:cy-255});
+ P.water={x:cx-330,y:cy+70};P.duty={x:cx+305,y:cy-45};
+ let h="";
+ if(trace){const pts=[...S.filter(s=>s.cast.includes(trace)).map(s=>P[s.id]),P[trace]];
+  const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);
+  const x=Math.min(...xs)-30,y=Math.min(...ys)-30,w=Math.max(...xs)-Math.min(...xs)+60,hh=Math.max(...ys)-Math.min(...ys)+60;
+  h+=`<div class="b-halo" style="left:${x}px;top:${y}px;width:${w}px;height:${hh}px;
+     background:radial-gradient(closest-side,rgba(224,142,69,.13),rgba(224,142,69,.03) 70%,transparent);
+     border:1px dashed rgba(224,142,69,.35)"></div>`;}
+ Object.entries(P).forEach(([id,p])=>{const t=TYPES[id];if(!t)return;
+  const col=t.t==="scene"?"var(--scene)":t.t==="char"?"var(--char)":t.t==="loc"?"var(--loc)":t.t==="theme"?"var(--theme)":"var(--fb)";
+  const r=t.t==="char"?9:t.t==="scene"?7:6;
+  if(t.t==="fb"){h+=`<div class="node" style="left:${p.x-8}px;top:${p.y-8}px"><div style="width:16px;height:16px;border-radius:50%;background:var(--fb)"></div>
+     <div class="b-label" style="left:8px;color:var(--fb)">FB · ${t.n}</div></div>`;}
+  else{const sc=S.find(z=>z.id===id);
+   h+=`<div class="node" style="left:${p.x-r}px;top:${p.y-r}px"><div style="width:${r*2}px;height:${r*2}px;border-radius:50%;
+     background:${col};box-shadow:0 0 0 3px rgba(90,120,160,.12)"></div>
+     <div class="b-label" style="left:${r}px">${t.n}${sc?` ·D${sc.day}`:""}</div></div>`;}});
+ document.getElementById("nodes").innerHTML=h;
+ const svg=document.getElementById("edges");
+ svg.setAttribute("width",1000);svg.setAttribute("height",720);
+ drawEdges(P,{});
+ const lg=`<div class="b-legend">${Object.entries(ECOL).map(([k,c])=>`<div><i style="background:${c}"></i>${k.replace("_"," ")}</div>`).join("")}</div>`;
+ document.getElementById("nodes").insertAdjacentHTML("beforeend",lg);
+ toolbar(`<span style="font-size:11px;color:var(--dim)">trace:</span>
+   ${Object.keys(CHARS).map(c=>`<button class="tb${trace===c?" on":""}" onclick="setTrace('${c}')">${CHARS[c]}</button>`).join("")}
+   <button class="tb${!trace?" on":""}" onclick="setTrace(null)">off</button>`);
+ name("B · Constellation — typed-edge web, traces");
+}
+
+/* ================= VARIANT C · Beat board ================= */
+function renderC(){
+ document.body.className="c";
+ const P=pos();let h="";
+ for(let ep=1;ep<=3;ep++){const n=S.filter(s=>s.ep===ep).length;
+  h+=`<div class="c-bandhead" style="left:${X0+(ep-1)*BW}px;top:92px"><b>Episode ${ep}</b> · ${n} beats</div>`;}
+ h+=`<div class="a-fblane" style="left:${X0}px;top:112px;width:${BW*3-70}px;border-color:#d9c184"><div class="a-fblanelabel" style="color:#8a6a14">FLASHBACK LANE</div></div>`;
+ [...S.map(s=>({s,fb:false})),...FB.map(f=>({s:f,fb:true}))].forEach(({s,fb})=>{const p=P[s.id];
+  h+=`<div class="node c-card${fb?" flash":""}" style="left:${p.x}px;top:${p.y}px;width:${BW-44}px">
+    <div class="slug">${LOCS[s.loc].toUpperCase()} — ${s.beat}</div>
+    <div class="syn">${s.syn}</div>
+    <div class="c-meta"><span class="c-badge${fb?" fb":""}">D${s.day} · ${s.tod}</span>
+    <div class="c-avatars">${s.cast.map(c=>`<div class="c-av" title="${CHARS[c]}">${CHARS[c][0]}</div>`).join("")}</div></div></div>`;});
+ document.getElementById("nodes").innerHTML=h;
+ const svg=document.getElementById("edges");
+ svg.setAttribute("width",BW*3);svg.setAttribute("height",Y0+9*LH+80);
+ drawEdges(P,{light:true});
+ toolbar(`<button class="tb" onclick="alert('Cozy mode: taller cards, full synopsis visible.')">Density: Compact ▾</button>
+   <button class="tb" onclick="alert('In v1: dark ink theme toggle.')">☀︎ Light</button>`);
+ name("C · Beat board — warm light, rich cards");
+}
+
+/* ================= edges ================= */
+function drawEdges(P,opt){
+ const svg=document.getElementById("edges");let out="";
+ EDGES.forEach(([t,a,b])=>{const p=P[a],q=P[b];if(!p||!q)return;
+  const mx=(p.x+q.x)/2,my=(p.y+q.y)/2,dx=q.x-p.x,dy=q.y-p.y;
+  const cx=mx-dy*.18,cy=my+dx*.18;
+  const c=ECOL[t]||"#556";const w=t==="precedes"?1:1.4;
+  const dash=t==="flashback_of"?'stroke-dasharray="5 4"':t==="sets_up"?'stroke-dasharray="2 3"':"";
+  out+=`<path d="M${p.x} ${p.y} Q${cx} ${cy} ${q.x} ${q.y}" fill="none" stroke="${opt.light?"#b9ad97":c}"
+    stroke-opacity="${opt.light?.75:.8}" stroke-width="${w}" ${dash}/>`;
+  if(t!=="precedes")out+=`<circle cx="${(p.x+cx)/2}" cy="${(p.y+cy)/2}" r="2.4" fill="${opt.light?"#8a7f6a":c}"/>`;});
+ svg.innerHTML=out;
+}
+
+/* ================= chrome ================= */
+function setTrace(t){trace=t;render()}
+function toolbar(html){document.getElementById("toolbar").innerHTML=html}
+const VARS=[["A",renderA],["B",renderB],["C",renderC]];
+let vi=Math.max(0,VARS.findIndex(v=>v[0]===(new URLSearchParams(location.search).get("variant")||"A").toUpperCase()));
+if(vi>=VARS.length||vi<0)vi=0;
+function name(n){document.getElementById("vname").textContent=n}
+function render(){VARS[vi][1]();apply()}
+function go(d){vi=(vi+d+VARS.length)%VARS.length;
+ try{history.replaceState(null,"",location.pathname+"?variant="+VARS[vi][0])}catch(_){}
+ render()}
+document.getElementById("prev").onclick=()=>go(-1);
+document.getElementById("next").onclick=()=>go(1);
+addEventListener("keydown",e=>{if(/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
+ if(e.key==="ArrowLeft")go(-1);if(e.key==="ArrowRight")go(1)});
+render();
+</script>
+</body>
+</html>
