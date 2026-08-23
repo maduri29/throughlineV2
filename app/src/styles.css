@@ -1778,3 +1778,16 @@ body,
   color: var(--ink-2);
   overflow-wrap: anywhere;
 }
+
+/* An error names the symptom; the line under it names the fix. Supabase's
+   messages are accurate and unactionable on their own. */
+.tln-auth__error-what {
+  margin: 0;
+  font-weight: 600;
+}
+
+.tln-auth__error-fix {
+  margin: 6px 0 0;
+  color: var(--ink-2);
+  font-weight: 400;
+}

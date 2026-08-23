@@ -310,6 +310,37 @@ export async function signOut(): Promise<void> {
   await getClient()?.auth.signOut();
 }
 
+/**
+ * Turn a raw auth error into something the reader can act on.
+ *
+ * Supabase's messages are accurate and useless on their own: "email rate limit
+ * exceeded" names the symptom, not the cause (the built-in mailer sends only a
+ * couple of messages an hour and is explicitly not for production) and not the
+ * fix. An error the reader cannot act on is only marginally better than silence.
+ *
+ * Returns null when the raw message already says enough.
+ */
+export function explainAuthError(message: string): string | null {
+  const m = message.toLowerCase();
+
+  if (m.includes("rate limit") || m.includes("too many request") || m.includes("429")) {
+    return "Supabase's built-in mailer only sends a couple of messages an hour, and this project has hit that. Earlier attempts did send, so check your inbox for the most recent link — it stays valid for about an hour. To lift the cap, add your own SMTP provider under Project Settings → Authentication → SMTP Settings.";
+  }
+  if (m.includes("signups not allowed") || m.includes("signup is disabled")) {
+    return "This project has email sign-ups turned off. Either enable them under Authentication → Providers → Email, or create your user directly under Authentication → Users and sign in as that address.";
+  }
+  if (m.includes("redirect") && m.includes("not allowed")) {
+    return `Add ${redirectOrigin()} to Authentication → URL Configuration → Redirect URLs. Supabase refuses to send people to an origin it does not know.`;
+  }
+  if (m.includes("invalid") && m.includes("expired")) {
+    return "Sign-in links are single-use and expire after about an hour. Request a fresh one.";
+  }
+  if (m.includes("failed to fetch") || m.includes("networkerror")) {
+    return "The project URL could not be reached at all. Check it is the Project URL from Settings → API, and that the project is not paused.";
+  }
+  return null;
+}
+
 export type PushResult = { ok: true; revision: number } | { ok: false; error: string };
 
 /**

@@ -15,6 +15,7 @@ import {
   authDiagnostics,
   clearConfig,
   cloudState,
+  explainAuthError,
   onAuthChange,
   readAuthCallbackError,
   readConfig,
@@ -331,7 +332,15 @@ export default function AuthDialog({
           </div>
         )}
 
-        {error && <p className="tln-auth__error">{error}</p>}
+        {error && (
+          <div className="tln-auth__error">
+            <p className="tln-auth__error-what">{error}</p>
+            {/* The raw message names the symptom; this names the fix. */}
+            {explainAuthError(error) && (
+              <p className="tln-auth__error-fix">{explainAuthError(error)}</p>
+            )}
+          </div>
+        )}
 
         {/* This flow leaves the app and comes back, so it cannot be reproduced
             from inside it. Shapes and outcomes only — never token values. */}
