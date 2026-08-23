@@ -164,6 +164,31 @@ async function main(): Promise<void> {
 
     const stored = await page.evaluate(() => localStorage.getItem("TLN_SUPABASE_PUBLISHABLE_KEY"));
     check("refused key was never stored", stored === null, stored === null ? "absent" : "STORED");
+
+    /* ---- a failed magic link must say so, not bounce silently ---- */
+    await page.evaluate(() => {
+      localStorage.setItem("TLN_SUPABASE_URL", "https://abcdefghijklmnop.supabase.co");
+      localStorage.setItem("TLN_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_TestKey123456");
+    });
+    // Exactly how Supabase bounces an expired or un-allow-listed link back.
+    await page.goto(
+      `${URL}/?error=access_denied&error_description=Email+link+is+invalid+or+has+expired`,
+      { waitUntil: "domcontentloaded" },
+    );
+    await page.waitForSelector(".tln-lens-tab", { timeout: 15_000 });
+    await page.getByTitle("Library / Workspace").click();
+    await page.waitForSelector(".tln-sync", { timeout: 15_000 });
+
+    const callbackErr = await page
+      .locator(".tln-sync__msg--err")
+      .first()
+      .textContent({ timeout: 10_000 })
+      .catch(() => null);
+    check(
+      "failed sign-in link is reported",
+      (callbackErr ?? "").includes("invalid or has expired"),
+      (callbackErr ?? "silent bounce").slice(0, 52),
+    );
   } catch (err) {
     check("run completed without error", false, String(err).slice(0, 120));
   } finally {

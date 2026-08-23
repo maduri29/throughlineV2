@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { handleAuthCallback } from "./data/cloud";
 import { useGraphStore } from "./store";
 import MapView from "./views/MapView";
 import TimelineView from "./views/TimelineView";
@@ -48,6 +49,11 @@ export default function App() {
 
   useEffect(() => {
     void useGraphStore.getState().boot();
+    // A magic link returns to "/", which opens the workspace — where the sync
+    // panel is not mounted, so nothing would ever spend the ?code= in the URL.
+    // Building the client here consumes it. No-op when sync is unconfigured, so
+    // the local-first boot path is unchanged (ADR-0005).
+    handleAuthCallback();
   }, []);
 
   useEffect(() => {

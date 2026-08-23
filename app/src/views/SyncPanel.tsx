@@ -14,9 +14,12 @@ import {
   clearConfig,
   cloudState,
   listRemote,
+  onAuthChange,
   pullProject,
   pushProject,
+  readAuthCallbackError,
   readConfig,
+  redirectOrigin,
   signIn,
   signOut,
   writeConfig,
@@ -66,6 +69,20 @@ export default function SyncPanel() {
     // refresh(), so no setState here actually runs synchronously.
     // oxlint-disable-next-line react/set-state-in-effect
     void refresh();
+
+    // A failed magic link comes back as text in the URL, not as an exception.
+    const callbackError = readAuthCallbackError();
+    if (callbackError) {
+      // oxlint-disable-next-line react/set-state-in-effect
+      setMsg({ kind: "err", text: `Sign-in link failed — ${callbackError}` });
+    }
+
+    // Keep listening. The code exchange completes after this effect runs, so
+    // without this the panel would still be showing the sign-in form at the
+    // moment the session actually arrives.
+    return onAuthChange(() => {
+      void refresh();
+    });
   }, [refresh]);
 
   const onSaveConfig = (): void => {
@@ -94,7 +111,13 @@ export default function SyncPanel() {
     setMsg(
       err
         ? { kind: "err", text: err }
-        : { kind: "ok", text: `Sign-in link sent to ${email.trim()}. Open it in this browser.` },
+        : {
+            kind: "ok",
+            // Naming the origin matters: the single most common failure is that
+            // it is missing from the project's redirect allow-list, and the only
+            // symptom is a link that bounces somewhere else entirely.
+            text: `Sign-in link sent to ${email.trim()}. Open it in THIS browser — it returns to ${redirectOrigin()}, which must be listed under Authentication → URL Configuration → Redirect URLs.`,
+          },
     );
   };
 

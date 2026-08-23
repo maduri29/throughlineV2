@@ -114,6 +114,55 @@ export function getClient(): SupabaseClient | null {
   return client;
 }
 
+/**
+ * Fire `cb` on every sign-in and sign-out. Returns an unsubscribe.
+ *
+ * Polling getSession() once is not enough: the magic-link code exchange happens
+ * asynchronously after the client is built, so a single check can read
+ * "signed out" a moment before the session actually arrives and then never
+ * correct itself — which looks exactly like a failed login.
+ */
+export function onAuthChange(cb: () => void): () => void {
+  const c = getClient();
+  if (!c) return () => {};
+  const { data } = c.auth.onAuthStateChange(() => {
+    cb();
+  });
+  return () => data.subscription.unsubscribe();
+}
+
+/**
+ * Build the client early so an auth callback in the URL is exchanged even if the
+ * sync panel is never opened. The redirect lands on the workspace, where that
+ * panel is not mounted, so without this the `?code=` in the URL is never spent.
+ *
+ * No-op when sync is unconfigured, so the local-first path is untouched.
+ */
+export function handleAuthCallback(): void {
+  getClient();
+}
+
+/**
+ * Supabase reports callback failures in the URL rather than by throwing — an
+ * expired link, a redirect URL missing from the allow-list, a PKCE verifier
+ * from a different browser. Surfacing the text beats a silent bounce back to
+ * the sign-in form, which is indistinguishable from never having clicked.
+ */
+export function readAuthCallbackError(): string | null {
+  if (typeof location === "undefined") return null;
+  const query = new URLSearchParams(location.search);
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+  const description = query.get("error_description") ?? hash.get("error_description");
+  const code = query.get("error") ?? hash.get("error");
+  if (!description && !code) return null;
+  return (description ?? code ?? "").replace(/\+/g, " ");
+}
+
+/** The origin a magic link must return to; must be in the project's allow-list. */
+export function redirectOrigin(): string {
+  return typeof location === "undefined" ? "" : location.origin;
+}
+
 export type CloudState =
   | { kind: "unconfigured" }
   | { kind: "signed-out" }
