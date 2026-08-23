@@ -12,6 +12,7 @@
     "fmt:check": "oxfmt --check",
     "lint": "oxlint --deny-warnings",
     "test": "bun test",
+    "verify:ui": "bun verify-ui.ts",
     "check": "bun run fmt:check && bun run lint && bun run typecheck && bun test"
   },
   "dependencies": {
@@ -30,6 +31,7 @@
     "@types/react-dom": "^19.2.4",
     "oxfmt": "^0.64.0",
     "oxlint": "^1.79.0",
+    "playwright-core": "^1.62.1",
     "typescript": "^7.0.2"
   }
 }
