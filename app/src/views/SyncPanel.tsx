@@ -11,8 +11,10 @@
 // Sync UIs that imply merging when they do not merge are how people lose work.
 import { useCallback, useEffect, useState } from "react";
 import {
+  authDiagnostics,
   clearConfig,
   cloudState,
+  type AuthDiagnostics,
   listRemote,
   onAuthChange,
   pullProject,
@@ -42,6 +44,7 @@ export default function SyncPanel() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<Message | null>(null);
 
+  const [diag, setDiag] = useState<AuthDiagnostics | null>(null);
   const [url, setUrl] = useState(() => readConfig()?.url ?? "");
   // Never pre-filled from storage: echoing a stored credential back into the DOM
   // puts it in every screenshot, bug report and accessibility tree for no gain.
@@ -55,6 +58,7 @@ export default function SyncPanel() {
     try {
       const s = await cloudState();
       setState(s);
+      setDiag(await authDiagnostics());
       setRemote(s.kind === "signed-in" ? await listRemote() : []);
     } catch (err) {
       setState({ kind: "unconfigured" });
@@ -296,6 +300,27 @@ export default function SyncPanel() {
         <p className={`tln-sync__msg${msg.kind === "err" ? " tln-sync__msg--err" : ""}`}>
           {msg.text}
         </p>
+      )}
+
+      {/* Sign-in leaves the app and comes back, so it cannot be reproduced from
+          inside it. This says what the callback actually looked like — shapes and
+          outcomes only, never token values. */}
+      {diag && state?.kind !== "unconfigured" && (
+        <details className="tln-sync__diag">
+          <summary>Sign-in diagnostics</summary>
+          <dl className="tln-sync__diag-list">
+            <dt>Returns to</dt>
+            <dd>{diag.origin}</dd>
+            <dt>Link landed as</dt>
+            <dd>{diag.landing}</dd>
+            <dt>Last auth event</dt>
+            <dd>{diag.lastEvent ?? "none"}</dd>
+            <dt>Session</dt>
+            <dd>{diag.session ? "present" : "absent"}</dd>
+            <dt>Stored auth entries</dt>
+            <dd>{diag.storageKeys === -1 ? "storage blocked" : diag.storageKeys}</dd>
+          </dl>
+        </details>
       )}
     </section>
   );

@@ -53,7 +53,7 @@ export default function App() {
     // panel is not mounted, so nothing would ever spend the ?code= in the URL.
     // Building the client here consumes it. No-op when sync is unconfigured, so
     // the local-first boot path is unchanged (ADR-0005).
-    handleAuthCallback();
+    void handleAuthCallback();
   }, []);
 
   useEffect(() => {

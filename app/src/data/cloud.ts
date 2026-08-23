@@ -10,7 +10,7 @@
 // in a client bundle *because* every table has row level security scoped to
 // auth.uid() (see supabase/migrations/0001_story_graph.sql). The secret key must
 // never appear in this repository or in a build.
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type EmailOtpType, type SupabaseClient } from "@supabase/supabase-js";
 import { buildEnvelope, parseEnvelope, type Envelope } from "./envelope";
 import type { GraphEdge, GraphNode } from "../types";
 
@@ -33,6 +33,7 @@ export function readConfig(): { url: string; key: string } | null {
 }
 
 let client: SupabaseClient | null = null;
+let lastAuthEvent: string | null = null;
 
 /** Role claim of a legacy JWT key, or null if `key` is not a readable JWT. */
 function jwtRole(key: string): string | null {
@@ -109,7 +110,12 @@ export function getClient(): SupabaseClient | null {
   const cfg = readConfig();
   if (!cfg) return null;
   client = createClient(cfg.url, cfg.key, {
-    auth: { persistSession: true, autoRefreshToken: true },
+    // detectSessionInUrl is the default, but it is the mechanism the whole
+    // sign-in depends on — stated explicitly so it cannot be lost silently.
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  });
+  client.auth.onAuthStateChange((event) => {
+    lastAuthEvent = event;
   });
   return client;
 }
@@ -131,15 +137,44 @@ export function onAuthChange(cb: () => void): () => void {
   return () => data.subscription.unsubscribe();
 }
 
+let lastCallbackError: string | null = null;
+
 /**
- * Build the client early so an auth callback in the URL is exchanged even if the
- * sync panel is never opened. The redirect lands on the workspace, where that
- * panel is not mounted, so without this the `?code=` in the URL is never spent.
+ * Finish a magic-link sign-in, whichever shape the link comes back in.
  *
- * No-op when sync is unconfigured, so the local-first path is untouched.
+ * A Supabase email link can land in three different ways, and the client only
+ * auto-handles two of them:
+ *
+ *   1. `#access_token=…`      implicit flow, handled by detectSessionInUrl
+ *   2. `?code=…`              PKCE, handled by detectSessionInUrl
+ *   3. `?token_hash=…&type=…` needs an explicit verifyOtp call
+ *
+ * Shape 3 is what a project sends when its email template uses `{{ .TokenHash }}`,
+ * and nothing in the SDK picks it up for you. Left unhandled it is a silent
+ * no-op: the user returns to the app, no error appears anywhere, and they are
+ * still signed out — which is indistinguishable from the link not working.
+ *
+ * Called at app boot because the link returns to "/", which opens the workspace
+ * where the sync panel is not mounted. No-op when sync is unconfigured, so the
+ * local-first path is unchanged (ADR-0005).
  */
-export function handleAuthCallback(): void {
-  getClient();
+export async function handleAuthCallback(): Promise<void> {
+  const c = getClient();
+  if (!c) return;
+
+  const params = new URLSearchParams(location.search);
+  const tokenHash = params.get("token_hash");
+  if (!tokenHash) return;
+
+  const type = (params.get("type") ?? "magiclink") as EmailOtpType;
+  const { error } = await c.auth.verifyOtp({ token_hash: tokenHash, type });
+  lastCallbackError = error ? error.message : null;
+
+  // Spend the token from the address bar either way: leaving it there means a
+  // reload retries an already-consumed token and reports a confusing failure.
+  const url = new URL(location.href);
+  for (const k of ["token_hash", "type"]) url.searchParams.delete(k);
+  history.replaceState(null, "", url.toString());
 }
 
 /**
@@ -149,13 +184,65 @@ export function handleAuthCallback(): void {
  * the sign-in form, which is indistinguishable from never having clicked.
  */
 export function readAuthCallbackError(): string | null {
-  if (typeof location === "undefined") return null;
+  if (typeof location === "undefined") return lastCallbackError;
   const query = new URLSearchParams(location.search);
   const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
   const description = query.get("error_description") ?? hash.get("error_description");
   const code = query.get("error") ?? hash.get("error");
-  if (!description && !code) return null;
+  if (!description && !code) return lastCallbackError;
   return (description ?? code ?? "").replace(/\+/g, " ");
+}
+
+export type AuthDiagnostics = {
+  configured: boolean;
+  origin: string;
+  landing: string;
+  lastEvent: string | null;
+  session: boolean;
+  storageKeys: number;
+};
+
+/**
+ * What the sign-in actually saw. Reports the *shape* of the callback and whether
+ * a session resulted — never token values, which must not end up in a screenshot
+ * or a bug report. Exists because this flow leaves the app: it cannot be
+ * reproduced locally, so the app has to be able to describe what happened.
+ */
+export async function authDiagnostics(): Promise<AuthDiagnostics> {
+  const configured = readConfig() !== null;
+  const query = new URLSearchParams(location.search);
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+
+  const shapes: string[] = [];
+  if (hash.get("access_token")) shapes.push("#access_token (implicit)");
+  if (query.get("code")) shapes.push("?code (pkce)");
+  if (query.get("token_hash")) shapes.push("?token_hash (needs verifyOtp)");
+  if (query.get("error") ?? hash.get("error")) shapes.push("error");
+
+  const c = getClient();
+  const session = c ? Boolean((await c.auth.getSession()).data.session) : false;
+
+  // How many Supabase auth entries exist for this origin. Zero after a sign-in
+  // attempt means nothing was ever stored, which separates "exchange failed"
+  // from "exchange never ran".
+  let storageKeys = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("sb-") && k.includes("auth-token")) storageKeys++;
+    }
+  } catch {
+    storageKeys = -1;
+  }
+
+  return {
+    configured,
+    origin: location.origin,
+    landing: shapes.length > 0 ? shapes.join(", ") : "no auth params in URL",
+    lastEvent: lastAuthEvent,
+    session,
+    storageKeys,
+  };
 }
 
 /** The origin a magic link must return to; must be in the project's allow-list. */
