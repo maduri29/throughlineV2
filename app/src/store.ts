@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { demoGraph, uuidv7 } from "./demo";
 import { dbDelete, dbGetAll, dbPut, metaGet, metaSet } from "./data/idb";
+import { scopeToProject } from "./data/scopes";
 import {
   applyBatch,
   invertBatch,
@@ -38,6 +39,8 @@ type Actions = {
   deleteEdge: (id: string) => void;
   setOrder: (containerId: string, order: string[]) => void;
   addScene: (parentId: string, opts?: { flashback?: boolean }) => string;
+  switchProject: (id: string) => Promise<void>;
+  createProject: (title: string) => Promise<void>;
   undo: () => void;
   redo: () => void;
   forceSave: () => Promise<void>;
@@ -199,29 +202,71 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
         await dbPut("nodes", nodesArr);
         await dbPut("edges", edgesArr);
       }
-      const nodes: Record<string, GraphNode> = {};
-      for (const n of nodesArr) nodes[n.id] = n;
-      const edges: Record<string, GraphEdge> = {};
-      for (const e of edgesArr) edges[e.id] = e;
-      const projects = Object.values(nodes).filter((n) => n.type === "project");
+      const allNodes: Record<string, GraphNode> = {};
+      for (const n of nodesArr) allNodes[n.id] = n;
+      const allEdges: Record<string, GraphEdge> = {};
+      for (const e of edgesArr) allEdges[e.id] = e;
+      const projects = Object.values(allNodes).filter((n) => n.type === "project");
       const lastId = await metaGet<string>("lastProjectId");
       const project = projects.find((p) => p.id === lastId) ?? projects[0] ?? null;
       if (project) {
         await metaSet("lastProjectId", project.id);
         await loadHistory(project.id);
       }
+      const scoped = project
+        ? scopeToProject(allNodes, allEdges, project.id)
+        : { nodes: {}, edges: {} };
       set({
-        nodes,
-        edges,
+        nodes: scoped.nodes,
+        edges: scoped.edges,
         projects,
         projectId: project?.id ?? null,
         status: "saved",
         canUndo: undoStack.length > 0,
         canRedo: redoStack.length > 0,
+        selection: [],
       });
     } catch (err) {
       set({ status: "error", bootError: String(err) });
     }
+  },
+
+  /** Two-level shell (T4): swap the workspace to another story. */
+  switchProject: async (id) => {
+    if (get().projectId === id) return;
+    await forceSave();
+    try {
+      const [nodesArr, edgesArr] = await Promise.all([
+        dbGetAll<GraphNode>("nodes"),
+        dbGetAll<GraphEdge>("edges"),
+      ]);
+      const allNodes: Record<string, GraphNode> = {};
+      for (const n of nodesArr) allNodes[n.id] = n;
+      const allEdges: Record<string, GraphEdge> = {};
+      for (const e of edgesArr) allEdges[e.id] = e;
+      const scoped = scopeToProject(allNodes, allEdges, id);
+      await metaSet("lastProjectId", id);
+      await loadHistory(id);
+      set({
+        nodes: scoped.nodes,
+        edges: scoped.edges,
+        projectId: id,
+        selection: [],
+        canUndo: undoStack.length > 0,
+        canRedo: redoStack.length > 0,
+        status: "saved",
+      });
+    } catch {
+      set({ status: "error" });
+    }
+  },
+
+  /** Fresh story: written through immediately; no undo entry (nothing to undo back over). */
+  createProject: async (title) => {
+    const node: GraphNode = { id: uuidv7(), type: "project", title };
+    await dbPut("nodes", [node]);
+    set({ projects: [...get().projects, node] });
+    await get().switchProject(node.id);
   },
 
   select: (ids) => set({ selection: ids }),
