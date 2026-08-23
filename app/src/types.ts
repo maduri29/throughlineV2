@@ -57,6 +57,8 @@ export type GraphNode = {
   pos?: { x: number; y: number } | null;
   /** Fountain Fragment body (Script lens, T6). */
   fountain?: string;
+  /** Scene-heading prefix for the synced slug (T6 §slug; default INT.). */
+  intExt?: "INT." | "EXT." | "EST." | "INT./EXT.";
   /** Project-node title-page fields. */
   author?: string;
   contact?: string;

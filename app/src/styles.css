@@ -189,6 +189,256 @@ body,
   color: #ffd98a;
 }
 
+/* Lens tabs */
+.tln-lens-tabs {
+  display: flex;
+  gap: 2px;
+  background: #ece5d4;
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.tln-lens-tab {
+  all: unset;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 3px 14px;
+  border-radius: 6px;
+  color: #5a5344;
+}
+
+.tln-lens-tab--on {
+  background: var(--card, #fffdf8);
+  box-shadow: 0 1px 4px rgb(60 50 20 / 15%);
+  font-weight: 600;
+}
+
+/* Script lens */
+.tln-script {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.tln-script__rail {
+  width: 220px;
+  border-right: 1px solid var(--line, #ddd4c0);
+  overflow-y: auto;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tln-script__railhead {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #9a9077;
+  padding: 2px 6px 8px;
+}
+
+.tln-script__item {
+  all: unset;
+  cursor: pointer;
+  display: block;
+  padding: 6px 8px;
+  border-radius: 7px;
+}
+
+.tln-script__item:hover {
+  background: #f2ecdd;
+}
+
+.tln-script__item--on {
+  background: #e8eef5;
+}
+
+.tln-script__ep {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9a9077;
+}
+
+.tln-script__ttl {
+  font-size: 12px;
+  color: #3c362a;
+}
+
+.tln-script__main {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  position: relative;
+}
+
+.tln-script__edit {
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+}
+
+.tln-script__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line, #ddd4c0);
+}
+
+.tln-slug {
+  flex: 1;
+  font-family: "Courier New", monospace;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: #4a4436;
+  background: #f4efe2;
+  border: 1px dashed #cfc5ab;
+  border-radius: 6px;
+  padding: 4px 10px;
+  user-select: none;
+}
+
+.tln-script__ta,
+.tln-script__preview {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #2e2a20;
+}
+
+.tln-script__ta {
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 18px 22px;
+  background: transparent;
+  white-space: pre-wrap;
+}
+
+.tln-script__divider {
+  width: 7px;
+  cursor: col-resize;
+  background: #e7dfcd;
+  border-left: 1px solid var(--line, #ddd4c0);
+  border-right: 1px solid var(--line, #ddd4c0);
+}
+
+.tln-script__divider:hover {
+  background: #d8cdb2;
+}
+
+.tln-script__preview {
+  flex: 1;
+  min-width: 160px;
+  padding: 18px 26px;
+  background: #fbf8f0;
+}
+
+.tln-f-slug {
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 14px 0 10px;
+}
+
+.tln-f-action {
+  margin: 10px 0;
+  white-space: pre-wrap;
+}
+
+.tln-f-cue {
+  text-transform: uppercase;
+  margin: 12px 0 0 18%;
+}
+
+.tln-f-paren {
+  margin: 0 0 0 24%;
+  color: #6b6350;
+}
+
+.tln-f-dlg {
+  margin: 2px 0 8px 18%;
+  white-space: pre-wrap;
+}
+
+.tln-f-trans {
+  text-transform: uppercase;
+  text-align: right;
+  margin: 12px 0;
+}
+
+.tln-f-center {
+  text-align: center;
+  margin: 10px 0;
+}
+
+.tln-f-lyric {
+  margin: 4px 0 4px 18%;
+  font-style: italic;
+}
+
+.tln-f-break {
+  border-top: 2px solid #b9ae92;
+  margin: 22px auto;
+  width: 32%;
+}
+
+.tln-f-forced {
+  outline: 1px dotted #b9ae92;
+  outline-offset: 3px;
+}
+
+.tln-f-note {
+  display: inline-block;
+  background: #fdf3cf;
+  border: 1px solid #e4d191;
+  color: #7a6420;
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 0 5px;
+  margin-right: 6px;
+  font-family: system-ui, sans-serif;
+}
+
+.tln-f-dual {
+  display: inline-block;
+  background: #e3ecf7;
+  color: #33629c;
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 0 6px;
+  margin-left: 8px;
+  font-family: system-ui, sans-serif;
+  vertical-align: middle;
+}
+
+.tln-script__empty {
+  padding: 30px;
+  color: #9a9077;
+  font-size: 13px;
+}
+
+.tln-script__collapse {
+  all: unset;
+  cursor: pointer;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  background: #ece5d4;
+  border: 1px solid var(--line, #ddd4c0);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  padding: 10px 4px;
+  font-size: 11px;
+  z-index: 5;
+}
+
 .tln-header__sub {
   font-size: 12px;
   color: var(--dim);

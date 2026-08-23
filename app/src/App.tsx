@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useGraphStore } from "./store";
 import MapView from "./views/MapView";
+import ScriptView from "./views/ScriptView";
 
 const SAVE_LABEL: Record<string, string> = {
   booting: "Loading…",
@@ -17,6 +18,7 @@ export default function App() {
   const undo = useGraphStore((s) => s.undo);
   const redo = useGraphStore((s) => s.redo);
   const forceSave = useGraphStore((s) => s.forceSave);
+  const [lens, setLens] = useState<"map" | "script">("map");
 
   useEffect(() => {
     void useGraphStore.getState().boot();
@@ -59,8 +61,22 @@ export default function App() {
         <button className="tln-btn" onClick={redo} disabled={!canRedo} title="Ctrl+Shift+Z">
           ↷
         </button>
+        <span className="tln-lens-tabs">
+          <button
+            className={`tln-lens-tab${lens === "map" ? " tln-lens-tab--on" : ""}`}
+            onClick={() => setLens("map")}
+          >
+            Map
+          </button>
+          <button
+            className={`tln-lens-tab${lens === "script" ? " tln-lens-tab--on" : ""}`}
+            onClick={() => setLens("script")}
+          >
+            Script
+          </button>
+        </span>
       </header>
-      <MapView />
+      {lens === "map" ? <MapView /> : <ScriptView />}
     </div>
   );
 }
