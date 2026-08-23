@@ -4,7 +4,7 @@ import { describeUsage } from "../data/durability";
 import { useGraphStore } from "../store";
 import SyncPanel from "./SyncPanel";
 
-export default function LibraryView() {
+export default function LibraryView({ onSignIn }: { onSignIn: () => void }) {
   const projects = useGraphStore((s) => s.projects);
   const switchProject = useGraphStore((s) => s.switchProject);
   const createProject = useGraphStore((s) => s.createProject);
@@ -82,7 +82,7 @@ export default function LibraryView() {
         </div>
       </div>
 
-      <SyncPanel />
+      <SyncPanel onSignIn={onSignIn} />
     </div>
   );
 }

@@ -35,6 +35,29 @@ export function readConfig(): { url: string; key: string } | null {
 let client: SupabaseClient | null = null;
 let lastAuthEvent: string | null = null;
 
+// Captured at import, before any handler strips the parameters, so the UI can
+// know it is mid-sign-in on its very first render rather than flashing the
+// sign-in form at someone who has just clicked their link.
+const initialUrl = typeof location === "undefined" ? "" : location.search + location.hash;
+
+/**
+ * True when this page load is the return leg of a magic link — including the
+ * failure leg, which carries `error` instead of a token. Both need the dialog
+ * open: a bounced link with nothing on screen is the silent failure this whole
+ * redesign exists to remove.
+ */
+export function isAuthCallback(): boolean {
+  return /[?&#](access_token|code|token_hash|error)=/.test(initialUrl);
+}
+
+/**
+ * True only when there is a token to exchange, so "Signing you in…" is shown
+ * for work actually in flight rather than for a link that already failed.
+ */
+export function isAuthExchangePending(): boolean {
+  return /[?&#](access_token|code|token_hash)=/.test(initialUrl);
+}
+
 /** Role claim of a legacy JWT key, or null if `key` is not a readable JWT. */
 function jwtRole(key: string): string | null {
   const parts = key.split(".");
@@ -164,17 +187,24 @@ export async function handleAuthCallback(): Promise<void> {
 
   const params = new URLSearchParams(location.search);
   const tokenHash = params.get("token_hash");
-  if (!tokenHash) return;
 
-  const type = (params.get("type") ?? "magiclink") as EmailOtpType;
-  const { error } = await c.auth.verifyOtp({ token_hash: tokenHash, type });
-  lastCallbackError = error ? error.message : null;
+  if (tokenHash) {
+    const type = (params.get("type") ?? "magiclink") as EmailOtpType;
+    const { error } = await c.auth.verifyOtp({ token_hash: tokenHash, type });
+    lastCallbackError = error ? error.message : null;
 
-  // Spend the token from the address bar either way: leaving it there means a
-  // reload retries an already-consumed token and reports a confusing failure.
-  const url = new URL(location.href);
-  for (const k of ["token_hash", "type"]) url.searchParams.delete(k);
-  history.replaceState(null, "", url.toString());
+    // Spend the token from the address bar either way: leaving it there means a
+    // reload retries an already-consumed token and reports a confusing failure.
+    const url = new URL(location.href);
+    for (const k of ["token_hash", "type"]) url.searchParams.delete(k);
+    history.replaceState(null, "", url.toString());
+  }
+
+  // Settle before returning, whichever shape this was. getSession() waits on the
+  // client's own initialization, which is where the implicit and PKCE flows do
+  // their work — so a caller can hold a "signing you in" state until the answer
+  // is actually known, instead of guessing at a delay.
+  await c.auth.getSession();
 }
 
 /**

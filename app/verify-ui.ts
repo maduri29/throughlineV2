@@ -137,7 +137,7 @@ async function main(): Promise<void> {
       `${pills.length} pills, ${distinct.size} distinct colours`,
     );
 
-    /* ---- Library: sync is present, optional, and refuses a secret key ---- */
+    /* ---- Library stays a local library; auth lives in its own dialog ---- */
     await page.getByTitle("Library / Workspace").click();
     await page.waitForSelector(".tln-sync", { timeout: 15_000 });
 
@@ -149,13 +149,27 @@ async function main(): Promise<void> {
     const pushWhenUnconfigured = await page.getByRole("button", { name: /^Push/ }).count();
     check("no push control before sign-in", pushWhenUnconfigured === 0);
 
-    // Regression guard for the worst mistake this panel can invite: the secret
+    // Signing in is a detour from the work, so it must not be inline in the
+    // library any more -- it opens as a modal from the header account control.
+    const inlineAuth = await page.locator(".tln-sync input").count();
+    check("no credential fields inline in the library", inlineAuth === 0, `${inlineAuth} inputs`);
+
+    await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
+    await page.waitForSelector(".tln-auth", { timeout: 15_000 });
+    const title = await page.locator(".tln-auth__title").first().textContent();
+    check(
+      "auth opens on the connect screen when unconfigured",
+      (title ?? "").includes("Connect cloud sync"),
+      title ?? "no title",
+    );
+
+    // Regression guard for the worst mistake this flow can invite: the secret
     // key bypasses RLS, so it must be refused before it ever reaches storage.
-    await page.getByLabel("Supabase project URL").fill("https://abcdefghijkl.supabase.co");
-    await page.getByLabel("Supabase publishable key").fill("sb_secret_AbCdEf123456");
+    await page.getByLabel("Project URL").fill("https://abcdefghijkl.supabase.co");
+    await page.getByLabel("Publishable key").fill("sb_secret_AbCdEf123456");
     await page.getByRole("button", { name: "Connect", exact: true }).click();
 
-    const refusal = await page.locator(".tln-sync__msg--err").first().textContent();
+    const refusal = await page.locator(".tln-auth__error").first().textContent();
     check(
       "secret key is refused",
       (refusal ?? "").includes("SECRET"),
@@ -165,30 +179,43 @@ async function main(): Promise<void> {
     const stored = await page.evaluate(() => localStorage.getItem("TLN_SUPABASE_PUBLISHABLE_KEY"));
     check("refused key was never stored", stored === null, stored === null ? "absent" : "STORED");
 
-    /* ---- a failed magic link must say so, not bounce silently ---- */
-    await page.evaluate(() => {
-      localStorage.setItem("TLN_SUPABASE_URL", "https://abcdefghijklmnop.supabase.co");
-      localStorage.setItem("TLN_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_TestKey123456");
-    });
+    // A good key advances to the sign-in screen rather than staying put.
+    await page.getByLabel("Publishable key").fill("sb_publishable_TestKey123456");
+    await page.getByRole("button", { name: "Connect", exact: true }).click();
+    const signInTitle = await page
+      .locator(".tln-auth__title")
+      .first()
+      .textContent({ timeout: 10_000 })
+      .catch(() => null);
+    check(
+      "a valid key advances to sign-in",
+      (signInTitle ?? "") === "Sign in",
+      signInTitle ?? "no title",
+    );
+
+    /* ---- returning from a link narrates itself, success or failure ---- */
     // Exactly how Supabase bounces an expired or un-allow-listed link back.
     await page.goto(
       `${URL}/?error=access_denied&error_description=Email+link+is+invalid+or+has+expired`,
       { waitUntil: "domcontentloaded" },
     );
     await page.waitForSelector(".tln-lens-tab", { timeout: 15_000 });
-    await page.getByTitle("Library / Workspace").click();
-    await page.waitForSelector(".tln-sync", { timeout: 15_000 });
 
     const callbackErr = await page
-      .locator(".tln-sync__msg--err")
+      .locator(".tln-auth__error")
       .first()
-      .textContent({ timeout: 10_000 })
+      .textContent({ timeout: 15_000 })
       .catch(() => null);
     check(
       "failed sign-in link is reported",
       (callbackErr ?? "").includes("invalid or has expired"),
       (callbackErr ?? "silent bounce").slice(0, 52),
     );
+
+    // The dialog must open itself: someone who just clicked a link should not
+    // land in the workspace with no sign that anything happened.
+    const autoOpened = await page.locator(".tln-auth").count();
+    check("auth dialog opens itself on a callback", autoOpened === 1);
   } catch (err) {
     check("run completed without error", false, String(err).slice(0, 120));
   } finally {

@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
-import { handleAuthCallback } from "./data/cloud";
+import {
+  cloudState,
+  handleAuthCallback,
+  isAuthCallback,
+  isAuthExchangePending,
+  onAuthChange,
+} from "./data/cloud";
 import { useGraphStore } from "./store";
+import AuthDialog from "./views/AuthDialog";
 import MapView from "./views/MapView";
 import TimelineView from "./views/TimelineView";
 import CharactersView from "./views/CharactersView";
@@ -39,6 +46,21 @@ export default function App() {
   const [lens, setLens] = useState<Lens>("map");
   const [level, setLevel] = useState<"library" | "workspace">("workspace");
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Opened automatically when this page load is the return leg of a magic link,
+  // so the sign-in narrates itself instead of resolving invisibly.
+  const [completing, setCompleting] = useState(() => isAuthExchangePending());
+  const [authOpen, setAuthOpen] = useState(() => isAuthCallback());
+  const [account, setAccount] = useState<string | null>(null);
+
+  useEffect(() => {
+    const read = (): void => {
+      void cloudState().then((s) => {
+        setAccount(s.kind === "signed-in" ? (s.email ?? "account") : null);
+      });
+    };
+    read();
+    return onAuthChange(read);
+  }, []);
 
   /** Palette jump: pick the lens that shows the node best. */
   const jumpTo = (id: string, type: string): void => {
@@ -49,11 +71,17 @@ export default function App() {
 
   useEffect(() => {
     void useGraphStore.getState().boot();
-    // A magic link returns to "/", which opens the workspace — where the sync
-    // panel is not mounted, so nothing would ever spend the ?code= in the URL.
-    // Building the client here consumes it. No-op when sync is unconfigured, so
-    // the local-first boot path is unchanged (ADR-0005).
-    void handleAuthCallback();
+    // A magic link returns to "/", so the callback has to be finished here — the
+    // dialog may never be opened, and nothing else would spend the token in the
+    // URL. No-op when sync is unconfigured, so the local-first boot path is
+    // unchanged (ADR-0005).
+    //
+    // The dialog is opened for the duration either way: someone who has just
+    // clicked a sign-in link should see it resolve, success or failure, rather
+    // than land in the workspace with no sign that anything happened.
+    void handleAuthCallback().finally(() => {
+      setCompleting(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -110,6 +138,22 @@ export default function App() {
             Back up
           </button>
         )}
+        <button
+          className={`tln-account${account ? " tln-account--on" : ""}`}
+          onClick={() => setAuthOpen(true)}
+          title={account ? `Signed in as ${account}` : "Cloud sync is optional"}
+        >
+          {account ? (
+            <>
+              <span className="tln-account__dot" aria-hidden="true">
+                {account.slice(0, 1).toUpperCase()}
+              </span>
+              <span className="tln-account__label">{account}</span>
+            </>
+          ) : (
+            "Sign in"
+          )}
+        </button>
         <button className="tln-btn" onClick={undo} disabled={!canUndo} title="Ctrl+Z">
           ↶
         </button>
@@ -130,7 +174,7 @@ export default function App() {
       </header>
 
       {level === "library" ? (
-        <LibraryView />
+        <LibraryView onSignIn={() => setAuthOpen(true)} />
       ) : (
         <div className="tln-workspace">
           <div className="tln-workspace__lens">
@@ -148,6 +192,13 @@ export default function App() {
         </div>
       )}
       <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jumpTo} />
+      <AuthDialog
+        open={authOpen}
+        completing={completing}
+        onClose={() => {
+          setAuthOpen(false);
+        }}
+      />
     </div>
   );
 }

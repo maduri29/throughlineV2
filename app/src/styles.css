@@ -1482,35 +1482,298 @@ body,
   flex: 1;
 }
 
-/* Sign-in diagnostics. Collapsed by default: needed only when the magic-link
-   round trip fails, which cannot be reproduced from inside the app. */
-.tln-sync__diag {
-  margin: 12px 0 0;
-  font-size: 12px;
-  color: var(--dim);
+/* ---------------------------------------------------------------- account --
+   Header control. Doubles as the sign-in entry point and the only place the
+   account is visible, so it must read as state, not as another toolbar button. */
+.tln-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 999px;
+  padding: 2px 11px 2px 3px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--ink-2);
+  cursor: pointer;
+  max-width: 210px;
 }
 
-.tln-sync__diag summary {
+.tln-account:not(.tln-account--on) {
+  padding: 2px 11px;
+}
+
+.tln-account:hover {
+  border-color: var(--line-strong);
+}
+
+.tln-account__dot {
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tln-account__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ auth --
+   One job per screen: connect, sign in, wait for the email, or manage the
+   account. Centred and modal because signing in is a detour from the work, not
+   part of it -- the old inline panel made it compete with the story list. */
+.tln-auth__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(23 29 46 / 45%);
+  backdrop-filter: blur(3px);
+  animation: tln-auth-in 140ms ease-out;
+}
+
+.tln-auth {
+  position: relative;
+  width: 100%;
+  max-width: 410px;
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgb(23 29 46 / 22%);
+  padding: 26px 26px 22px;
+}
+
+@keyframes tln-auth-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tln-auth__scrim {
+    animation: none;
+  }
+}
+
+.tln-auth__x {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border: 0;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--dim);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.tln-auth__x:hover {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.tln-auth__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.tln-auth__title {
+  font-size: 19px;
+  margin: 0 0 6px;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.tln-auth__sub {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.tln-auth__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  margin: 0 0 5px;
+}
+
+.tln-auth__input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--ink);
+  background: var(--card);
+  margin: 0 0 14px;
+}
+
+.tln-auth__input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.tln-auth__primary {
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+  margin: 4px 0 0;
+}
+
+.tln-auth__primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tln-auth__ghost {
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 9px 4px 0;
+}
+
+.tln-auth__ghost:hover {
+  color: var(--ink-2);
+  text-decoration: underline;
+}
+
+.tln-auth__hint {
+  font-size: 12px;
+  color: var(--dim);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.tln-auth__error {
+  font-size: 12px;
+  color: var(--danger);
+  background: rgb(217 68 54 / 8%);
+  border: 1px solid rgb(217 68 54 / 22%);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 14px 0 0;
+  line-height: 1.5;
+}
+
+/* Inbox screen: the two lines that actually decide whether the link works. */
+.tln-auth__mark,
+.tln-auth__avatar {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  margin: 0 0 12px;
+  font-size: 19px;
+}
+
+.tln-auth__mark {
+  background: rgb(91 91 214 / 10%);
+  color: var(--accent);
+}
+
+.tln-auth__avatar {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.tln-auth__checklist {
+  margin: 0 0 16px;
+  padding: 0 0 0 17px;
+  font-size: 12px;
+  color: var(--dim);
+  line-height: 1.6;
+}
+
+.tln-auth__checklist code {
+  font-size: 11px;
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 1px 4px;
+  overflow-wrap: anywhere;
+}
+
+.tln-auth__spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  margin: 4px 0 14px;
+  animation: tln-spin 700ms linear infinite;
+}
+
+@keyframes tln-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tln-auth__spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+/* Collapsed by default: needed only when the round trip fails, which cannot be
+   reproduced from inside the app. */
+.tln-auth__diag {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: var(--dim);
+  border-top: 1px solid var(--line);
+  padding: 12px 0 0;
+}
+
+.tln-auth__diag summary {
   cursor: pointer;
   user-select: none;
 }
 
-.tln-sync__diag-list {
+.tln-auth__diag-list {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 3px 12px;
-  margin: 8px 0 0;
-  padding: 8px 10px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  margin: 9px 0 0;
+  padding: 9px 11px;
+  background: var(--bg);
+  border-radius: 8px;
 }
 
-.tln-sync__diag-list dt {
+.tln-auth__diag-list dt {
   color: var(--dim);
 }
 
-.tln-sync__diag-list dd {
+.tln-auth__diag-list dd {
   margin: 0;
   color: var(--ink-2);
   overflow-wrap: anywhere;

@@ -38,9 +38,14 @@ survives losing the machine and follows you between devices.
    (`sb_publishable_...`) key
 4. **Authentication -> URL Configuration**: add the origin you use (e.g.
    `http://localhost:4517`) to **Redirect URLs**, or the sign-in link will 404
-5. In the app: **Library -> Cloud sync**, paste the URL and publishable key,
-   **Connect**, then sign in with a magic link — there is no password to store
-6. **Push** sends the open story; **Pull** brings a cloud copy back
+5. In the app: **Sign in** in the header → paste the URL and publishable key →
+   **Connect**, then enter your email and open the link it sends
+6. **Library → Cloud copies**: **Push** sends the open story, **Pull** brings a
+   cloud copy back
+
+Connecting a project and signing in are separate screens in that dialog, because
+they are separate jobs — the first is one-time technical setup, the second is
+routine. Story sync lives in the Library, not in the sign-in flow.
 
 Never put the **secret** (`sb_secret_...`) key in the app or this repo. The
 publishable key is safe in the bundle *only* because every table has row level
