@@ -1,6 +1,6 @@
 import { Background, Controls, ReactFlow } from "@xyflow/react";
 import type { Edge, NodeTypes } from "@xyflow/react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import GraphCard, { type CardFlowNode } from "./GraphNode";
 import { useGraphStore } from "./store";
 import type { GraphNode } from "./types";
@@ -8,15 +8,15 @@ import type { GraphNode } from "./types";
 const nodeTypes = { card: GraphCard } satisfies NodeTypes;
 
 /** Storyline band layout (locked Map direction): episode columns + flashback lane. */
-function layout(nodes: GraphNode[]): CardFlowNode[] {
+function layout(nodes: GraphNode[], orderFor: (id: string) => string[]): CardFlowNode[] {
   const out: CardFlowNode[] = [];
 
-  const byParent = new Map<string, GraphNode[]>();
+  const scenesOf = new Map<string, GraphNode[]>();
   for (const n of nodes) {
     if (n.type !== "scene" || !n.parentId) continue;
-    const arr = byParent.get(n.parentId) ?? [];
+    const arr = scenesOf.get(n.parentId) ?? [];
     arr.push(n);
-    byParent.set(n.parentId, arr);
+    scenesOf.set(n.parentId, arr);
   }
 
   const episodes = nodes.filter((n) => n.type === "episode");
@@ -29,7 +29,10 @@ function layout(nodes: GraphNode[]): CardFlowNode[] {
       draggable: false,
       selectable: false,
     });
-    for (const [si, sc] of (byParent.get(ep.id) ?? []).entries()) {
+    const ordered = orderFor(ep.id)
+      .map((id) => scenesOf.get(ep.id)?.find((s) => s.id === id))
+      .filter((s): s is GraphNode => Boolean(s));
+    for (const [si, sc] of ordered.entries()) {
       const day = sc.storyTime?.storyDay ?? null;
       out.push({
         id: sc.id,
@@ -92,11 +95,68 @@ const EDGE_STROKE: Record<string, string> = {
   related_to: "#aab2ba",
 };
 
-export default function App() {
-  const graphNodes = useGraphStore((s) => s.nodes);
-  const graphEdges = useGraphStore((s) => s.edges);
+const SAVE_LABEL: Record<string, string> = {
+  booting: "Loading…",
+  saved: "Saved ✓",
+  saving: "Saving…",
+  dirty: "Unsaved edits",
+  error: "Save failed — retry with Ctrl+S",
+};
 
-  const rfNodes = useMemo(() => layout(graphNodes), [graphNodes]);
+export default function App() {
+  const nodeMap = useGraphStore((s) => s.nodes);
+  const edgeMap = useGraphStore((s) => s.edges);
+  const status = useGraphStore((s) => s.status);
+  const canUndo = useGraphStore((s) => s.canUndo);
+  const canRedo = useGraphStore((s) => s.canRedo);
+  const undo = useGraphStore((s) => s.undo);
+  const redo = useGraphStore((s) => s.redo);
+  const del = useGraphStore((s) => s.deleteSelection);
+  const select = useGraphStore((s) => s.select);
+  const forceSave = useGraphStore((s) => s.forceSave);
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    void useGraphStore.getState().boot();
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        void forceSave();
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        undo();
+      } else if (
+        (mod && e.shiftKey && e.key.toLowerCase() === "z") ||
+        (mod && e.key.toLowerCase() === "y")
+      ) {
+        e.preventDefault();
+        redo();
+      } else if (e.key === "Delete") {
+        del();
+      } else if (e.key === "Escape") {
+        setSelectedIds([]);
+      }
+    };
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, [undo, redo, del, forceSave]);
+
+  const graphNodes = useMemo(() => Object.values(nodeMap), [nodeMap]);
+  const graphEdges = useMemo(() => Object.values(edgeMap), [edgeMap]);
+  const orderFor = useMemo(() => (id: string) => nodeMap[id]?.order ?? [], [nodeMap]);
+
+  const rfNodes = useMemo(
+    () =>
+      layout(graphNodes, orderFor).map((n) =>
+        selectedIds.includes(n.id) ? { ...n, selected: true } : n,
+      ),
+    [graphNodes, orderFor, selectedIds],
+  );
 
   const rfEdges = useMemo<Edge[]>(
     () =>
@@ -119,8 +179,19 @@ export default function App() {
       <header className="tln-header">
         <strong>Throughline</strong>
         <span className="tln-header__sub">
-          HIGH WATER · scaffold seed ({graphNodes.length} nodes / {graphEdges.length} edges)
+          HIGH WATER · {graphNodes.length} nodes / {graphEdges.length} edges
         </span>
+        <span className={`tln-save tln-save--${status}`}>
+          {status === "error"
+            ? `Error: ${useGraphStore.getState().bootError ?? "unknown"}`
+            : SAVE_LABEL[status]}
+        </span>
+        <button className="tln-btn" onClick={undo} disabled={!canUndo} title="Ctrl+Z">
+          ↶
+        </button>
+        <button className="tln-btn" onClick={redo} disabled={!canRedo} title="Ctrl+Shift+Z">
+          ↷
+        </button>
       </header>
       <div className="tln-flow">
         <ReactFlow
@@ -130,6 +201,17 @@ export default function App() {
           fitView
           minZoom={0.2}
           proOptions={{ hideAttribution: true }}
+          onSelectionChange={(p) => {
+            const ids = [...p.nodes.map((n) => n.id), ...p.edges.map((e) => e.id)];
+            // Keep referential stability so this can't loop back into node props.
+            setSelectedIds((prev) =>
+              prev.length === ids.length && prev.every((v) => ids.includes(v)) ? prev : ids,
+            );
+            const s = useGraphStore.getState();
+            if (s.selection.length !== ids.length || !s.selection.every((v) => ids.includes(v))) {
+              select(ids);
+            }
+          }}
         >
           <Background color="#e4ddd0" gap={18} />
           <Controls />

@@ -51,6 +51,15 @@ export type GraphNode = {
   synopsis?: string;
   storyTime?: StoryTime;
   parentId?: string;
+  /** Container ordering of child scenes (episode/project). */
+  order?: string[];
+  /** Manual Map position override; null/absent = Tidy layout decides. */
+  pos?: { x: number; y: number } | null;
+  /** Fountain Fragment body (Script lens, T6). */
+  fountain?: string;
+  /** Project-node title-page fields. */
+  author?: string;
+  contact?: string;
 };
 
 export type GraphEdge = {

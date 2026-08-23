@@ -42,6 +42,7 @@ const ep1 = N("episode", "E1 · RISE", { parentId: project.id });
 const ep2 = N("episode", "E2 · PRESSURE", { parentId: project.id });
 const ep3 = N("episode", "E3 · BREACH", { parentId: project.id });
 for (const ep of [ep1, ep2, ep3]) E("contains", project.id, ep.id);
+project.order = [ep1.id, ep2.id, ep3.id];
 
 const maya = N("character", "Maya");
 const eli = N("character", "Eli");
@@ -67,6 +68,7 @@ const S = (
     synopsis,
   });
   E("contains", ep.id, scene.id);
+  ep.order = [...(ep.order ?? []), scene.id];
   return scene;
 };
 

@@ -11,7 +11,8 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "lint": "oxlint --deny-warnings",
-    "check": "bun run fmt:check && bun run lint && bun run typecheck"
+    "test": "bun test",
+    "check": "bun run fmt:check && bun run lint && bun run typecheck && bun test"
   },
   "dependencies": {
     "@xyflow/react": "^12.11.3",
