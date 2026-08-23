@@ -151,6 +151,20 @@ export function hasBuiltinConfig(): boolean {
   return Boolean(BUILTIN_URL && BUILTIN_KEY);
 }
 
+/**
+ * True when the project currently in use IS the compiled-in one — i.e. the user
+ * has not pointed the app somewhere else. Distinct from hasBuiltinConfig(),
+ * which only says a built-in exists; the sign-in UI uses this to decide whether
+ * "use the built-in project" would be an action or a no-op.
+ */
+export function isUsingBuiltinConfig(): boolean {
+  try {
+    return readConfig()?.url === BUILTIN_URL;
+  } catch {
+    return false;
+  }
+}
+
 /** Null whenever sync is not configured. Callers must handle null, not assume. */
 export function getClient(): SupabaseClient | null {
   if (client) return client;

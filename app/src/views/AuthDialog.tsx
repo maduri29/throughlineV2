@@ -18,6 +18,7 @@ import {
   dashboardProvidersUrl,
   explainAuthError,
   hasBuiltinConfig,
+  isUsingBuiltinConfig,
   onAuthChange,
   readAuthCallbackError,
   readConfig,
@@ -228,10 +229,23 @@ export default function AuthDialog({
 
             {/* Primary because it depends on nothing this project has to run:
                 no mailer, no password. The email path below is the fallback,
-                and it is the one that breaks when the mailer is rate-limited. */}
+                and it is the one that breaks when the mailer is rate-limited.
+                Disabled with a reason when the project itself reports the
+                provider off — a button that can only produce an error is not
+                an affordance, it is a trap. */}
             <button
               className="tln-auth__github"
-              disabled={busy}
+              disabled={
+                busy ||
+                (diag?.providers !== null &&
+                  diag?.providers !== undefined &&
+                  !diag.providers.includes("github"))
+              }
+              title={
+                diag?.providers && !diag.providers.includes("github")
+                  ? "GitHub sign-in is switched off on this Supabase project — use email below, or enable the provider."
+                  : undefined
+              }
               onClick={() => {
                 setBusy(true);
                 void signInWithGitHub().then((err) => {
@@ -310,17 +324,23 @@ export default function AuthDialog({
             >
               {busy ? "Sending…" : "Email me a link"}
             </button>
-            <button
-              className="tln-auth__ghost"
-              onClick={() => {
-                clearConfig();
-                setUrl("");
-                setError(null);
-                void refresh();
-              }}
-            >
-              {hasBuiltinConfig() ? "Use the built-in project" : "Disconnect this project"}
-            </button>
+            {/* Only an action when it would change something: while the app is
+                already on the built-in project this button was a no-op that
+                looked like a setting. When a self-hoster has overridden the
+                project, this is their way back. */}
+            {!isUsingBuiltinConfig() && (
+              <button
+                className="tln-auth__ghost"
+                onClick={() => {
+                  clearConfig();
+                  setUrl("");
+                  setError(null);
+                  void refresh();
+                }}
+              >
+                {hasBuiltinConfig() ? "Use the built-in project" : "Disconnect this project"}
+              </button>
+            )}
           </div>
         )}
 
@@ -391,16 +411,18 @@ export default function AuthDialog({
             >
               Sign out
             </button>
-            <button
-              className="tln-auth__ghost"
-              onClick={() => {
-                clearConfig();
-                setSentTo(null);
-                void refresh();
-              }}
-            >
-              {hasBuiltinConfig() ? "Use the built-in project" : "Disconnect this project"}
-            </button>
+            {!isUsingBuiltinConfig() && (
+              <button
+                className="tln-auth__ghost"
+                onClick={() => {
+                  clearConfig();
+                  setSentTo(null);
+                  void refresh();
+                }}
+              >
+                {hasBuiltinConfig() ? "Use the built-in project" : "Disconnect this project"}
+              </button>
+            )}
           </div>
         )}
 
