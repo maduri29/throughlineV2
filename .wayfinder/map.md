@@ -22,8 +22,11 @@ multi-project library) with a Fountain textarea editor and `.fountain` export.
   scenes, locations, themes, timelines on a visual graph → write screenplay. Behavioral
   reference implementation: `prototype/throughline.html` (vanilla, validated). Product rationale:
   `IDEAS.md`; market/toolchain research: `RESEARCH.md`.
-- **Stack pins (verified 2026-08-22)**: Bun **1.4.0** — *native fullstack, NO Vite, NO Node runtime*
-  (`Bun.serve` + HTML imports in dev with `--hot`, `bun build` for prod). TypeScript **^7.0.2**
+- **Stack pins (verified 2026-08-23)**: **Next.js 16.3.x** App Router — `next dev -p 4517`,
+  `next build`; route `/` prerenders static, the editor loads `ssr: false`. Per **ADR-0006**
+  this supersedes ADR-0002: Bun **1.4.0** remains the package manager, test runner and gate
+  runner but is no longer the bundler or web server, and a Node runtime is now required.
+  TypeScript **^7.0.2**
   (bin is `tsc`; typecheck script `tsc --noEmit`, near-instant). oxfmt **0.64.x** (`.oxfmtrc.json`).
   oxlint **1.79.x** (`.oxlintrc.json`; listing `plugins` overwrites defaults — include
   react/unicorn/typescript/oxc explicitly). React **19** + `@xyflow/react` **12.11.x** +

@@ -3,7 +3,8 @@
 Brainstorm stories, grow them into movies or series, and write scenes as
 screenplay — one local-first story graph behind every view.
 
-**Stack:** Bun · React 19 · React Flow 12 · IndexedDB · TypeScript 7 strict
+**Stack:** Next.js 16 (App Router) · React 19 · React Flow 12 · IndexedDB ·
+TypeScript 7 strict · Bun for install, tests and the lint/format gates
 
 ## Run locally
 
@@ -18,8 +19,13 @@ bun run dev        # http://localhost:4517
 ```bash
 cd app
 bun run check      # fmt + lint + typecheck + tests
-bun run build      # static production build → app/dist
+bun run build      # next build → app/.next  (route `/` prerenders static)
+bun run verify:ui  # 13 headless assertions; dev server must be running
 ```
+
+The editor is loaded with `ssr: false` (`src/app/ClientApp.tsx`) because it is a
+browser application — IndexedDB, CodeMirror and React Flow all need a real DOM.
+The route still prerenders as static HTML, so delivery is CDN-only. See ADR-0006.
 
 ## Sync (optional, ADR-0005)
 
@@ -65,7 +71,7 @@ pushes to `main` do *not* deploy. Deploys go through the CLI from the repo root:
 
 ```bash
 bunx vercel login        # once per machine, interactive
-bunx vercel --prod --yes # builds via root vercel.json → app/dist
+cd app && bunx vercel --prod --yes   # Next build; Root Directory must be `app`
 ```
 
 Production alias: <https://storylane2.vercel.app>. The sections below apply
@@ -73,16 +79,15 @@ if/when the Git integration gets connected.
 
 ### Root Directory decides which vercel.json applies
 
-There are two configs, one per layout. They are alternatives, not partners —
-pick the row matching the project's **Root Directory** setting.
+**Root Directory must be `app`.** Vercel's Next.js preset expects the project at
+the configured root, so the previous two-config arrangement (repo root *or*
+`app/`) no longer applies — the repo-root `vercel.json` was removed rather than
+left to produce a broken deploy. `app/vercel.json` sets the framework preset and
+`bun install`; Vercel supplies the build and output itself.
 
-| Root Directory | Config read | Build | Output |
-| --- | --- | --- | --- |
-| `app` | `app/vercel.json` | `bun run build` | `dist` |
-| repo root (blank) | `vercel.json` | `cd app && bun run build` | `app/dist` |
-
-Mismatching them fails confusingly: with Root Directory `app` but the root
-config in force, Vercel looks for `app/app/dist` and reports an empty build.
+If Root Directory is still blank from the pre-Next setup, change it in
+**Project → Settings → Build and Deployment → Root Directory**, or the build
+fails with no `next.config.ts` found.
 
 ### Commit author must resolve to a GitHub account
 

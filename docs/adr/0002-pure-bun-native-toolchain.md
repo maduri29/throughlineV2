@@ -1,6 +1,11 @@
 # ADR-0002: Pure-Bun native toolchain — no Vite, no Node runtime
 
-Status: accepted
+Status: **superseded by [ADR-0006](0006-nextjs-app-router.md) (2026-08-23)**
+
+> The application now builds and serves through Next.js 16. Bun remains the package
+> manager, test runner and gate runner, but is no longer the bundler or the web
+> server, and a Node runtime is required. What follows is kept as the record of why
+> this constraint existed and what it bought; it no longer describes the build.
 
 Throughline's app runs entirely on Bun 1.4.0's native stack: dev serving via `Bun.serve`
 with HTML imports and `development:{hmr:true}` under `bun --hot`, production via

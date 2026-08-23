@@ -4,16 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --hot server.dev.ts",
-    "build": "bun build ./index.html --outdir dist --minify",
-    "serve": "bun server.static.ts",
+    "dev": "next dev -p 4517",
+    "build": "next build",
     "typecheck": "tsc --noEmit",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "lint": "oxlint --deny-warnings",
     "test": "bun test",
     "verify:ui": "bun verify-ui.ts",
-    "check": "bun run fmt:check && bun run lint && bun run typecheck && bun test"
+    "check": "bun run fmt:check && bun run lint && bun run typecheck && bun test",
+    "start": "next start -p 4517"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.0",
@@ -22,6 +22,7 @@
     "@supabase/supabase-js": "^2.112.3",
     "@xyflow/react": "^12.11.3",
     "idb-keyval": "^6.3.0",
+    "next": "16",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "zustand": "^5.0.15"

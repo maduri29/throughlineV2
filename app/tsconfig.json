@@ -13,7 +13,23 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["bun"]
+    "allowJs": true,
+    "incremental": true,
+    "resolveJsonModule": true,
+    "types": ["bun"],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "esModuleInterop": true
   },
-  "include": ["src/**/*.ts?(x)", "*.ts"]
+  "include": [
+    "next-env.d.ts",
+    "src/**/*.ts?(x)",
+    "*.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next"]
 }
