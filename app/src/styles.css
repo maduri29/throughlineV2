@@ -1866,3 +1866,24 @@ body,
   margin: 10px 0 0;
   line-height: 1.5;
 }
+
+/* Which project the app is actually talking to. A dashboard tab open on a
+   different project looks identical from in here, and every setting then lands
+   somewhere with no symptom except that nothing works. */
+.tln-auth__project {
+  font-size: 12px;
+  color: var(--dim);
+  margin: 0 0 16px;
+  overflow-wrap: anywhere;
+}
+
+.tln-auth__project code {
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--ink-2);
+}
+
+.tln-auth__provider-off a {
+  color: inherit;
+}

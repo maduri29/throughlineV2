@@ -303,6 +303,25 @@ export async function authDiagnostics(): Promise<AuthDiagnostics> {
   };
 }
 
+/**
+ * Deep link to this project's provider settings.
+ *
+ * The dashboard has several pages that plausibly look like the place to enable a
+ * sign-in provider, and picking the wrong one fails silently — so hand over the
+ * exact page rather than a path to navigate. Null when the ref cannot be read.
+ */
+export function dashboardProvidersUrl(): string | null {
+  const cfg = readConfig();
+  if (!cfg) return null;
+  try {
+    const ref = new URL(cfg.url).hostname.split(".")[0];
+    if (!ref) return null;
+    return `https://supabase.com/dashboard/project/${ref}/auth/providers`;
+  } catch {
+    return null;
+  }
+}
+
 /** The origin a magic link must return to; must be in the project's allow-list. */
 export function redirectOrigin(): string {
   return typeof location === "undefined" ? "" : location.origin;

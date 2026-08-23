@@ -15,6 +15,7 @@ import {
   authDiagnostics,
   clearConfig,
   cloudState,
+  dashboardProvidersUrl,
   explainAuthError,
   onAuthChange,
   readAuthCallbackError,
@@ -214,6 +215,14 @@ export default function AuthDialog({
             <h2 className="tln-auth__title">Sign in</h2>
             <p className="tln-auth__sub">No password to choose, store or lose.</p>
 
+            {/* Which project this is talking to. Not decoration: a dashboard tab
+                open on a different project than the app is configured with looks
+                identical from the app, and every setting then lands in the wrong
+                place with no symptom except that nothing works. */}
+            <p className="tln-auth__project">
+              Connected to <code>{readConfig()?.url ?? "—"}</code>
+            </p>
+
             {/* Primary because it depends on nothing this project has to run:
                 no mailer, no password. The email path below is the fallback,
                 and it is the one that breaks when the mailer is rate-limited. */}
@@ -249,11 +258,25 @@ export default function AuthDialog({
                   diag.providers.includes("github") ? "tln-auth__hint" : "tln-auth__provider-off"
                 }
               >
-                {diag.providers.includes("github")
-                  ? "GitHub is enabled on this project."
-                  : `GitHub is NOT enabled on this project${
-                      diag.providers.length > 0 ? ` (on: ${diag.providers.join(", ")})` : ""
-                    }. Turn it on in Supabase under Authentication → Sign In / Providers → GitHub — not the OAuth Server page, which is a different feature.`}
+                {diag.providers.includes("github") ? (
+                  "GitHub is enabled on this project."
+                ) : (
+                  <>
+                    GitHub is NOT enabled on this project
+                    {diag.providers.length > 0 ? ` (on: ${diag.providers.join(", ")})` : ""}.{" "}
+                    {dashboardProvidersUrl() ? (
+                      <>
+                        Enable it on{" "}
+                        <a href={dashboardProvidersUrl() ?? ""} target="_blank" rel="noreferrer">
+                          this project&rsquo;s Providers page
+                        </a>
+                        {" — "}check the ref in that URL matches the one above.
+                      </>
+                    ) : (
+                      "Enable it under Authentication → Sign In / Providers → GitHub."
+                    )}
+                  </>
+                )}
               </p>
             )}
 
