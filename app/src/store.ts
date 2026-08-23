@@ -37,6 +37,7 @@ type Actions = {
   patchEdge: (id: string, patch: Partial<GraphEdge>) => void;
   deleteEdge: (id: string) => void;
   setOrder: (containerId: string, order: string[]) => void;
+  addScene: (parentId: string, opts?: { flashback?: boolean }) => string;
   undo: () => void;
   redo: () => void;
   forceSave: () => Promise<void>;
@@ -305,6 +306,39 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
     commit(set, get, "Reorder scenes", [
       { t: "patchNode", id: containerId, patch: { order }, prev: { order: cur.order } },
     ]);
+  },
+
+  /** Context-aware add (T5 §7): one atomic batch — node + contains edge + order append. */
+  addScene: (parentId, opts) => {
+    const parent = get().nodes[parentId];
+    if (!parent) return "";
+    const flashback = opts?.flashback === true;
+    const node: GraphNode = {
+      id: uuidv7(),
+      type: "scene",
+      title: flashback ? "New flashback" : "New scene",
+      parentId,
+      synopsis: "",
+      storyTime: {
+        storyDay: flashback ? -1 : null,
+        tod: flashback ? "Night" : null,
+        eraLabel: null,
+      },
+    };
+    const edge: GraphEdge = { id: uuidv7(), type: "contains", from: parentId, to: node.id };
+    const forward: Op[] = [
+      { t: "addNode", node },
+      { t: "addEdge", edge },
+      {
+        t: "patchNode",
+        id: parent.id,
+        patch: { order: [...(parent.order ?? []), node.id] },
+        prev: { order: parent.order },
+      },
+    ];
+    commit(set, get, flashback ? "Add flashback" : "Add scene", forward);
+    set({ selection: [node.id] });
+    return node.id;
   },
 
   undo: () => {

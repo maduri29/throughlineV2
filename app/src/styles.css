@@ -65,6 +65,130 @@ body,
   cursor: default;
 }
 
+/* Map lens chrome (T5 contract) */
+.tln-map {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.tln-chips {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  gap: 6px;
+  background: #fffdf8ee;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 10px rgb(60 50 20 / 10%);
+}
+
+.tln-chip {
+  all: unset;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  color: #4a4436;
+  background: #f0ead9;
+}
+
+.tln-chip--off {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+
+.tln-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+
+.tln-picker {
+  position: fixed;
+  z-index: 31;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgb(40 32 14 / 22%);
+  padding: 6px;
+  min-width: 180px;
+  transform: translateY(8px);
+}
+
+.tln-picker__title {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 4px 8px;
+}
+
+.tln-picker__opt {
+  all: unset;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--ink);
+}
+
+.tln-picker__opt:hover {
+  background: #eef3f8;
+  color: var(--accent, #3d7fb5);
+}
+
+.tln-picker__none {
+  font-size: 11px;
+  color: var(--dim);
+  padding: 6px 10px;
+}
+
+.tln-picker__hint {
+  font-size: 9px;
+  color: var(--dim);
+  padding: 4px 8px 2px;
+}
+
+.tln-toast-wrap {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.tln-toast {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #2b2620ee;
+  color: #f0e9de;
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 25%);
+}
+
+.tln-toast button {
+  all: unset;
+  cursor: pointer;
+  font-weight: 700;
+  color: #ffd98a;
+}
+
 .tln-header__sub {
   font-size: 12px;
   color: var(--dim);
