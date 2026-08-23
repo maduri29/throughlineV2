@@ -26,6 +26,16 @@ _Avoid_: beat, card
 **Character**:
 A person or personified presence that appears in scenes.
 
+**Role**:
+Free display text naming a character's dramatic position ("Protagonist", "Foil");
+suggestions are offered, never enforced.
+_Avoid_: archetype, class
+
+**Backstory**:
+The off-screen history a character carries into the story; kept whole on the
+character, not scattered across scene synopses.
+_Avoid_: bio, history
+
 **Location**:
 A named place that scenes take place at.
 

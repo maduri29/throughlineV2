@@ -44,10 +44,22 @@ const ep3 = N("episode", "E3 · BREACH", { parentId: project.id });
 for (const ep of [ep1, ep2, ep3]) E("contains", project.id, ep.id);
 project.order = [ep1.id, ep2.id, ep3.id];
 
-const maya = N("character", "Maya");
-const eli = N("character", "Eli");
-const sam = N("character", "Sam");
-const cole = N("character", "Cole");
+const maya = N("character", "Maya", {
+  role: "Protagonist",
+  synopsis: "Airboat captain; keeps the county honest.",
+  backstory: "Ran her father's charters from nine years old until the signature.",
+});
+const eli = N("character", "Eli", {
+  role: "Supporting",
+  synopsis: "Marina foreman; counts everything twice.",
+});
+const sam = N("character", "Sam", {
+  synopsis: "Shrimp deckhand with a talent for snagging county property.",
+});
+const cole = N("character", "Cole", {
+  role: "Antagonist",
+  synopsis: "Permits man with dead LLCs.",
+});
 const boathouse = N("location", "Boathouse");
 const shallows = N("location", "Shallows");
 const ranch = N("location", "Ranch");
@@ -155,6 +167,8 @@ E("takes_place_at", deed.id, ranch.id);
 E("takes_place_at", detour.id, countyRd.id);
 E("embodies", maya.id, water.id);
 E("embodies", eli.id, duty.id);
+E("relates_to", maya.id, eli.id, "siblings");
+E("relates_to", cole.id, eli.id, "holds the debt");
 E("related_to", boathouse.id, water.id);
 
 export function demoGraph(): { nodes: GraphNode[]; edges: GraphEdge[] } {

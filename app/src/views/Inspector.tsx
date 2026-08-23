@@ -1,7 +1,7 @@
 // Inspector dock (T5 §1): Enter focuses it; edits commit on blur via patchNode
 // so each field blur is one undo entry (ADR-0003).
 import { useEffect, useRef, useState } from "react";
-import { TODS } from "../types";
+import { CHAR_ROLE_SUGGESTIONS, TODS } from "../types";
 import type { GraphNode, Tod } from "../types";
 import { useGraphStore } from "../store";
 
@@ -156,6 +156,35 @@ export default function Inspector() {
               onBlur={save}
             />
           </label>
+        </>
+      ) : null}
+
+      {node.type === "character" ? (
+        <>
+          <label className="tln-inspector__field">
+            Role
+            <input
+              list="tln-role-suggestions"
+              placeholder="Protagonist…"
+              value={val("role") ?? ""}
+              onChange={(e) => edit({ role: e.target.value })}
+              onBlur={save}
+            />
+          </label>
+          <label className="tln-inspector__field">
+            Backstory
+            <textarea
+              value={val("backstory") ?? ""}
+              rows={4}
+              onChange={(e) => edit({ backstory: e.target.value })}
+              onBlur={save}
+            />
+          </label>
+          <datalist id="tln-role-suggestions">
+            {CHAR_ROLE_SUGGESTIONS.map((r) => (
+              <option key={r} value={r} />
+            ))}
+          </datalist>
         </>
       ) : null}
 

@@ -303,7 +303,17 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
       set({ selection: [node.id] });
       return node.id;
     }
-    const node: GraphNode = { id: uuidv7(), type, title, synopsis: "" };
+    // Own story entities under the active project so they survive scoping
+    // before any edges exist (scopes keeps the parent-chain subtree). Seeds
+    // stay parentless — they belong to no project yet.
+    const owned = type === "character" || type === "location" || type === "theme";
+    const node: GraphNode = {
+      id: uuidv7(),
+      type,
+      title,
+      synopsis: "",
+      ...(owned && s.projectId && s.nodes[s.projectId] ? { parentId: s.projectId } : {}),
+    };
     commit(set, get, `Add ${type}`, [{ t: "addNode", node }]);
     set({ selection: [node.id] });
     return node.id;

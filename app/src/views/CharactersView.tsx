@@ -77,7 +77,7 @@ export default function CharactersView() {
           setDraft({});
         };
 
-        const sceneChip = (sid: string, cls: string): JSX.Element => (
+        const sceneChip = (sid: string, cls: string) => (
           <button key={sid} className={cls} onClick={() => select([sid])}>
             {nodes[sid]?.title ?? sid}
           </button>
