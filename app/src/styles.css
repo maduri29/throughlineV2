@@ -1791,3 +1791,69 @@ body,
   color: var(--ink-2);
   font-weight: 400;
 }
+
+/* GitHub is the primary path: it needs neither the mailer nor a password, so it
+   cannot be blocked by the two things that break the email route. */
+.tln-auth__github {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: #1f2328;
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.tln-auth__github:hover {
+  background: #32383f;
+}
+
+.tln-auth__github:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tln-auth__secondary {
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 500;
+  padding: 9px 14px;
+  cursor: pointer;
+  margin: 4px 0 0;
+}
+
+.tln-auth__secondary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Rule with the label sitting in the gap, rather than a bare word floating. */
+.tln-auth__or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 14px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+}
+
+.tln-auth__or::before,
+.tln-auth__or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}

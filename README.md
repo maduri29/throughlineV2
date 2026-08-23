@@ -38,10 +38,31 @@ survives losing the machine and follows you between devices.
    (`sb_publishable_...`) key
 4. **Authentication -> URL Configuration**: add the origin you use (e.g.
    `http://localhost:4517`) to **Redirect URLs**, or the sign-in link will 404
-5. In the app: **Sign in** in the header → paste the URL and publishable key →
-   **Connect**, then enter your email and open the link it sends
-6. **Library → Cloud copies**: **Push** sends the open story, **Pull** brings a
+5. Enable GitHub sign-in (the primary path — see below)
+6. In the app: **Sign in** in the header → paste the URL and publishable key →
+   **Connect** → **Continue with GitHub**
+7. **Library → Cloud copies**: **Push** sends the open story, **Pull** brings a
    cloud copy back
+
+### GitHub sign-in
+
+Preferred over the email link because it depends on nothing this project has to
+run. Supabase's built-in mailer sends only a couple of messages an hour and then
+returns *"email rate limit exceeded"*; it is explicitly not a production mailer,
+so magic links are kept only as a fallback. GitHub needs no mailer and no
+password.
+
+1. GitHub → **Settings → Developer settings → OAuth Apps → New OAuth App**
+2. **Homepage URL** `http://localhost:4517`;
+   **Authorization callback URL** `https://<project-ref>.supabase.co/auth/v1/callback`
+   — this is the *Supabase* callback, not the app's
+3. Supabase → **Authentication → Providers → GitHub**: enable, paste the Client
+   ID and Client Secret
+
+The client secret lives in Supabase, never in this repo or the bundle.
+
+To use the email fallback instead, add your own SMTP provider under
+**Project Settings → Authentication → SMTP Settings** to lift the rate cap.
 
 Connecting a project and signing in are separate screens in that dialog, because
 they are separate jobs — the first is one-time technical setup, the second is

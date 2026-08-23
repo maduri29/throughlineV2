@@ -306,6 +306,25 @@ export async function signIn(email: string): Promise<string | null> {
   return error ? error.message : null;
 }
 
+/**
+ * GitHub sign-in — the primary path, because it depends on no infrastructure
+ * this project has to run. No email is sent (so the built-in mailer's few
+ * messages an hour cannot block it) and no password exists to choose, store,
+ * leak or reset.
+ *
+ * On success the browser leaves for GitHub, so the returned value only ever
+ * carries a failure worth showing.
+ */
+export async function signInWithGitHub(): Promise<string | null> {
+  const c = getClient();
+  if (!c) return "Sync is not configured.";
+  const { error } = await c.auth.signInWithOAuth({
+    provider: "github",
+    options: { redirectTo: location.origin },
+  });
+  return error ? error.message : null;
+}
+
 export async function signOut(): Promise<void> {
   await getClient()?.auth.signOut();
 }
@@ -325,6 +344,10 @@ export function explainAuthError(message: string): string | null {
 
   if (m.includes("rate limit") || m.includes("too many request") || m.includes("429")) {
     return "Supabase's built-in mailer only sends a couple of messages an hour, and this project has hit that. Earlier attempts did send, so check your inbox for the most recent link — it stays valid for about an hour. To lift the cap, add your own SMTP provider under Project Settings → Authentication → SMTP Settings.";
+  }
+  if (m.includes("provider is not enabled") || m.includes("unsupported provider")) {
+    const base = readConfig()?.url ?? "your project";
+    return `GitHub sign-in is not switched on for this project. Enable it under Authentication → Providers → GitHub, pasting the Client ID and Client Secret from a GitHub OAuth app whose Authorization callback URL is ${base}/auth/v1/callback.`;
   }
   if (m.includes("signups not allowed") || m.includes("signup is disabled")) {
     return "This project has email sign-ups turned off. Either enable them under Authentication → Providers → Email, or create your user directly under Authentication → Users and sign in as that address.";

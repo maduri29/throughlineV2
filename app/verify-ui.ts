@@ -193,6 +193,16 @@ async function main(): Promise<void> {
       signInTitle ?? "no title",
     );
 
+    // GitHub is the primary path deliberately: it needs neither the built-in
+    // mailer (a couple of messages an hour, then a hard 429) nor a password.
+    const gh = await page.locator(".tln-auth__github").count();
+    const emailFallback = await page.getByRole("button", { name: "Email me a link" }).count();
+    check(
+      "GitHub is offered as the primary sign-in",
+      gh === 1 && emailFallback === 1,
+      `github=${gh} email=${emailFallback}`,
+    );
+
     /* ---- returning from a link narrates itself, success or failure ---- */
     // Exactly how Supabase bounces an expired or un-allow-listed link back.
     await page.goto(
