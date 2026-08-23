@@ -21,6 +21,30 @@ bun run check      # fmt + lint + typecheck + tests
 bun run build      # static production build → app/dist
 ```
 
+## Sync (optional, ADR-0005)
+
+The app is local-first and works with no account. Sync adds a server copy so work
+survives losing the machine and follows you between devices.
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. **SQL Editor** -> paste `supabase/migrations/0001_story_graph.sql` -> **Run**
+3. **Settings -> API**: copy the **Project URL** and the **publishable**
+   (`sb_publishable_...`) key
+4. In the app, open the browser console once and set them:
+
+```js
+localStorage.setItem("TLN_SUPABASE_URL", "https://xxxx.supabase.co");
+localStorage.setItem("TLN_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_...");
+```
+
+Never put the **secret** (`sb_secret_...`) key in the app or this repo. The
+publishable key is safe in the bundle *only* because every table has row level
+security scoped to `auth.uid()` — that is what step 2 installs. A table without
+RLS is a public API to anyone holding the key.
+
+Sync is **last-write-wins per project**, not collaboration: two devices editing
+the same project at once will lose one side's edits.
+
 ## Deploy (Vercel)
 
 The app is local-first: all story data lives in your browser's IndexedDB,

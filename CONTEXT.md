@@ -3,6 +3,10 @@
 A local-first story-development app: raw ideas grow into projects, projects grow a visible
 graph of scenes, characters, locations and themes, and the story becomes a Fountain screenplay.
 
+Local-first is literal: the working store is IndexedDB in your browser, and the app opens,
+edits and exports with no network and no account. Since ADR-0005 an **optional** Supabase
+tier can sync a copy for durability across devices; signed out, nothing leaves the machine.
+
 ## Language
 
 ### Story material

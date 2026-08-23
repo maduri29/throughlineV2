@@ -19,6 +19,7 @@
     "@codemirror/commands": "^6.11.0",
     "@codemirror/state": "^6.7.1",
     "@codemirror/view": "^6.43.9",
+    "@supabase/supabase-js": "^2.112.3",
     "@xyflow/react": "^12.11.3",
     "idb-keyval": "^6.3.0",
     "react": "^19.2.8",

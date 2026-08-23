@@ -96,7 +96,8 @@ The same underlying graph rendered four ways:
 
 ## 6. Suggested MVP (what the prototype demonstrates)
 
-One local-first web app, no accounts:
+One local-first web app. Accounts were originally out of scope; ADR-0005 (2026-08-23)
+added an **optional** sync tier, so accounts are additive and never required:
 
 - Infinite pan/zoom canvas with draggable typed nodes + typed edges.
 - Inspector panel for editing node details per type.

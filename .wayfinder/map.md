@@ -72,5 +72,6 @@ multi-project library) with a Fountain textarea editor and `.fountain` export.
 - AI assistance in any form (post-v1).
 - CodeMirror or custom block-based screenplay editor — block editor is the named **post-v1
   fast-follow**; textarea+preview ships in v1.
-- Realtime collaboration / CRDT sync / cloud accounts.
+- Realtime collaboration / CRDT sync. **Cloud accounts moved IN SCOPE** by ADR-0005
+  (2026-08-23) as an optional sync tier; multi-writer editing stays out.
 - Mobile-native packaging; PWA/desktop wrappers undecided until after v1 ships.
