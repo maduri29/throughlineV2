@@ -30,8 +30,16 @@ so the production build is fully static and serves from Vercel's edge CDN.
 2. Set **Root Directory** — see the table below; it decides which config is read
 3. Deploy — the matching `vercel.json` supplies the Bun install/build commands
 
-Every push to `main` auto-deploys, provided the commit author is a real
-GitHub account (see below).
+**Current status (2026-08-23):** the Git integration is **not connected** —
+pushes to `main` do *not* deploy. Deploys go through the CLI from the repo root:
+
+```bash
+bunx vercel login        # once per machine, interactive
+bunx vercel --prod --yes # builds via root vercel.json → app/dist
+```
+
+Production alias: <https://storylane2.vercel.app>. The sections below apply
+if/when the Git integration gets connected.
 
 ### Root Directory decides which vercel.json applies
 
