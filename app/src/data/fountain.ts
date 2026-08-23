@@ -1,5 +1,6 @@
 // Fountain subset engine (T2 spec: research/fountain-subset.md).
 // Pure functions only — parse, render preview HTML, build skeletons, assemble export.
+import { TODS } from "../types";
 import type { GraphEdge, GraphNode } from "../types";
 
 /* ---------------------------------- slugs --------------------------------- */
@@ -562,4 +563,76 @@ export function downloadFountain(
   a.download = `${kebab(project.title)}.fountain`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/* --------------------------------- import --------------------------------- */
+
+export type SceneChunk = {
+  /** Raw source text of the scene, heading line included. */
+  body: string;
+  intExt: "INT." | "EXT." | "EST." | "INT./EXT.";
+  location: string;
+  tod: Tod | null;
+};
+
+function canonicalTod(raw: string): Tod | null {
+  const t = raw.trim().toUpperCase();
+  for (const cand of TODS) {
+    if (cand.toUpperCase() === t) return cand;
+  }
+  return null;
+}
+
+/**
+ * Slice raw Fountain text into scene chunks at every scene heading (same
+ * heading rule as parseFountain, incl. "heading on line 1" legality). Bodies
+ * keep their exact original formatting so re-export round-trips cleanly.
+ */
+export function splitSceneChunks(src: string): SceneChunk[] {
+  const lines = src.replace(/\r\n?/g, "\n").split("\n");
+  const blank = (k: number): boolean => (lines[k] ?? "").trim() === "";
+  // Identical rule to parseFountain's scene_heading branch: blank before
+  // (or doc start) and blank after (or EOF).
+  const isHeading = (k: number): boolean => {
+    if (!HEADING_RE.test(lines[k] ?? "")) return false;
+    return (k === 0 || blank(k - 1)) && (k + 1 >= lines.length || blank(k + 1));
+  };
+
+  const starts: number[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (isHeading(i)) starts.push(i);
+  }
+
+  const chunks: SceneChunk[] = [];
+  for (const [si, start] of starts.entries()) {
+    const end = si + 1 < starts.length ? (starts[si + 1] ?? 0) : lines.length;
+    let body = lines.slice(start, end).join("\n").replace(/\n+$/, "");
+    const headingLine = lines[start] ?? "";
+    // Strip the heading from the stored body — the slug line is locked and
+    // regenerated at export time.
+    body = body.slice(headingLine.length).replace(/^\n+/, "");
+    const m = /^(I\/E|INT\.?\/EXT|INT|EXT|EST)\.?\s+(.*)$/i.exec(headingLine);
+    const prefixRaw = (m?.[1] ?? "INT").toUpperCase();
+    const intExt: "INT." | "EXT." | "EST." | "INT./EXT." =
+      prefixRaw === "EXT"
+        ? "EXT."
+        : prefixRaw === "EST"
+          ? "EST."
+          : prefixRaw === "I/E" || prefixRaw.startsWith("INT./")
+            ? "INT./EXT."
+            : "INT.";
+    const rest = m?.[2]?.trim() ?? "";
+    const dash = rest.lastIndexOf(" - ");
+    let location = rest;
+    let tod: Tod | null = null;
+    if (dash >= 0) {
+      const canon = canonicalTod(rest.slice(dash + 3));
+      if (canon) {
+        tod = canon;
+        location = rest.slice(0, dash);
+      }
+    }
+    chunks.push({ body, intExt, location, tod });
+  }
+  return chunks;
 }

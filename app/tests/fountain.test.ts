@@ -6,6 +6,7 @@ import {
   scriptSequence,
   skeletonBody,
   slugFor,
+  splitSceneChunks,
 } from "../src/data/fountain";
 import type { GraphEdge, GraphNode } from "../src/types";
 
@@ -139,5 +140,58 @@ describe("script order + export", () => {
     const body = skeletonBody(sc1);
     expect(body).toContain("[ACTION — what happens in this scene?]");
     expect(body).not.toContain("INT.");
+  });
+});
+
+describe("splitSceneChunks (import)", () => {
+  test("splits at headings, parses prefix/location/tod, strips heading from body", () => {
+    const src = [
+      "INT. BOATHOUSE - NIGHT",
+      "",
+      "MAYA",
+      "Hold it steady.",
+      "",
+      "EXT. SHALLOWS - DAWN",
+      "",
+      "The flare dies over flat water.",
+    ].join("\n");
+    const chunks = splitSceneChunks(src);
+    expect(chunks.length).toBe(2);
+    expect(chunks[0]?.intExt).toBe("INT.");
+    expect(chunks[0]?.location).toBe("BOATHOUSE");
+    expect(chunks[0]?.tod).toBe("Night");
+    expect(chunks[0]?.body).toContain("MAYA");
+    expect(chunks[0]?.body).not.toContain("INT.");
+    expect(chunks[1]?.intExt).toBe("EXT.");
+    expect(chunks[1]?.tod).toBe("Dawn");
+  });
+
+  test("line-1 heading is legal; caps action lines are not headings; unknown tod keeps location", () => {
+    const src = [
+      "EST. RANCH - GOLDEN HOUR",
+      "",
+      "!The door hangs open.",
+      "",
+      "LATER",
+      "",
+      "I/E. COUNTY RD",
+      "",
+      "The truck rolls on.",
+    ].join("\n");
+    const chunks = splitSceneChunks(src);
+    expect(chunks.length).toBe(2);
+    expect(chunks[0]?.intExt).toBe("EST.");
+    expect(chunks[0]?.location).toBe("RANCH - GOLDEN HOUR");
+    expect(chunks[0]?.tod).toBeNull();
+    expect(chunks[0]?.body).toContain("!The door hangs open.");
+    expect(chunks[0]?.body).not.toContain("EST.");
+    expect(chunks[1]?.intExt).toBe("INT./EXT.");
+    expect(chunks[1]?.location).toBe("COUNTY RD");
+  });
+
+  test("title-page preamble produces no chunk; no headings → no chunks", () => {
+    const withTitle = "Title:\n\tHigh Water\n\n\nINT. DECK - DAY\n\nWave.";
+    expect(splitSceneChunks(withTitle).length).toBe(1);
+    expect(splitSceneChunks("Just some action.\nAnd more.").length).toBe(0);
   });
 });

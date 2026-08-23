@@ -26,12 +26,14 @@ export default function ScriptView() {
   const [buffers, setBuffers] = useState<Record<string, string>>({});
   const [splitPct, setSplitPct] = useState(50);
   const [collapsed, setCollapsed] = useState(false);
+  const [importNote, setImportNote] = useState<string | null>(null);
 
   const buffersRef = useRef(buffers);
   useEffect(() => {
     buffersRef.current = buffers;
   }, [buffers]);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const fileInput = useRef<HTMLInputElement | null>(null);
 
   const project = projectId ? nodeMap[projectId] : undefined;
   const sequence = useMemo(
@@ -143,6 +145,13 @@ export default function ScriptView() {
   const slug = scene ? slugFor(scene, locationTitleFor(scene.id, nodeMap, edgeMap)) : "";
   const previewHtml = useMemo(() => renderPreview(parseFountain(text).els), [text]);
 
+  const onImportFile = useCallback(async (file: File) => {
+    const raw = await file.text();
+    const n = useGraphStore.getState().importFountain(raw);
+    setImportNote(n > 0 ? `Imported ${n} scene${n === 1 ? "" : "s"}` : "No scene headings found");
+    setTimeout(() => setImportNote(null), 5000);
+  }, []);
+
   if (!project) return <div className="tln-script">Loading…</div>;
 
   return (
@@ -174,6 +183,21 @@ export default function ScriptView() {
             <div className="tln-slug" title="Graph-owned — edit in Inspector">
               {slug}
             </div>
+            <button className="tln-btn" onClick={() => fileInput.current?.click()}>
+              Import .fountain
+            </button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".fountain,.txt,text/plain"
+              hidden
+              onChange={() => {
+                const f = fileInput.current?.files?.[0];
+                fileInput.current!.value = "";
+                if (f) void onImportFile(f);
+              }}
+            />
+            {importNote ? <span className="tln-script__note">{importNote}</span> : null}
             <button
               className="tln-btn"
               onClick={() => void downloadFountain(project, nodeMap, edgeMap)}

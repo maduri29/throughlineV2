@@ -642,6 +642,12 @@ body,
   min-height: 0;
 }
 
+.tln-script__note {
+  font-size: 11px;
+  color: #12a074;
+  white-space: nowrap;
+}
+
 .tln-workspace__lens {
   flex: 1;
   display: flex;

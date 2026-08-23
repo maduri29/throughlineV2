@@ -2,6 +2,7 @@
 // full persisted undo/redo op-log (ADR-0003) and hybrid autosave (ADR-0004).
 import { create } from "zustand";
 import { demoGraph, uuidv7 } from "./demo";
+import { splitSceneChunks } from "./data/fountain";
 import { dbDelete, dbGetAll, dbPut, metaGet, metaSet } from "./data/idb";
 import { scopeToProject } from "./data/scopes";
 import {
@@ -41,6 +42,8 @@ type Actions = {
   addScene: (parentId: string, opts?: { flashback?: boolean }) => string;
   /** Create any entity type with sensible defaults; episodes nest under the project. */
   addNodeOfType: (type: Exclude<NodeType, "project">) => string;
+  /** Split .fountain text into scene nodes under the project; returns scene count. */
+  importFountain: (text: string) => number;
   switchProject: (id: string) => Promise<void>;
   createProject: (title: string) => Promise<void>;
   undo: () => void;
@@ -304,6 +307,43 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
     commit(set, get, `Add ${type}`, [{ t: "addNode", node }]);
     set({ selection: [node.id] });
     return node.id;
+  },
+
+  importFountain: (text) => {
+    const s = get();
+    if (!s.projectId) return 0;
+    const project = s.nodes[s.projectId];
+    if (!project || project.type !== "project") return 0;
+    const chunks = splitSceneChunks(text);
+    if (chunks.length === 0) return 0;
+    const forward: Op[] = [];
+    const newIds: string[] = [];
+    for (const c of chunks) {
+      const node: GraphNode = {
+        id: uuidv7(),
+        type: "scene",
+        title: c.location ? (c.tod ? `${c.location} - ${c.tod}` : c.location) : "Imported scene",
+        parentId: project.id,
+        synopsis: "",
+        storyTime: { storyDay: null, tod: c.tod, eraLabel: null },
+        fountain: c.body,
+        intExt: c.intExt,
+      };
+      newIds.push(node.id);
+      forward.push(
+        { t: "addNode", node },
+        { t: "addEdge", edge: { id: uuidv7(), type: "contains", from: project.id, to: node.id } },
+      );
+    }
+    forward.push({
+      t: "patchNode",
+      id: project.id,
+      patch: { order: [...(project.order ?? []), ...newIds] },
+      prev: { order: project.order },
+    });
+    commit(set, get, `Import ${chunks.length} scenes`, forward);
+    set({ selection: [] });
+    return chunks.length;
   },
 
   patchNode: (id, patch) => {

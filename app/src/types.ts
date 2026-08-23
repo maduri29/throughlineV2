@@ -44,6 +44,9 @@ export const EDGE_TYPES = [
 ] as const;
 export type EdgeType = (typeof EDGE_TYPES)[number];
 
+/** Role suggestions for characters; the field itself stays free text. */
+export const CHAR_ROLE_SUGGESTIONS = ["Protagonist", "Antagonist", "Supporting", "Minor"] as const;
+
 export type GraphNode = {
   id: string;
   type: NodeType;
@@ -62,6 +65,10 @@ export type GraphNode = {
   /** Project-node title-page fields. */
   author?: string;
   contact?: string;
+  /** Character-node dramatic position, free text ("Protagonist", "Foil"). */
+  role?: string;
+  /** Character-node off-screen history; longer form than synopsis. */
+  backstory?: string;
 };
 
 export type GraphEdge = {
