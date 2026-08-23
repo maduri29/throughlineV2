@@ -223,6 +223,32 @@ export function readAuthCallbackError(): string | null {
   return (description ?? code ?? "").replace(/\+/g, " ");
 }
 
+/**
+ * Which sign-in providers the project actually has switched on.
+ *
+ * Asked of the project rather than assumed, because "I enabled GitHub" and
+ * "GitHub is enabled" are different claims — the dashboard has more than one
+ * page that looks like the right one, and the failure is otherwise invisible
+ * until a sign-in attempt returns a generic error.
+ *
+ * Null when it cannot be determined; an empty array means none are on.
+ */
+export async function enabledProviders(): Promise<string[] | null> {
+  const cfg = readConfig();
+  if (!cfg) return null;
+  try {
+    const res = await fetch(`${cfg.url}/auth/v1/settings`, { headers: { apikey: cfg.key } });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { external?: Record<string, unknown> };
+    return Object.entries(json.external ?? {})
+      .filter(([, on]) => on === true)
+      .map(([name]) => name)
+      .sort();
+  } catch {
+    return null;
+  }
+}
+
 export type AuthDiagnostics = {
   configured: boolean;
   origin: string;
@@ -230,6 +256,7 @@ export type AuthDiagnostics = {
   lastEvent: string | null;
   session: boolean;
   storageKeys: number;
+  providers: string[] | null;
 };
 
 /**
@@ -272,6 +299,7 @@ export async function authDiagnostics(): Promise<AuthDiagnostics> {
     lastEvent: lastAuthEvent,
     session,
     storageKeys,
+    providers: await enabledProviders(),
   };
 }
 

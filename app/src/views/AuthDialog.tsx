@@ -240,6 +240,23 @@ export default function AuthDialog({
               Continue with GitHub
             </button>
 
+            {/* Asked of the project, not assumed. The dashboard has more than one
+                page that looks like the place to enable this, so say plainly when
+                the provider is off rather than letting the click fail. */}
+            {diag?.providers !== null && diag?.providers !== undefined && (
+              <p
+                className={
+                  diag.providers.includes("github") ? "tln-auth__hint" : "tln-auth__provider-off"
+                }
+              >
+                {diag.providers.includes("github")
+                  ? "GitHub is enabled on this project."
+                  : `GitHub is NOT enabled on this project${
+                      diag.providers.length > 0 ? ` (on: ${diag.providers.join(", ")})` : ""
+                    }. Turn it on in Supabase under Authentication → Sign In / Providers → GitHub — not the OAuth Server page, which is a different feature.`}
+              </p>
+            )}
+
             <div className="tln-auth__or">
               <span>or use email</span>
             </div>
@@ -387,6 +404,14 @@ export default function AuthDialog({
               <dd>{diag.session ? "present" : "absent"}</dd>
               <dt>Stored auth entries</dt>
               <dd>{diag.storageKeys === -1 ? "storage blocked" : diag.storageKeys}</dd>
+              <dt>Providers enabled</dt>
+              <dd>
+                {diag.providers === null
+                  ? "could not read"
+                  : diag.providers.length > 0
+                    ? diag.providers.join(", ")
+                    : "none"}
+              </dd>
             </dl>
           </details>
         )}
