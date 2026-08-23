@@ -1,0 +1,5 @@
+# Never upload the legacy Bun-built static bundle. Its index.html lands at the
+# deployment root and shadows the Next.js "/" route, so production would serve
+# whatever stale bytes happen to sit in a local dist/ folder instead of the
+# fresh remote build (this actually happened — see commit history).
+app/dist/
