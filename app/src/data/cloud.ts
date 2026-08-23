@@ -18,7 +18,8 @@ const URL_KEY = "TLN_SUPABASE_URL";
 const PUB_KEY = "TLN_SUPABASE_PUBLISHABLE_KEY";
 
 /**
- * Built-in project, baked in at build time so users never see the connect form.
+ * Built-in project, compiled into the bundle so users never see the connect
+ * form.
  *
  * These are the PUBLISHABLE credentials, which are safe to ship in a client
  * bundle *because* every table has row level security scoped to auth.uid()
@@ -26,11 +27,15 @@ const PUB_KEY = "TLN_SUPABASE_PUBLISHABLE_KEY";
  * they do not authorize anything: without a signed-in user, RLS returns zero
  * rows. The secret key must still never appear here or anywhere in a build.
  *
+ * Plain literals, not process.env reads: the production site is served from a
+ * Bun-bundled static build where NEXT_PUBLIC_* substitution does not happen,
+ * and an unguarded `process` reference would throw in the browser.
+ *
  * A user can still point their install elsewhere — localStorage wins over this
  * default, so self-hosters keep their escape hatch.
  */
-const BUILTIN_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
-const BUILTIN_KEY = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
+const BUILTIN_URL = "https://tfybmchbbpamyksbdprs.supabase.co";
+const BUILTIN_KEY = "sb_publishable__HI8r8-S6DonTdM1dOPBdQ_5mmRYolA";
 
 export function readConfig(): { url: string; key: string } | null {
   try {
