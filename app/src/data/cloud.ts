@@ -18,14 +18,24 @@ const URL_KEY = "TLN_SUPABASE_URL";
 const PUB_KEY = "TLN_SUPABASE_PUBLISHABLE_KEY";
 
 /**
- * Config is read from localStorage rather than a build-time env var so the same
- * static bundle works signed-out, and so a user can point a self-hosted instance
- * at it without a rebuild. Absent config is the normal case, not an error.
+ * Built-in project, baked in at build time so users never see the connect form.
+ *
+ * These are the PUBLISHABLE credentials, which are safe to ship in a client
+ * bundle *because* every table has row level security scoped to auth.uid()
+ * (see supabase/migrations/0001_story_graph.sql). They identify the project,
+ * they do not authorize anything: without a signed-in user, RLS returns zero
+ * rows. The secret key must still never appear here or anywhere in a build.
+ *
+ * A user can still point their install elsewhere — localStorage wins over this
+ * default, so self-hosters keep their escape hatch.
  */
+const BUILTIN_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
+const BUILTIN_KEY = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
+
 export function readConfig(): { url: string; key: string } | null {
   try {
-    const url = localStorage.getItem(URL_KEY);
-    const key = localStorage.getItem(PUB_KEY);
+    const url = localStorage.getItem(URL_KEY) ?? BUILTIN_URL;
+    const key = localStorage.getItem(PUB_KEY) ?? BUILTIN_KEY;
     return url && key ? { url, key } : null;
   } catch {
     return null; // private mode / storage blocked
@@ -119,12 +129,21 @@ export function writeConfig(url: string, key: string): string | null {
   return null;
 }
 
-/** Forget the project entirely. Local stories are untouched — sync is a tier above them. */
+/**
+ * Forget any locally-set project. With a built-in project compiled in, this
+ * falls back to it rather than leaving the app unconfigured; local stories are
+ * untouched either way — sync is a tier above them.
+ */
 export function clearConfig(): void {
   void client?.auth.signOut();
   localStorage.removeItem(URL_KEY);
   localStorage.removeItem(PUB_KEY);
   client = null;
+}
+
+/** True when a project is compiled into this build (not user-configured). */
+export function hasBuiltinConfig(): boolean {
+  return Boolean(BUILTIN_URL && BUILTIN_KEY);
 }
 
 /** Null whenever sync is not configured. Callers must handle null, not assume. */

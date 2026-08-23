@@ -17,6 +17,7 @@ import {
   cloudState,
   dashboardProvidersUrl,
   explainAuthError,
+  hasBuiltinConfig,
   onAuthChange,
   readAuthCallbackError,
   readConfig,
@@ -107,7 +108,9 @@ export default function AuthDialog({
     : state?.kind === "signed-in"
       ? "account"
       : state?.kind === "unconfigured"
-        ? "connect"
+        ? hasBuiltinConfig()
+          ? "signIn" // project compiled in; go straight to proving who you are
+          : "connect"
         : sentTo
           ? "inbox"
           : "signIn";
@@ -316,7 +319,7 @@ export default function AuthDialog({
                 void refresh();
               }}
             >
-              Disconnect this project
+              {hasBuiltinConfig() ? "Use the built-in project" : "Disconnect this project"}
             </button>
           </div>
         )}
@@ -396,7 +399,7 @@ export default function AuthDialog({
                 void refresh();
               }}
             >
-              Disconnect this project
+              {hasBuiltinConfig() ? "Use the built-in project" : "Disconnect this project"}
             </button>
           </div>
         )}
