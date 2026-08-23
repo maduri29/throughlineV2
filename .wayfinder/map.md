@@ -51,15 +51,18 @@ multi-project library) with a Fountain textarea editor and `.fountain` export.
 - [Fountain subset specification](tickets/002-fountain-subset-specification.md): v1 parses/previews/emits the full core grammar with graceful degradation for dual dialogue, notes, sections; 9 conformance fixtures ready — asset `research/fountain-subset.md`.
 - [Lock the story-graph data model](tickets/003-lock-story-graph-data-model.md): 12 typed edges, UUIDv7 identity, structured story time `{storyDay,tod,eraLabel}`, normalized IndexedDB stores; artifacts `CONTEXT.md` + `docs/adr/0001-story-graph-data-model.md`.
 - [Prove Bun-native fullstack with React Flow](tickets/001-prove-bun-native-fullstack.md): all milestones passed on Bun 1.4.0 — dev-HMR zero-restart, prod build, TS7 strict + oxfmt/oxlint gates; recipe `research/bun-native-proof.md`, decision `docs/adr/0002-pure-bun-native-toolchain.md`.
-- [Scaffold recipe — relocate and stand up](tickets/007-scaffold-recipe-relocate-and-stand-up.md): executed directly after two failed runners; COPY-first relocation to `C:\dev\throughline` (live repo now), app/ per proof recipe, HIGH WATER seed, full gate + dev/prod runtime proofs green — log `SCAFFOLD.md`.
+- [Scaffold recipe — relocate and stand up](tickets/007-scaffold-recipe-relocate-and-stand-up.md): executed directly after two failed runners; COPY-first relocation (live repo now `C:\Users\madur\work\throughline`), app/ per proof recipe, HIGH WATER seed, full gate + dev/prod runtime proofs green — log `SCAFFOLD.md`.
+- [App shell, navigation and library UX contract](tickets/004-app-shell-navigation-library-ux.md): two-level Library↔Workspace, lens tabs as state (no router), auto-seeded HIGH WATER demo, keyboard = navigation + safety keys; detail flows land in execution phase.
+- [Canvas interaction contract](tickets/005-canvas-interaction-contract.md): Beat×Storyline in React Flow terms — drag-connect legality picker, instant delete + undo toast, type-toggle filters, context-aware double-click add, shift+click & marquee multi-select, RF-default pan/zoom, honest a11y floor; ADRs `docs/adr/0003-full-persisted-undo-redo.md` + `docs/adr/0004-hybrid-autosave.md`.
 
 ## Not yet specified
 
 - Visual polish/theming system (tokens, dark/light) — sharpens after shell/navigation contract.
 - Error-handling & empty-state catalog — graduates from library + editor contracts.
-- Accessibility baseline (keyboard-only graph editing?) — after canvas interaction contract.
+- ~~Accessibility baseline~~ — floor settled by T5: nav/inspect/select/delete fully
+  keyboard-reachable; creation is pointer-first (post-v1 candidate).
 - Testing strategy (bun test scope: unit parser/store vs none-for-v1) — after scaffold proves.
-- Undo/redo depth — may emerge from canvas interaction contract or stay fog for v1.
+- ~~Undo/redo depth~~ — settled by T5 / ADR-0003: full stack, persisted per project.
 - Performance targets for large graphs (500+ nodes) — post-v1 unless spec demands.
 
 ## Out of scope
