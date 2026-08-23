@@ -6,6 +6,7 @@ import CharactersView from "./views/CharactersView";
 import ScriptView from "./views/ScriptView";
 import LibraryView from "./views/LibraryView";
 import Inspector from "./views/Inspector";
+import Palette from "./views/Palette";
 
 const SAVE_LABEL: Record<string, string> = {
   booting: "Loading…",
@@ -34,6 +35,14 @@ export default function App() {
   const projectId = useGraphStore((s) => s.projectId);
   const [lens, setLens] = useState<Lens>("map");
   const [level, setLevel] = useState<"library" | "workspace">("workspace");
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  /** Palette jump: pick the lens that shows the node best. */
+  const jumpTo = (id: string, type: string): void => {
+    setLevel("workspace");
+    setLens(type === "character" ? "characters" : "map");
+    useGraphStore.getState().select([id]);
+  };
 
   useEffect(() => {
     void useGraphStore.getState().boot();
@@ -45,6 +54,9 @@ export default function App() {
       if (mod && e.key.toLowerCase() === "s") {
         e.preventDefault();
         void forceSave();
+      } else if (mod && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
       } else if (mod && !e.shiftKey && e.key.toLowerCase() === "z") {
         e.preventDefault();
         undo();
@@ -113,6 +125,7 @@ export default function App() {
           {lens !== "script" && lens !== "characters" ? <Inspector /> : null}
         </div>
       )}
+      <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jumpTo} />
     </div>
   );
 }

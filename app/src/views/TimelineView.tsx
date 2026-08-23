@@ -1,10 +1,12 @@
 // Timeline lens: the second order (chronology by storyDay) against the Map's
 // storyline bands. Flashbacks (negative days) render in the upper lane.
+// Scene cards drag horizontally to reschedule: drop-x picks the day column
+// and one patchNode commits the move (undoable like any edit).
 import { Background, Controls, ReactFlow, ReactFlowProvider } from "@xyflow/react";
 import type { Edge, NodeTypes } from "@xyflow/react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import GraphCard, { type CardFlowNode } from "../GraphNode";
-import { groupByDay } from "../data/scopes";
+import { groupByDay, type DayBucket } from "../data/scopes";
 import { useGraphStore } from "../store";
 
 const nodeTypes = { card: GraphCard } satisfies NodeTypes;
@@ -14,6 +16,28 @@ function TimelineInner() {
   const nodes = useGraphStore((s) => s.nodes);
   const edges = useGraphStore((s) => s.edges);
   const select = useGraphStore((s) => s.select);
+  const patchNode = useGraphStore((s) => s.patchNode);
+
+  const buckets = useMemo<DayBucket[]>(
+    () => groupByDay(Object.values(nodes).filter((n) => n.type === "scene")),
+    [nodes],
+  );
+
+  /** Drop-x decides the column; the column decides the new storyDay. */
+  const onNodeDragStop = useCallback(
+    (_: unknown, n: { id: string; position: { x: number } }) => {
+      if (n.id.startsWith("day-")) return;
+      const col = Math.min(buckets.length - 1, Math.max(0, Math.round(n.position.x / COL_W)));
+      const target = buckets[col];
+      if (!target) return;
+      const cur = useGraphStore.getState().nodes[n.id];
+      if (!cur || cur.type !== "scene") return;
+      const st = cur.storyTime ?? { storyDay: null, tod: null, eraLabel: null };
+      if (st.storyDay === target.day) return;
+      patchNode(cur.id, { storyTime: { ...st, storyDay: target.day } });
+    },
+    [buckets, patchNode],
+  );
 
   const rfNodes = useMemo<CardFlowNode[]>(() => {
     const scenes = Object.values(nodes).filter((n) => n.type === "scene");
@@ -84,7 +108,8 @@ function TimelineInner() {
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_, n) => select([n.id])}
         onPaneClick={() => select([])}
-        nodesDraggable={false}
+        onNodeDragStop={onNodeDragStop}
+        nodesDraggable
       >
         <Background color="#dfe4f4" gap={18} />
         <Controls />
