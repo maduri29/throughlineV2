@@ -54,6 +54,7 @@ multi-project library) with a Fountain textarea editor and `.fountain` export.
 - [Scaffold recipe — relocate and stand up](tickets/007-scaffold-recipe-relocate-and-stand-up.md): executed directly after two failed runners; COPY-first relocation (live repo now `C:\Users\madur\work\throughline`), app/ per proof recipe, HIGH WATER seed, full gate + dev/prod runtime proofs green — log `SCAFFOLD.md`.
 - [App shell, navigation and library UX contract](tickets/004-app-shell-navigation-library-ux.md): two-level Library↔Workspace, lens tabs as state (no router), auto-seeded HIGH WATER demo, keyboard = navigation + safety keys; detail flows land in execution phase.
 - [Canvas interaction contract](tickets/005-canvas-interaction-contract.md): Beat×Storyline in React Flow terms — drag-connect legality picker, instant delete + undo toast, type-toggle filters, context-aware double-click add, shift+click & marquee multi-select, RF-default pan/zoom, honest a11y floor; ADRs `docs/adr/0003-full-persisted-undo-redo.md` + `docs/adr/0004-hybrid-autosave.md`.
+- [Script editor and export contract](tickets/006-script-editor-export-contract.md): split textarea+preview editor (probe-picked), parent-container scene order that suits movies *and* series, graph-owned auto-synced slugs, full-template skeletons, flashback auto-placement, export-only `.fountain` with title page + episode sections.
 
 ## Not yet specified
 
