@@ -46,9 +46,18 @@ export default function SyncPanel() {
   const [email, setEmail] = useState("");
 
   const refresh = useCallback(async () => {
-    const s = await cloudState();
-    setState(s);
-    setRemote(s.kind === "signed-in" ? await listRemote() : []);
+    // Never leave the panel stuck on "Checking…". Building the client can throw
+    // on a URL that passed validation but is not really a Supabase project, and
+    // a spinner that never resolves reads as a broken app with no way forward.
+    try {
+      const s = await cloudState();
+      setState(s);
+      setRemote(s.kind === "signed-in" ? await listRemote() : []);
+    } catch (err) {
+      setState({ kind: "unconfigured" });
+      setRemote([]);
+      setMsg({ kind: "err", text: `Could not reach that project — ${String(err)}` });
+    }
   }, []);
 
   useEffect(() => {
@@ -142,9 +151,13 @@ export default function SyncPanel() {
 
       {state?.kind === "unconfigured" && (
         <>
+          {/* Numbered because connecting and signing in really are two steps in
+              sequence, and the second one is invisible until the first lands —
+              which reads as a missing sign-in rather than a step not yet reached. */}
+          <h3 className="tln-sync__subhead">Step 1 of 2 · Connect your project</h3>
           <p className="tln-sync__note">
             Optional. Without it Throughline works exactly as it does now, entirely on this machine.
-            Connect a Supabase project to keep a copy off this device.
+            Connect a Supabase project to keep a copy off this device. Signing in comes next.
           </p>
           <div className="tln-sync__row">
             <input
@@ -175,9 +188,10 @@ export default function SyncPanel() {
 
       {state?.kind === "signed-out" && (
         <>
+          <h3 className="tln-sync__subhead">Step 2 of 2 · Sign in</h3>
           <p className="tln-sync__note">
-            Connected to {readConfig()?.url ?? ""}. Sign in with a link — there is no password to
-            store or leak.
+            Connected to {readConfig()?.url ?? ""}. Enter your email and we send a sign-in link —
+            there is no password to store or leak. Open the link in this browser.
           </p>
           <div className="tln-sync__row">
             <input
