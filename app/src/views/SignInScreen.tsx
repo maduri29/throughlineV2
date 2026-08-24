@@ -52,7 +52,7 @@ export default function SignInScreen() {
       const s = await cloudState();
       setDiag(await authDiagnostics());
       // Already signed in — nothing to ask. Go where the work is.
-      if (s.kind === "signed-in") location.replace("/");
+      if (s.kind === "signed-in") location.replace("/stories");
     } catch (err) {
       setError(String(err));
     }
@@ -168,7 +168,7 @@ export default function SignInScreen() {
             className="tln-signin__ghost"
             onClick={() => {
               chooseOffline();
-              location.replace("/");
+              location.replace("/stories");
             }}
           >
             Keep writing without signing in

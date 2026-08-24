@@ -1,3 +1,4 @@
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   cloudState,
@@ -47,7 +48,20 @@ export default function App() {
   const projectId = useGraphStore((s) => s.projectId);
   const cloud = useGraphStore((s) => s.cloud);
   const [lens, setLens] = useState<Lens>("map");
-  const [level, setLevel] = useState<"library" | "workspace">("workspace");
+  const router = useRouter();
+  const pathname = usePathname();
+
+  /**
+   * The route decides what is on screen, not component state.
+   *
+   * "/stories" is the Library; "/stories/<id>" is that story. Deriving rather
+   * than storing it is what makes back, forward, refresh and a pasted link all
+   * behave — the previous `level` state was invisible to every one of them.
+   */
+  const routeId = pathname.startsWith("/stories/")
+    ? decodeURIComponent(pathname.slice("/stories/".length))
+    : null;
+  const level: "library" | "workspace" = routeId ? "workspace" : "library";
   const [paletteOpen, setPaletteOpen] = useState(false);
   // Opened automatically when this page load is the return leg of a magic link,
   // so the sign-in narrates itself instead of resolving invisibly.
@@ -75,9 +89,25 @@ export default function App() {
     return onAuthChange(read);
   }, []);
 
+  // "/" stays the landing spot because that is where auth links come back to;
+  // handing off to a real URL waits until the callback has been spent, or the
+  // token in the address bar would be thrown away with the redirect.
+  useEffect(() => {
+    if (pathname !== "/" || status === "booting" || completing) return;
+    const pid = useGraphStore.getState().projectId;
+    router.replace(pid ? `/stories/${pid}` : "/stories");
+  }, [pathname, status, completing, router]);
+
+  useEffect(() => {
+    if (!routeId) return;
+    const s = useGraphStore.getState();
+    if (s.projectId !== routeId) void s.switchProject(routeId);
+  }, [routeId]);
+
   /** Palette jump: pick the lens that shows the node best. */
   const jumpTo = (id: string, type: string): void => {
-    setLevel("workspace");
+    const pid = useGraphStore.getState().projectId;
+    if (pid && !routeId) router.push(`/stories/${pid}`);
     setLens(type === "character" ? "characters" : "map");
     useGraphStore.getState().select([id]);
   };
@@ -135,7 +165,10 @@ export default function App() {
       <header className="tln-header">
         <button
           className="tln-btn"
-          onClick={() => setLevel((l) => (l === "workspace" ? "library" : "workspace"))}
+          onClick={() => {
+            const pid = useGraphStore.getState().projectId;
+            router.push(level === "workspace" || !pid ? "/stories" : `/stories/${pid}`);
+          }}
           title="Library / Workspace"
         >
           {level === "workspace" ? "⌂" : "↩"}
@@ -199,8 +232,11 @@ export default function App() {
         </span>
       </header>
 
-      {level === "library" || !projectId ? (
-        <LibraryView onSignIn={() => setAuthOpen(true)} onOpen={() => setLevel("workspace")} />
+      {level === "library" ? (
+        <LibraryView
+          onSignIn={() => setAuthOpen(true)}
+          onOpen={(id) => router.push(`/stories/${id}`)}
+        />
       ) : (
         <div className="tln-workspace">
           <div className="tln-workspace__lens">

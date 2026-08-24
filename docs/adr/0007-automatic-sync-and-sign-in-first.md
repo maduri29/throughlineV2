@@ -89,5 +89,14 @@ it. Hand-picked scenarios sample the space; they do not cover it.
   and were previously unread.
 - The decision logic stays **pure** in `data/sync.ts` and performs no I/O. That separation is
   what makes the sweep above possible, and it is the reason the hole was findable.
+- **Stories are URLs, not modes.** `/stories` is the Library and `/stories/<id>` is one
+  story, so a story can be linked to, bookmarked, reloaded and reached with the back button.
+  The previous `level` state was invisible to all four. Choosing a story is two things — which
+  project is loaded and which level is on screen — and while a card only did the first, clicking
+  a story appeared to do nothing at all.
+- The `[id]` segment is `force-static` with a seeded `generateStaticParams`. The shell is
+  byte-identical for every id because the app reads the id in the browser, so without it Next
+  would render the segment on demand and put a serverless hop in front of a page the CDN can
+  already serve — quietly breaking ADR-0006's "prerenders static" property.
 - Storage of `{base, dirty}` per project is local bookkeeping and lives in the IndexedDB meta
   store, not in the graph — it describes this device's relationship to the cloud, not the story.

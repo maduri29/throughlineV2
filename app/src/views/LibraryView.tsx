@@ -15,7 +15,7 @@ export default function LibraryView({
   onOpen,
 }: {
   onSignIn: () => void;
-  onOpen: () => void;
+  onOpen: (id: string) => void;
 }) {
   const projects = useGraphStore((s) => s.projects);
   const switchProject = useGraphStore((s) => s.switchProject);
@@ -50,7 +50,10 @@ export default function LibraryView({
         {/* Storage lives in this browser. Say so plainly rather than implying
             a cloud that does not exist. */}
         {projects.length === 0 && (
-          <button className="tln-btn" onClick={() => void openSample().then(onOpen)}>
+          <button
+            className="tln-btn"
+            onClick={() => void openSample().then((id) => id && onOpen(id))}
+          >
             Open the sample story
           </button>
         )}
@@ -90,7 +93,7 @@ export default function LibraryView({
           <button
             key={p.id}
             className="tln-storycard"
-            onClick={() => void switchProject(p.id).then(onOpen)}
+            onClick={() => void switchProject(p.id).then(() => onOpen(p.id))}
           >
             <span className="tln-storycard__title">{p.title}</span>
             <span className="tln-storycard__by">

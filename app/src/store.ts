@@ -62,9 +62,10 @@ type Actions = {
   /** Split .fountain text into scene nodes under the project; returns scene count. */
   importFountain: (text: string) => number;
   switchProject: (id: string) => Promise<void>;
-  createProject: (title: string) => Promise<void>;
-  /** Put the sample story on the shelf, on request only. */
-  openSample: () => Promise<void>;
+  /** Resolves to the new project id so the caller can navigate to it. */
+  createProject: (title: string) => Promise<string>;
+  /** Put the sample story on the shelf, on request only; resolves to its id. */
+  openSample: () => Promise<string | null>;
   /** Storage bucket status; null until boot has asked. */
   durability: Durability | null;
   /** Lossless graph export (ADR-0001 envelope). */
@@ -503,6 +504,7 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
     set({ projects: [...get().projects, ...added] });
     const first = added[0];
     if (first) await get().switchProject(first.id);
+    return first?.id ?? null;
   },
 
   createProject: async (title) => {
@@ -510,6 +512,7 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
     await dbPut("nodes", [node]);
     set({ projects: [...get().projects, node] });
     await get().switchProject(node.id);
+    return node.id;
   },
 
   select: (ids) => set({ selection: ids }),

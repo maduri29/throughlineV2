@@ -79,7 +79,8 @@ async function main(): Promise<void> {
     );
 
     await page.getByRole("button", { name: /Keep writing without signing in/ }).click();
-    await page.waitForURL((u) => !u.pathname.includes("signin"), { timeout: 20_000 });
+    await page.waitForURL(/\/stories/, { timeout: 20_000 });
+    check("the Library has its own URL", new URL(page.url()).pathname === "/stories", page.url());
 
     /* ---- ADR-0007: nothing is fabricated on first run ---- */
     await page.waitForSelector(".tln-library", { timeout: 20_000 });
@@ -102,6 +103,28 @@ async function main(): Promise<void> {
     await page.waitForSelector(".tln-workspace", { timeout: 20_000 });
     const inLibrary = await page.locator(".tln-library").count();
     check("opening a story leaves the Library", inLibrary === 0, `${inLibrary} library panes`);
+
+    // A story is a place, not a mode: it has to survive a reload and a paste.
+    const storyUrl = page.url();
+    check(
+      "each story is its own sub-route",
+      /\/stories\/[^/]+$/.test(new URL(storyUrl).pathname),
+      new URL(storyUrl).pathname,
+    );
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".tln-workspace", { timeout: 20_000 });
+    check(
+      "reloading a story URL reopens that story",
+      page.url() === storyUrl && (await page.locator(".tln-library").count()) === 0,
+      page.url() === storyUrl ? "same url, workspace" : page.url(),
+    );
+
+    await page.goBack({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".tln-library", { timeout: 20_000 });
+    check("back returns to the Library", new URL(page.url()).pathname === "/stories", page.url());
+    await page.goForward({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".tln-workspace", { timeout: 20_000 });
 
     /* ---- two indicators, and the local one makes no cloud claim ---- */
     const localChip = (await page.locator(".tln-save").textContent()) ?? "";
