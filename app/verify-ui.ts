@@ -303,6 +303,33 @@ async function main(): Promise<void> {
     const survived = await page.locator(".tln-seed").count();
     check("the idea survives being grown", survived === 1, `${survived} seeds`);
 
+    /* ---- the storage layer survives losing its connection ---- */
+    // The cached handle was the bug: a connection can close underneath the app
+    // (another tab upgrading, an eviction) and every later read returned nothing
+    // and every write did nothing, silently, until a reload.
+    await page.evaluate(async () => {
+      await new Promise<void>((res) => {
+        const r = indexedDB.open("throughline.v1", 99);
+        r.onsuccess = () => {
+          r.result.close();
+          res();
+        };
+        r.onerror = () => res();
+        r.onblocked = () => res();
+      });
+    });
+    await page.waitForTimeout(1200);
+    const seedsBefore = await page.locator(".tln-seed").count();
+    await page.getByLabel("New idea").fill("written after the connection died");
+    await page.getByRole("button", { name: "Keep it" }).click();
+    await page.waitForTimeout(2000);
+    const seedsAfter = await page.locator(".tln-seed").count();
+    check(
+      "writes survive the connection closing underneath",
+      seedsAfter === seedsBefore + 1,
+      `${seedsBefore} → ${seedsAfter}`,
+    );
+
     /* ---- research: a beat sheet becomes something to fill in, not scenes ---- */
     await page.getByRole("button", { name: "Research", exact: true }).click();
     await page.waitForURL(/\/research/, { timeout: 20_000 });
