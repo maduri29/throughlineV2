@@ -87,6 +87,28 @@ async function main(): Promise<void> {
     const seeded = await page.locator(".tln-storycard:not(.tln-storycard--new)").count();
     check("no story is seeded on first run", seeded === 0, `${seeded} cards`);
 
+    // The shelf is not a story: lenses, undo/redo/backup and a save indicator
+    // all act on a story that is not open, and showing them here made the
+    // toolbar look broken rather than full.
+    const shelfChrome = await page.evaluate(() => ({
+      lenses: document.querySelectorAll(".tln-lens-tab").length,
+      tools: document.querySelectorAll(".tln-tool").length,
+      status: document.querySelectorAll(".tln-status").length,
+      brand: document.querySelectorAll(".tln-brand").length,
+      logo: document.querySelectorAll(".tln-logo").length,
+      account: document.querySelectorAll(".tln-account").length,
+    }));
+    check(
+      "the Library header carries no story controls",
+      shelfChrome.lenses === 0 && shelfChrome.tools === 0 && shelfChrome.status === 0,
+      `lenses=${shelfChrome.lenses} tools=${shelfChrome.tools} status=${shelfChrome.status}`,
+    );
+    check(
+      "brand and account are still there",
+      shelfChrome.brand === 1 && shelfChrome.logo === 1 && shelfChrome.account === 1,
+      `brand=${shelfChrome.brand} logo=${shelfChrome.logo} account=${shelfChrome.account}`,
+    );
+
     const sample = await page.getByRole("button", { name: "Open the sample story" }).count();
     check("the sample is offered, not imposed", sample === 1);
 
@@ -97,7 +119,7 @@ async function main(): Promise<void> {
     // which project was loaded but left the Library on screen, so from the
     // outside clicking a story did nothing — and nothing here would have caught
     // it, because the workspace happened to be showing already.
-    await page.getByTitle("Library / Workspace").click();
+    await page.locator(".tln-brand").click();
     await page.waitForSelector(".tln-library", { timeout: 20_000 });
     await page.locator(".tln-storycard:not(.tln-storycard--new)").first().click();
     await page.waitForSelector(".tln-workspace", { timeout: 20_000 });
@@ -127,13 +149,22 @@ async function main(): Promise<void> {
     await page.waitForSelector(".tln-workspace", { timeout: 20_000 });
 
     /* ---- two indicators, and the local one makes no cloud claim ---- */
-    const localChip = (await page.locator(".tln-save").textContent()) ?? "";
+    const inStory = await page.evaluate(() => ({
+      lenses: document.querySelectorAll(".tln-lens-tab").length,
+      tools: document.querySelectorAll(".tln-tool").length,
+      local: document.querySelector(".tln-status__part")?.textContent ?? "",
+    }));
+    check(
+      "a story header carries the story controls",
+      inStory.lenses === 4 && inStory.tools === 3,
+      `lenses=${inStory.lenses} tools=${inStory.tools}`,
+    );
     check(
       "the local indicator claims only this device",
-      localChip.includes("this device") ||
-        localChip.includes("Saving") ||
-        localChip.includes("Loading"),
-      localChip.trim(),
+      inStory.local.includes("this device") ||
+        inStory.local.includes("Saving") ||
+        inStory.local.includes("Loading"),
+      inStory.local.trim(),
     );
 
     /* ---- script lens: the editor is CodeMirror, not the old textarea ---- */
@@ -212,6 +243,23 @@ async function main(): Promise<void> {
 
     const advanced = await page.locator(".tln-auth__title").first().textContent();
     check("account dialog opens", (advanced ?? "").length > 0, advanced ?? "none");
+
+    // A toolbar with this many items is exactly where a narrow window breaks,
+    // and horizontal body scroll is the symptom nobody notices until they hit it.
+    await page.setViewportSize({ width: 900, height: 800 });
+    await page.waitForTimeout(400);
+    const overflow = await page.evaluate(() => ({
+      body: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      headerH: Math.round(
+        document.querySelector(".tln-header")?.getBoundingClientRect().height ?? 0,
+      ),
+    }));
+    check(
+      "the header survives a narrow window",
+      overflow.body <= 0 && overflow.headerH < 90,
+      `overflow=${overflow.body}px height=${overflow.headerH}px`,
+    );
+    await page.setViewportSize({ width: 1440, height: 900 });
 
     const inlineAuth = await page.locator(".tln-sync input").count();
     check("no credential fields inline in the library", inlineAuth === 0, `${inlineAuth} inputs`);

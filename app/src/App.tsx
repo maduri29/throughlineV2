@@ -11,6 +11,7 @@ import { cloudLabel } from "./data/sync";
 import { hasChosenOffline } from "./views/SignInScreen";
 import { useGraphStore } from "./store";
 import AuthDialog from "./views/AuthDialog";
+import Logo from "./views/Logo";
 import MapView from "./views/MapView";
 import TimelineView from "./views/TimelineView";
 import CharactersView from "./views/CharactersView";
@@ -163,73 +164,92 @@ export default function App() {
   return (
     <div className="tln-app">
       <header className="tln-header">
-        <button
-          className="tln-btn"
-          onClick={() => {
-            const pid = useGraphStore.getState().projectId;
-            router.push(level === "workspace" || !pid ? "/stories" : `/stories/${pid}`);
-          }}
-          title="Library / Workspace"
-        >
-          {level === "workspace" ? "⌂" : "↩"}
+        {/* Brand doubles as the way back to the shelf. Everything after it is
+            story-specific and rendered only inside a story: undo, lenses, backup
+            and a save indicator are all meaningless on a list of stories, and
+            showing them there made the toolbar look broken rather than full. */}
+        <button className="tln-brand" onClick={() => router.push("/stories")} title="All stories">
+          <Logo />
+          <span className="tln-brand__name">Throughline</span>
         </button>
-        <strong>Throughline</strong>
-        <span className="tln-header__sub">
-          {level === "workspace" ? (project?.title ?? "") : "Library"}
-        </span>
-        {/* Two indicators (ADR-0007 decision 10). They report different
-            guarantees, and the local one deliberately never shows a tick — a
-            story saved here is not a story you can open on another machine. */}
-        <span className={`tln-save tln-save--${status}`}>
-          {status === "error"
-            ? `Error: ${useGraphStore.getState().bootError ?? "unknown"}`
-            : SAVE_LABEL[status]}
-        </span>
-        <span className={`tln-cloud tln-cloud--${cloud}`} title="Cloud sync">
-          {cloudLabel(cloud)}
-        </span>
+
         {level === "workspace" && (
-          <button
-            className="tln-btn"
-            onClick={exportProject}
-            title="Download a lossless backup of this story graph"
-          >
-            Back up
-          </button>
+          <>
+            <span className="tln-header__crumb" aria-hidden="true">
+              /
+            </span>
+            <span className="tln-header__title">{project?.title ?? ""}</span>
+          </>
         )}
+
+        <span className="tln-header__gap" />
+
+        {level === "workspace" && (
+          <>
+            {/* Two indicators (ADR-0007 decision 10), but one object: they answer
+                the same question at different distances, and the local half never
+                shows a bare tick — saved here is not saved anywhere else. */}
+            <span className="tln-status">
+              <span className={`tln-status__part tln-status__local--${status}`}>
+                <i className="tln-status__dot" aria-hidden="true" />
+                {status === "error"
+                  ? (useGraphStore.getState().bootError ?? "Save failed")
+                  : SAVE_LABEL[status]}
+              </span>
+              <span className={`tln-status__part tln-status__cloud--${cloud}`}>
+                <i className="tln-status__dot" aria-hidden="true" />
+                {cloudLabel(cloud)}
+              </span>
+            </span>
+
+            <span className="tln-tools">
+              <button className="tln-tool" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+                ↶
+              </button>
+              <button
+                className="tln-tool"
+                onClick={redo}
+                disabled={!canRedo}
+                title="Redo (Ctrl+Shift+Z)"
+              >
+                ↷
+              </button>
+              <button
+                className="tln-tool"
+                onClick={exportProject}
+                title="Download a lossless backup of this story"
+              >
+                ↓
+              </button>
+            </span>
+
+            <span className="tln-lens-tabs">
+              {LENSES.map(([id, label]) => (
+                <button
+                  key={id}
+                  className={`tln-lens-tab${lens === id ? " tln-lens-tab--on" : ""}`}
+                  onClick={() => setLens(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </span>
+          </>
+        )}
+
         <button
           className={`tln-account${account ? " tln-account--on" : ""}`}
           onClick={() => setAuthOpen(true)}
-          title={account ? `Signed in as ${account}` : "Cloud sync is optional"}
+          title={account ? `Signed in as ${account}` : "Sign in to sync across devices"}
         >
           {account ? (
-            <>
-              <span className="tln-account__dot" aria-hidden="true">
-                {account.slice(0, 1).toUpperCase()}
-              </span>
-              <span className="tln-account__label">{account}</span>
-            </>
+            <span className="tln-account__dot" aria-hidden="true">
+              {account.slice(0, 1).toUpperCase()}
+            </span>
           ) : (
             "Sign in"
           )}
         </button>
-        <button className="tln-btn" onClick={undo} disabled={!canUndo} title="Ctrl+Z">
-          ↶
-        </button>
-        <button className="tln-btn" onClick={redo} disabled={!canRedo} title="Ctrl+Shift+Z">
-          ↷
-        </button>
-        <span className="tln-lens-tabs">
-          {LENSES.map(([id, label]) => (
-            <button
-              key={id}
-              className={`tln-lens-tab${lens === id ? " tln-lens-tab--on" : ""}`}
-              onClick={() => setLens(id)}
-            >
-              {label}
-            </button>
-          ))}
-        </span>
       </header>
 
       {level === "library" ? (
