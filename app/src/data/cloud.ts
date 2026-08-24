@@ -441,6 +441,9 @@ export function explainAuthError(message: string): string | null {
   if (m.includes("rate limit") || m.includes("too many request") || m.includes("429")) {
     return "Supabase's built-in mailer only sends a couple of messages an hour, and this project has hit that. Earlier attempts did send, so check your inbox for the most recent link — it stays valid for about an hour. To lift the cap, add your own SMTP provider under Project Settings → Authentication → SMTP Settings.";
   }
+  if (m.includes("unable to exchange external code")) {
+    return "GitHub issued the sign-in code but then refused to trade it for a token, which means the credentials in Supabase do not match the app that issued it. The usual cause is having created a GitHub App (Client ID starts Iv…) instead of a classic OAuth App (Ov… or 20 hex characters) — they are different products with different flows, and Supabase speaks the OAuth App one. Otherwise re-paste the Client Secret; GitHub shows it once and a truncated copy fails exactly like this.";
+  }
   if (m.includes("provider is not enabled") || m.includes("unsupported provider")) {
     const base = readConfig()?.url ?? "your project";
     return `GitHub sign-in is not switched on for this project. Enable it under Authentication → Providers → GitHub, pasting the Client ID and Client Secret from a GitHub OAuth app whose Authorization callback URL is ${base}/auth/v1/callback.`;
