@@ -27,61 +27,19 @@ The editor is loaded with `ssr: false` (`src/app/ClientApp.tsx`) because it is a
 browser application — IndexedDB, CodeMirror and React Flow all need a real DOM.
 The route still prerenders as static HTML, so delivery is CDN-only. See ADR-0006.
 
-## Sync (optional, ADR-0005)
+## Storage
 
-The app is local-first and works with no account. Sync adds a server copy so work
-survives losing the machine and follows you between devices.
+Everything lives in this browser: IndexedDB via a normalized adapter (ADR-0001),
+with `navigator.storage.persist()` requested at boot so the browser stops
+treating it as evictable.
 
-1. Create a project at [supabase.com](https://supabase.com)
-2. **SQL Editor** -> paste `supabase/migrations/0001_story_graph.sql` -> **Run**
-3. **Settings -> API**: copy the **Project URL** and the **publishable**
-   (`sb_publishable_...`) key
-4. **Authentication -> URL Configuration**: add the origin you use (e.g.
-   `http://localhost:4517`) to **Redirect URLs**, or the sign-in link will 404
-5. Enable GitHub sign-in (the primary path — see below)
-6. In the app: **Sign in** in the header → paste the URL and publishable key →
-   **Connect** → **Continue with GitHub**
-7. **Library → Cloud copies**: **Push** sends the open story, **Pull** brings a
-   cloud copy back
+There is no account, no server and no network dependency of any kind — a
+`verify:ui` assertion checks the app makes no third-party requests at all.
+**Back up** in a story writes a lossless JSON envelope; **Import backup** reads
+one, validating rather than trusting it.
 
-### GitHub sign-in
-
-Preferred over the email link because it depends on nothing this project has to
-run. Supabase's built-in mailer sends only a couple of messages an hour and then
-returns *"email rate limit exceeded"*; it is explicitly not a production mailer,
-so magic links are kept only as a fallback. GitHub needs no mailer and no
-password.
-
-1. GitHub → **Settings → Developer settings → OAuth Apps → New OAuth App**
-2. **Homepage URL** `http://localhost:4517`;
-   **Authorization callback URL** `https://<project-ref>.supabase.co/auth/v1/callback`
-   — this is the *Supabase* callback, not the app's
-3. Supabase → **Authentication → Providers → GitHub**: enable, paste the Client
-   ID and Client Secret
-
-The client secret lives in Supabase, never in this repo or the bundle.
-
-To use the email fallback instead, add your own SMTP provider under
-**Project Settings → Authentication → SMTP Settings** to lift the rate cap.
-
-Connecting a project and signing in are separate screens in that dialog, because
-they are separate jobs — the first is one-time technical setup, the second is
-routine. Story sync lives in the Library, not in the sign-in flow.
-
-Never put the **secret** (`sb_secret_...`) key in the app or this repo. The
-publishable key is safe in the bundle *only* because every table has row level
-security scoped to `auth.uid()` — that is what step 2 installs. A table without
-RLS is a public API to anyone holding the key. The Connect form refuses an
-`sb_secret_` or `service_role` key rather than storing it (`validateConfig`).
-
-Two behaviours to know before relying on this:
-
-- **Push is last-write-wins per project, not collaboration.** It replaces the
-  cloud copy of that story outright. Two devices editing the same story at once
-  will lose one side's edits.
-- **Pull arrives as a new local story**, re-validated through the same importer
-  as a backup file. Nothing local is overwritten, so pulling twice gives you two
-  copies rather than silently eating your edits.
+The Supabase sync tier was removed in ADR-0008. Multi-device continuity is the
+open problem, not a solved one.
 
 ## Deploy (Vercel)
 

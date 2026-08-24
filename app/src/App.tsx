@@ -1,16 +1,6 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  cloudState,
-  handleAuthCallback,
-  isAuthCallback,
-  isAuthExchangePending,
-  onAuthChange,
-} from "./data/cloud";
-import { cloudLabel } from "./data/sync";
-import { hasChosenOffline } from "./views/SignInScreen";
 import { useGraphStore } from "./store";
-import AuthDialog from "./views/AuthDialog";
 import BoneyardView from "./views/BoneyardView";
 import Logo from "./views/Logo";
 import ResearchView from "./views/ResearchView";
@@ -40,12 +30,6 @@ const LENSES: Array<[Lens, string]> = [
   ["script", "Script"],
 ];
 
-/**
- * Guards against bouncing to sign-in more than once per page load. Belongs
- * outside the component so a remount cannot reset it mid-loop.
- */
-let sentToSignIn = false;
-
 export default function App() {
   const status = useGraphStore((s) => s.status);
   const canUndo = useGraphStore((s) => s.canUndo);
@@ -55,7 +39,6 @@ export default function App() {
   const forceSave = useGraphStore((s) => s.forceSave);
   const exportProject = useGraphStore((s) => s.exportProject);
   const projectId = useGraphStore((s) => s.projectId);
-  const cloud = useGraphStore((s) => s.cloud);
   const bootError = useGraphStore((s) => s.bootError);
   const [lens, setLens] = useState<Lens>("map");
   const router = useRouter();
@@ -82,85 +65,14 @@ export default function App() {
         : "stories";
   const level: "library" | "workspace" = routeId ? "workspace" : "library";
   const [paletteOpen, setPaletteOpen] = useState(false);
-  // Opened automatically when this page load is the return leg of a magic link,
-  // so the sign-in narrates itself instead of resolving invisibly.
-  const [completing, setCompleting] = useState(() => isAuthExchangePending());
-  const [authOpen, setAuthOpen] = useState(() => isAuthCallback());
-  const [account, setAccount] = useState<string | null>(null);
 
+  // "/" is where the app is entered; hand off to a real URL once boot has
+  // settled so the shelf and each story keep addressable paths.
   useEffect(() => {
-    const read = (): void => {
-      void cloudState().then((s) => {
-        setAccount(s.kind === "signed-in" ? (s.email ?? "account") : null);
-        if (s.kind !== "signed-in") return;
-        // Signing in adopts what is already here (decision 5), then brings down
-        // anything this device has never seen. Order matters: uploading first
-        // means a story written offline cannot be mistaken for a stale copy of
-        // something the account already holds.
-        const store = useGraphStore.getState();
-        void store
-          .adoptLocalStories()
-          .then(() => store.syncLibrary())
-          .then(() => store.pullCurrent());
-      });
-    };
-    read();
-    return onAuthChange(read);
-  }, []);
-
-  /**
-   * One place decides where you land, because two did not agree.
-   *
-   * The root handoff ("/" -> a real URL) and the sign-in gate were separate
-   * effects both calling replace, so at "/" they raced and whichever ran last
-   * won at random. Deciding once, in order — finish the callback, then ask
-   * whether we are signed in, then navigate — is what makes it stable.
-   *
-   * "/" stays the landing spot because that is where auth links come back to,
-   * and the handoff waits for the callback to be spent or the token in the
-   * address bar goes with the redirect.
-   */
-  useEffect(() => {
-    if (status === "booting" || completing) return;
-    let cancelled = false;
-
-    void (async () => {
-      const atRoot = pathname === "/";
-      const stay = (): void => {
-        if (!atRoot || cancelled) return;
-        const pid = useGraphStore.getState().projectId;
-        router.replace(pid ? `/stories/${pid}` : "/stories");
-      };
-
-      // Mid-callback, or having explicitly chosen to work offline: never bounce.
-      if (isAuthCallback() || hasChosenOffline() || sentToSignIn) {
-        stay();
-        return;
-      }
-      try {
-        const st = await cloudState();
-        if (cancelled) return;
-        if (st.kind === "signed-in") {
-          stay();
-          return;
-        }
-        // Once per load. location.replace restarted the app on every hop, which
-        // restarted session restoration, which raced this check again — a
-        // sign-in screen that reappeared after signing in successfully, and a
-        // store that never finished booting because the page kept reloading.
-        sentToSignIn = true;
-        router.replace("/signin");
-      } catch {
-        // Unreadable auth state is not a reason to lock someone out of their own
-        // local work. Fail open rather than into a redirect.
-        stay();
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname, status, completing, router]);
+    if (pathname !== "/" || status === "booting") return;
+    const pid = useGraphStore.getState().projectId;
+    router.replace(pid ? `/stories/${pid}` : "/stories");
+  }, [pathname, status, router]);
 
   useEffect(() => {
     if (!routeId) return;
@@ -186,11 +98,6 @@ export default function App() {
     // The dialog is opened for the duration either way: someone who has just
     // clicked a sign-in link should see it resolve, success or failure, rather
     // than land in the workspace with no sign that anything happened.
-    // Where to land is decided in one place below, once the callback and boot
-    // have both settled. Doing it here as well is what let two redirects race.
-    void handleAuthCallback().finally(() => {
-      setCompleting(false);
-    });
   }, []);
 
   useEffect(() => {
@@ -313,16 +220,15 @@ export default function App() {
               </button>
             </span>
 
+            {/* One indicator again. It reported two guarantees while there was a
+                cloud to report on; there is only this device now, and saying so
+                twice would be theatre. */}
             <span className="tln-status">
               <span className={`tln-status__part tln-status__local--${status}`}>
                 <i className="tln-status__dot" aria-hidden="true" />
                 {status === "error"
                   ? (useGraphStore.getState().bootError ?? "Save failed")
                   : SAVE_LABEL[status]}
-              </span>
-              <span className={`tln-status__part tln-status__cloud--${cloud}`}>
-                <i className="tln-status__dot" aria-hidden="true" />
-                {cloudLabel(cloud)}
               </span>
             </span>
 
@@ -362,20 +268,6 @@ export default function App() {
             </span>
           </>
         )}
-
-        <button
-          className={`tln-account${account ? " tln-account--on" : ""}`}
-          onClick={() => setAuthOpen(true)}
-          title={account ? `Signed in as ${account}` : "Sign in to sync across devices"}
-        >
-          {account ? (
-            <span className="tln-account__dot" aria-hidden="true">
-              {account.slice(0, 1).toUpperCase()}
-            </span>
-          ) : (
-            "Sign in"
-          )}
-        </button>
       </header>
 
       {/* Boot failures used to be visible only inside a story, because that is
@@ -398,10 +290,7 @@ export default function App() {
       ) : section === "research" ? (
         <ResearchView />
       ) : level === "library" ? (
-        <LibraryView
-          onSignIn={() => setAuthOpen(true)}
-          onOpen={(id) => router.push(`/stories/${id}`)}
-        />
+        <LibraryView onOpen={(id) => router.push(`/stories/${id}`)} />
       ) : (
         <div className="tln-workspace">
           <div className="tln-workspace__lens">
@@ -419,13 +308,6 @@ export default function App() {
         </div>
       )}
       <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jumpTo} />
-      <AuthDialog
-        open={authOpen}
-        completing={completing}
-        onClose={() => {
-          setAuthOpen(false);
-        }}
-      />
     </div>
   );
 }

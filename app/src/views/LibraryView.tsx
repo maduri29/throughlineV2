@@ -4,17 +4,14 @@
 // story is, and whether it exists anywhere but this browser. A shelf of
 // title-only cards makes you open things just to remember what they are.
 import { type ChangeEvent, useCallback, useEffect, useState } from "react";
-import { readGate, readSync } from "../data/cloudSync";
 import { describeUsage } from "../data/durability";
 import { dbGetAll } from "../data/idb";
 import { scopeToProject } from "../data/scopes";
-import { cloudLabel, cloudStatus, type CloudStatus } from "../data/sync";
 import { useGraphStore } from "../store";
 import type { GraphEdge, GraphNode } from "../types";
-import CloudStrip from "./CloudStrip";
 import Logo from "./Logo";
 
-type Stat = { scenes: number; characters: number; cloud: CloudStatus };
+type Stat = { scenes: number; characters: number };
 
 /**
  * `onOpen` exists because choosing a story is two things at once: which project
@@ -22,21 +19,13 @@ type Stat = { scenes: number; characters: number; cloud: CloudStatus };
  * picking a card swapped the project underneath a Library that stayed put — from
  * the outside, clicking a story did nothing at all.
  */
-export default function LibraryView({
-  onSignIn,
-  onOpen,
-}: {
-  onSignIn: () => void;
-  onOpen: (id: string) => void;
-}) {
+export default function LibraryView({ onOpen }: { onOpen: (id: string) => void }) {
   const projects = useGraphStore((s) => s.projects);
   const switchProject = useGraphStore((s) => s.switchProject);
   const createProject = useGraphStore((s) => s.createProject);
   const importProject = useGraphStore((s) => s.importProject);
   const openSample = useGraphStore((s) => s.openSample);
   const durability = useGraphStore((s) => s.durability);
-  const forks = useGraphStore((s) => s.forks);
-  const dismissForks = useGraphStore((s) => s.dismissForks);
 
   const [title, setTitle] = useState("");
   const [naming, setNaming] = useState(false);
@@ -60,7 +49,6 @@ export default function LibraryView({
     const allEdges: Record<string, GraphEdge> = {};
     for (const e of edgesArr) allEdges[e.id] = e;
 
-    const gate = await readGate();
     const next: Record<string, Stat> = {};
     for (const p of projects) {
       const scoped = scopeToProject(allNodes, allEdges, p.id);
@@ -68,7 +56,6 @@ export default function LibraryView({
       next[p.id] = {
         scenes: owned.filter((n) => n.type === "scene").length,
         characters: owned.filter((n) => n.type === "character").length,
-        cloud: cloudStatus(await readSync(p.id), gate, false),
       };
     }
     setStats(next);
@@ -166,25 +153,6 @@ export default function LibraryView({
 
       {importError && <p className="tln-library__error">Import failed — {importError}</p>}
 
-      {/* A conflict leaves an extra card on the shelf. Unexplained, that reads as
-          a bug; explained, it reads as the app having saved you from one. */}
-      {Object.keys(forks).length > 0 && (
-        <div className="tln-library__forks">
-          <p className="tln-library__forks-head">
-            {Object.keys(forks).length === 1 ? "A copy was" : "Copies were"} kept aside
-          </p>
-          <p className="tln-library__forks-body">
-            Another device had already saved{" "}
-            {[...new Set(Object.values(forks))].map((t) => `“${t}”`).join(", ")}. Rather than
-            overwrite what you wrote here, your version was kept as a separate story marked{" "}
-            <em>unsynced copy</em>. Nothing was lost — merge what you want and delete the rest.
-          </p>
-          <button className="tln-btn" onClick={() => void dismissForks()}>
-            Got it
-          </button>
-        </div>
-      )}
-
       {empty ? (
         <div className="tln-empty">
           <span className="tln-empty__mark" aria-hidden="true">
@@ -224,19 +192,11 @@ export default function LibraryView({
                   {st ? `${st.scenes} scene${st.scenes === 1 ? "" : "s"}` : "…"}
                   {st && st.characters > 0 ? ` · ${st.characters} in the cast` : ""}
                 </span>
-                {st && st.cloud !== "off" && (
-                  <span className={`tln-storycard__cloud tln-status__cloud--${st.cloud}`}>
-                    <i className="tln-status__dot" aria-hidden="true" />
-                    {cloudLabel(st.cloud)}
-                  </span>
-                )}
               </button>
             );
           })}
         </div>
       )}
-
-      <CloudStrip onSignIn={onSignIn} onRefreshed={() => void loadStats()} />
 
       {/* Where the work actually lives. Said plainly rather than left to be
           discovered when a browser clears its storage. */}

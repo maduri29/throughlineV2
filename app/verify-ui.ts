@@ -58,49 +58,32 @@ async function main(): Promise<void> {
     browser = await chromium.launch({ channel: "msedge", headless: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 
-    /* ---- the gate settles instead of ping-ponging ---- */
-    // A sign-in screen that reappears after a successful login is a redirect
-    // loop, and a page that keeps reloading never finishes booting the store —
-    // which presents as every button in the app doing nothing.
+    /* ---- the app opens straight onto the shelf; there is no gate ---- */
+    // Nothing stands between a cold load and the work any more. The gate that
+    // used to sit here is the thing that broke the app, so its absence is
+    // pinned rather than assumed.
     const hops: string[] = [];
     page.on("framenavigated", (f) => {
       if (f === page.mainFrame()) hops.push(new URL(f.url()).pathname);
     });
 
-    /* ---- ADR-0007: sign-in is the first screen, with an honest escape ---- */
     await page.goto(BASE, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(/\/signin/, { timeout: 20_000 });
-    // The screen is a dynamic ssr:false import; counting before it resolves
-    // measures the loading state, not the page.
-    await page.waitForSelector(".tln-signin__card", { timeout: 20_000 });
-    check("a fresh visit lands on sign-in", page.url().includes("/signin"), page.url());
-
-    const gh = await page.locator(".tln-signin__github").count();
-    check("GitHub is the primary sign-in", gh === 1);
-
-    // Decision 5 makes "continue offline" a timing choice, not a privacy one.
-    // If this copy ever softens, the button starts making a promise we break.
-    const fine = (await page.locator(".tln-signin__fine").textContent()) ?? "";
-    check(
-      "the offline escape is not sold as privacy",
-      fine.includes("not a way to keep work private"),
-      fine.slice(0, 46),
-    );
-
-    await page.getByRole("button", { name: /Keep writing without signing in/ }).click();
     await page.waitForURL(/\/stories/, { timeout: 20_000 });
-    check("the Library has its own URL", new URL(page.url()).pathname === "/stories", page.url());
-
-    await page.waitForTimeout(2500);
-    const signinHops = hops.filter((h) => h === "/signin").length;
+    await page.waitForSelector(".tln-library", { timeout: 20_000 });
     check(
-      "the sign-in gate settles rather than looping",
-      signinHops <= 1 && new URL(page.url()).pathname === "/stories",
-      `${signinHops} hops to /signin, ended at ${new URL(page.url()).pathname}`,
+      "a cold load lands on the shelf",
+      new URL(page.url()).pathname === "/stories",
+      page.url(),
     );
 
-    /* ---- ADR-0007: nothing is fabricated on first run ---- */
-    await page.waitForSelector(".tln-library", { timeout: 20_000 });
+    await page.waitForTimeout(2000);
+    check(
+      "nothing redirects to a sign-in screen",
+      hops.every((h) => !h.includes("signin")),
+      hops.join(" → "),
+    );
+
+    /* ---- nothing is fabricated on first run ---- */
     const seeded = await page.locator(".tln-storycard:not(.tln-storycard--new)").count();
     check("no story is seeded on first run", seeded === 0, `${seeded} cards`);
 
@@ -113,7 +96,6 @@ async function main(): Promise<void> {
       status: document.querySelectorAll(".tln-status").length,
       brand: document.querySelectorAll(".tln-brand").length,
       logo: document.querySelectorAll(".tln-header .tln-logo").length,
-      account: document.querySelectorAll(".tln-account").length,
       emptyMark: document.querySelectorAll(".tln-empty__mark .tln-logo").length,
     }));
     check(
@@ -122,9 +104,9 @@ async function main(): Promise<void> {
       `lenses=${shelfChrome.lenses} tools=${shelfChrome.tools} status=${shelfChrome.status}`,
     );
     check(
-      "brand and account are still there",
-      shelfChrome.brand === 1 && shelfChrome.logo === 1 && shelfChrome.account === 1,
-      `brand=${shelfChrome.brand} logo=${shelfChrome.logo} account=${shelfChrome.account}`,
+      "the brand is still there",
+      shelfChrome.brand === 1 && shelfChrome.logo === 1,
+      `brand=${shelfChrome.brand} logo=${shelfChrome.logo}`,
     );
     check(
       "an empty shelf says so rather than showing an empty grid",
@@ -171,7 +153,7 @@ async function main(): Promise<void> {
     await page.goForward({ waitUntil: "domcontentloaded" });
     await page.waitForSelector(".tln-workspace", { timeout: 20_000 });
 
-    /* ---- two indicators, and the local one makes no cloud claim ---- */
+    /* ---- one indicator, and it claims only this device ---- */
     const inStory = await page.evaluate(() => ({
       lenses: document.querySelectorAll(".tln-lens-tab").length,
       tools: document.querySelectorAll(".tln-tool").length,
@@ -260,13 +242,6 @@ async function main(): Promise<void> {
       `${pills.length} pills, ${distinct.size} distinct colours`,
     );
 
-    /* ---- the account dialog still refuses a secret key ---- */
-    await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
-    await page.waitForSelector(".tln-auth", { timeout: 20_000 });
-
-    const advanced = await page.locator(".tln-auth__title").first().textContent();
-    check("account dialog opens", (advanced ?? "").length > 0, advanced ?? "none");
-
     // A toolbar with this many items is exactly where a narrow window breaks,
     // and horizontal body scroll is the symptom nobody notices until they hit it.
     await page.setViewportSize({ width: 900, height: 800 });
@@ -285,11 +260,8 @@ async function main(): Promise<void> {
     await page.setViewportSize({ width: 1440, height: 900 });
 
     /* ---- the boneyard: an idea, kept, then grown into a story ---- */
-    // The account dialog from the checks above is modal and would swallow this
-    // click. Nav tabs also exist only outside a story, so leave the workspace
-    // too — itself the behaviour the header assertions pin down.
-    await page.keyboard.press("Escape");
-    await page.waitForSelector(".tln-auth", { state: "detached", timeout: 10_000 });
+    // Nav tabs exist only outside a story, so leave the workspace first — itself
+    // the behaviour the header assertions pin down.
     await page.locator(".tln-brand").click();
     await page.waitForURL(/\/stories$/, { timeout: 20_000 });
     await page.getByRole("button", { name: "Boneyard", exact: true }).click();
@@ -442,30 +414,16 @@ async function main(): Promise<void> {
       `${shelfBefore} before, ${shelfAfterSheet} after`,
     );
 
-    // The account dialog was closed to reach the nav; the checks below need it.
-    await page.locator(".tln-account").click();
-    await page.waitForSelector(".tln-auth", { timeout: 20_000 });
-
-    const inlineAuth = await page.locator(".tln-sync input").count();
-    check("no credential fields inline in the library", inlineAuth === 0, `${inlineAuth} inputs`);
-
-    // Decision 3: the bring-your-own-project path is demoted, not deleted. With
-    // a project compiled into the build it is otherwise unreachable, and the
-    // secret-key guard would go untested with it.
-    await page.getByRole("button", { name: /Advanced/ }).click();
-    await page.getByLabel("Project URL").waitFor({ timeout: 10_000 });
-    await page.getByLabel("Project URL").fill("https://abcdefghijkl.supabase.co");
-    await page.getByLabel("Publishable key").fill("sb_secret_AbCdEf123456");
-    await page.getByRole("button", { name: "Connect", exact: true }).click();
-    const refusal = (await page.locator(".tln-auth__error").first().textContent()) ?? "";
-    check(
-      "secret key is still refused behind Advanced",
-      refusal.includes("SECRET"),
-      refusal.slice(0, 42),
+    // Nothing in the app talks to a network any more. A stray request would
+    // mean a remnant of the removed tier is still running.
+    const outbound = await page.evaluate(
+      () =>
+        performance
+          .getEntriesByType("resource")
+          .map((e) => e.name)
+          .filter((n) => !n.startsWith(location.origin)).length,
     );
-
-    const stored = await page.evaluate(() => localStorage.getItem("TLN_SUPABASE_PUBLISHABLE_KEY"));
-    check("refused key was never stored", stored === null, stored === null ? "absent" : "STORED");
+    check("the app makes no third-party requests", outbound === 0, `${outbound} external requests`);
   } catch (err) {
     check("run completed without error", false, String(err).slice(0, 160));
   } finally {
