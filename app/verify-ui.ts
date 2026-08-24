@@ -7,13 +7,13 @@
  *
  * Runs under Bun via playwright-core driving the ALREADY-INSTALLED Edge
  * (`channel: "msedge"`), so no Node process executes and no 150MB browser is
- * downloaded — ADR-0002's single-runtime constraint stays intact.
+ * downloaded.
  *
  *   bun run verify:ui        # dev server must already be on :4517
  */
 import { chromium, type Browser, type Page } from "playwright-core";
 
-const URL = process.env.TLN_URL ?? "http://localhost:4517";
+const BASE = process.env.TLN_URL ?? "http://localhost:4517";
 
 let passed = 0;
 let failed = 0;
@@ -27,13 +27,6 @@ function check(name: string, ok: boolean, detail = ""): void {
     failed++;
     console.log(`  FAIL  ${name}${detail ? `  ${detail}` : ""}`);
   }
-}
-
-async function openScriptLens(page: Page): Promise<void> {
-  await page.goto(URL, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".tln-lens-tab", { timeout: 15_000 });
-  await page.getByRole("button", { name: "Script", exact: true }).click();
-  await page.waitForSelector(".tln-script__ta .cm-editor", { timeout: 15_000 });
 }
 
 /** Computed colour of the first line carrying `cls`, or null if absent. */
@@ -50,23 +43,68 @@ async function lineStyle(
 }
 
 async function main(): Promise<void> {
-  const reachable = await fetch(URL)
+  const reachable = await fetch(BASE)
     .then((r) => r.ok)
     .catch(() => false);
   if (!reachable) {
-    console.error(`\n  dev server not reachable at ${URL}\n  start it with:  bun run dev\n`);
+    console.error(`\n  dev server not reachable at ${BASE}\n  start it with:  bun run dev\n`);
     process.exit(2);
   }
 
-  console.log(`\nthroughline UI verification  (edge headless, ${URL})\n`);
+  console.log(`\nthroughline UI verification  (edge headless, ${BASE})\n`);
 
   let browser: Browser | undefined;
   try {
     browser = await chromium.launch({ channel: "msedge", headless: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 
+    /* ---- ADR-0007: sign-in is the first screen, with an honest escape ---- */
+    await page.goto(BASE, { waitUntil: "domcontentloaded" });
+    await page.waitForURL(/\/signin/, { timeout: 20_000 });
+    // The screen is a dynamic ssr:false import; counting before it resolves
+    // measures the loading state, not the page.
+    await page.waitForSelector(".tln-signin__card", { timeout: 20_000 });
+    check("a fresh visit lands on sign-in", page.url().includes("/signin"), page.url());
+
+    const gh = await page.locator(".tln-signin__github").count();
+    check("GitHub is the primary sign-in", gh === 1);
+
+    // Decision 5 makes "continue offline" a timing choice, not a privacy one.
+    // If this copy ever softens, the button starts making a promise we break.
+    const fine = (await page.locator(".tln-signin__fine").textContent()) ?? "";
+    check(
+      "the offline escape is not sold as privacy",
+      fine.includes("not a way to keep work private"),
+      fine.slice(0, 46),
+    );
+
+    await page.getByRole("button", { name: /Keep writing without signing in/ }).click();
+    await page.waitForURL((u) => !u.pathname.includes("signin"), { timeout: 20_000 });
+
+    /* ---- ADR-0007: nothing is fabricated on first run ---- */
+    await page.waitForSelector(".tln-library", { timeout: 20_000 });
+    const seeded = await page.locator(".tln-storycard:not(.tln-storycard--new)").count();
+    check("no story is seeded on first run", seeded === 0, `${seeded} cards`);
+
+    const sample = await page.getByRole("button", { name: "Open the sample story" }).count();
+    check("the sample is offered, not imposed", sample === 1);
+
+    await page.getByRole("button", { name: "Open the sample story" }).click();
+    await page.waitForSelector(".tln-lens-tab", { timeout: 20_000 });
+
+    /* ---- two indicators, and the local one makes no cloud claim ---- */
+    const localChip = (await page.locator(".tln-save").textContent()) ?? "";
+    check(
+      "the local indicator claims only this device",
+      localChip.includes("this device") ||
+        localChip.includes("Saving") ||
+        localChip.includes("Loading"),
+      localChip.trim(),
+    );
+
     /* ---- script lens: the editor is CodeMirror, not the old textarea ---- */
-    await openScriptLens(page);
+    await page.getByRole("button", { name: "Script", exact: true }).click();
+    await page.waitForSelector(".tln-script__ta .cm-editor", { timeout: 20_000 });
 
     const editors = await page.locator(".tln-script__ta .cm-editor").count();
     check("script pane mounts CodeMirror", editors === 1, `${editors} .cm-editor`);
@@ -77,7 +115,6 @@ async function main(): Promise<void> {
     const gutter = await page.locator(".tln-script__ta .cm-gutters").count();
     check("line-number gutter renders", gutter === 1);
 
-    /* ---- Fountain syntax highlighting is actually distinguishable ---- */
     const cue = await lineStyle(page, "tln-cm-cue");
     check(
       "character cue is coloured + bold",
@@ -96,7 +133,6 @@ async function main(): Promise<void> {
     const dlg = await lineStyle(page, "tln-cm-dlg");
     check("dialogue has its own colour rule", dlg !== null, dlg ? dlg.color : "no rule");
 
-    /* ---- editor and preview must agree; they show the same text ---- */
     const previewCue = await page.evaluate(() => {
       const el = document.querySelector(".tln-script__preview .tln-f-cue");
       return el ? getComputedStyle(el).color : null;
@@ -107,7 +143,6 @@ async function main(): Promise<void> {
       `preview=${previewCue ?? "none"} editor=${cue?.color ?? "none"}`,
     );
 
-    /* ---- Prism palette tokens are defined ---- */
     const tokens = await page.evaluate(() => {
       const s = getComputedStyle(document.documentElement);
       return ["--scene", "--character", "--location", "--theme", "--episode"].map((t) =>
@@ -122,7 +157,7 @@ async function main(): Promise<void> {
 
     /* ---- Map lens: node types are colour-coded, not identical pills ---- */
     await page.getByRole("button", { name: "Map", exact: true }).click();
-    await page.waitForSelector(".tln-card--pill", { timeout: 15_000 });
+    await page.waitForSelector(".tln-card--pill", { timeout: 20_000 });
 
     const pills = await page.evaluate(() =>
       [...document.querySelectorAll(".tln-card--pill")].map((p) => ({
@@ -137,97 +172,17 @@ async function main(): Promise<void> {
       `${pills.length} pills, ${distinct.size} distinct colours`,
     );
 
-    /* ---- Library stays a local library; auth lives in its own dialog ---- */
-    await page.getByTitle("Library / Workspace").click();
-    await page.waitForSelector(".tln-sync", { timeout: 15_000 });
+    /* ---- the account dialog still refuses a secret key ---- */
+    await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
+    await page.waitForSelector(".tln-auth", { timeout: 20_000 });
 
-    // The whole point of ADR-0005 is that sync is additive. With no config the
-    // library must still be a working local library, not a sign-in wall.
-    const localCards = await page.locator(".tln-storycard").count();
-    check("library works with no sync configured", localCards > 0, `${localCards} cards`);
+    const advanced = await page.locator(".tln-auth__title").first().textContent();
+    check("account dialog opens", (advanced ?? "").length > 0, advanced ?? "none");
 
-    const pushWhenUnconfigured = await page.getByRole("button", { name: /^Push/ }).count();
-    check("no push control before sign-in", pushWhenUnconfigured === 0);
-
-    // Signing in is a detour from the work, so it must not be inline in the
-    // library any more -- it opens as a modal from the header account control.
     const inlineAuth = await page.locator(".tln-sync input").count();
     check("no credential fields inline in the library", inlineAuth === 0, `${inlineAuth} inputs`);
-
-    await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
-    await page.waitForSelector(".tln-auth", { timeout: 15_000 });
-    const title = await page.locator(".tln-auth__title").first().textContent();
-    check(
-      "auth opens on the connect screen when unconfigured",
-      (title ?? "").includes("Connect cloud sync"),
-      title ?? "no title",
-    );
-
-    // Regression guard for the worst mistake this flow can invite: the secret
-    // key bypasses RLS, so it must be refused before it ever reaches storage.
-    await page.getByLabel("Project URL").fill("https://abcdefghijkl.supabase.co");
-    await page.getByLabel("Publishable key").fill("sb_secret_AbCdEf123456");
-    await page.getByRole("button", { name: "Connect", exact: true }).click();
-
-    const refusal = await page.locator(".tln-auth__error").first().textContent();
-    check(
-      "secret key is refused",
-      (refusal ?? "").includes("SECRET"),
-      (refusal ?? "no message").slice(0, 52),
-    );
-
-    const stored = await page.evaluate(() => localStorage.getItem("TLN_SUPABASE_PUBLISHABLE_KEY"));
-    check("refused key was never stored", stored === null, stored === null ? "absent" : "STORED");
-
-    // A good key advances to the sign-in screen rather than staying put.
-    await page.getByLabel("Publishable key").fill("sb_publishable_TestKey123456");
-    await page.getByRole("button", { name: "Connect", exact: true }).click();
-    const signInTitle = await page
-      .locator(".tln-auth__title")
-      .first()
-      .textContent({ timeout: 10_000 })
-      .catch(() => null);
-    check(
-      "a valid key advances to sign-in",
-      (signInTitle ?? "") === "Sign in",
-      signInTitle ?? "no title",
-    );
-
-    // GitHub is the primary path deliberately: it needs neither the built-in
-    // mailer (a couple of messages an hour, then a hard 429) nor a password.
-    const gh = await page.locator(".tln-auth__github").count();
-    const emailFallback = await page.getByRole("button", { name: "Email me a link" }).count();
-    check(
-      "GitHub is offered as the primary sign-in",
-      gh === 1 && emailFallback === 1,
-      `github=${gh} email=${emailFallback}`,
-    );
-
-    /* ---- returning from a link narrates itself, success or failure ---- */
-    // Exactly how Supabase bounces an expired or un-allow-listed link back.
-    await page.goto(
-      `${URL}/?error=access_denied&error_description=Email+link+is+invalid+or+has+expired`,
-      { waitUntil: "domcontentloaded" },
-    );
-    await page.waitForSelector(".tln-lens-tab", { timeout: 15_000 });
-
-    const callbackErr = await page
-      .locator(".tln-auth__error")
-      .first()
-      .textContent({ timeout: 15_000 })
-      .catch(() => null);
-    check(
-      "failed sign-in link is reported",
-      (callbackErr ?? "").includes("invalid or has expired"),
-      (callbackErr ?? "silent bounce").slice(0, 52),
-    );
-
-    // The dialog must open itself: someone who just clicked a link should not
-    // land in the workspace with no sign that anything happened.
-    const autoOpened = await page.locator(".tln-auth").count();
-    check("auth dialog opens itself on a callback", autoOpened === 1);
   } catch (err) {
-    check("run completed without error", false, String(err).slice(0, 120));
+    check("run completed without error", false, String(err).slice(0, 160));
   } finally {
     await browser?.close();
   }

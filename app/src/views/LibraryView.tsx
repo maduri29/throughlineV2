@@ -9,6 +9,7 @@ export default function LibraryView({ onSignIn }: { onSignIn: () => void }) {
   const switchProject = useGraphStore((s) => s.switchProject);
   const createProject = useGraphStore((s) => s.createProject);
   const importProject = useGraphStore((s) => s.importProject);
+  const openSample = useGraphStore((s) => s.openSample);
   const durability = useGraphStore((s) => s.durability);
   const [title, setTitle] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
@@ -34,6 +35,11 @@ export default function LibraryView({ onSignIn }: { onSignIn: () => void }) {
         </label>
         {/* Storage lives in this browser. Say so plainly rather than implying
             a cloud that does not exist. */}
+        {projects.length === 0 && (
+          <button className="tln-btn" onClick={() => void openSample()}>
+            Open the sample story
+          </button>
+        )}
         <span className="tln-library__note">
           {durability === null
             ? "Checking storage…"

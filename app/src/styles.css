@@ -1887,3 +1887,216 @@ body,
 .tln-auth__provider-off a {
   color: inherit;
 }
+
+/* Cloud half of the indicator pair (ADR-0007 decision 10). Paired with
+   .tln-save, which reports only what this device holds. */
+.tln-cloud {
+  font-size: 12px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.tln-cloud--synced {
+  color: var(--ok);
+  border-color: currentColor;
+}
+.tln-cloud--syncing {
+  color: var(--accent);
+  border-color: currentColor;
+}
+.tln-cloud--pending {
+  color: var(--warn);
+  border-color: currentColor;
+}
+.tln-cloud--offline {
+  color: var(--warn);
+  border-color: currentColor;
+}
+.tln-cloud--local-only {
+  color: var(--dim);
+}
+.tln-cloud--off {
+  display: none;
+}
+
+/* ---------------------------------------------------------------- signin --
+   The first screen (ADR-0007). A route, not a modal: nothing is rendered
+   behind it, so it cannot pretend to block an app that is really running. */
+.tln-signin {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 32px 22px;
+  background: var(--bg);
+}
+
+.tln-signin__boot {
+  padding: 40px;
+  color: var(--dim);
+}
+
+.tln-signin__card {
+  width: 100%;
+  max-width: 390px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 30px 28px 24px;
+  box-shadow: 0 14px 40px rgb(23 29 46 / 8%);
+}
+
+.tln-signin__mark {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  margin: 0 0 18px;
+}
+
+.tln-signin__title {
+  font-size: 21px;
+  margin: 0 0 7px;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.tln-signin__sub {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  margin: 0 0 20px;
+  line-height: 1.55;
+}
+
+.tln-signin__sub code {
+  font-size: 12px;
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 1px 5px;
+  overflow-wrap: anywhere;
+}
+
+.tln-signin__github {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  border: 0;
+  border-radius: 9px;
+  background: #1f2328;
+  color: #fff;
+  font: 600 14.5px/1 inherit;
+  padding: 11px 14px;
+  cursor: pointer;
+}
+
+.tln-signin__github:hover {
+  background: #32383f;
+}
+.tln-signin__github:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tln-signin__or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 17px 0 15px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--dim);
+}
+
+.tln-signin__or::before,
+.tln-signin__or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.tln-signin__input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  padding: 10px 12px;
+  font: 14px/1.2 inherit;
+  color: var(--ink);
+  background: var(--card);
+  margin: 0 0 9px;
+}
+
+.tln-signin__input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.tln-signin__secondary {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--ink);
+  font: 500 14px/1 inherit;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.tln-signin__secondary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tln-signin__warn {
+  font-size: 12px;
+  color: var(--warn);
+  margin: 10px 0 0;
+  line-height: 1.5;
+}
+
+.tln-signin__error {
+  font-size: 12px;
+  color: var(--danger);
+  background: rgb(217 68 54 / 8%);
+  border: 1px solid rgb(217 68 54 / 22%);
+  border-radius: 9px;
+  padding: 9px 11px;
+  margin: 16px 0 0;
+  line-height: 1.5;
+}
+
+.tln-signin__escape {
+  margin: 22px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.tln-signin__ghost {
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font: 500 13px/1 inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.tln-signin__ghost:hover {
+  color: var(--accent);
+}
+
+/* The one piece of copy that stops "continue offline" reading as a privacy
+   promise, which decision 5 would make false. */
+.tln-signin__fine {
+  font-size: 11.5px;
+  color: var(--dim);
+  margin: 9px 0 0;
+  line-height: 1.5;
+}

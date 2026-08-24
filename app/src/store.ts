@@ -4,7 +4,9 @@ import { create } from "zustand";
 import { demoGraph, uuidv7 } from "./demo";
 import { splitSceneChunks } from "./data/fountain";
 import { requestDurableStorage, type Durability } from "./data/durability";
-import { buildEnvelope, downloadEnvelope, parseEnvelope } from "./data/envelope";
+import { buildEnvelope, downloadEnvelope, parseEnvelope, type Envelope } from "./data/envelope";
+import { markSyncDirty, pushOne, readGate, readSync, writeSync } from "./data/cloudSync";
+import { cloudStatus, forkTitle, type CloudStatus } from "./data/sync";
 import { dbDelete, dbGetAll, dbPut, metaGet, metaSet } from "./data/idb";
 import { scopeToProject } from "./data/scopes";
 import {
@@ -29,6 +31,8 @@ type State = {
   canUndo: boolean;
   canRedo: boolean;
   bootError: string | null;
+  /** Cloud side of the indicator pair. Local status stays in `status` (ADR-0007). */
+  cloud: CloudStatus;
 };
 
 type Actions = {
@@ -48,6 +52,8 @@ type Actions = {
   importFountain: (text: string) => number;
   switchProject: (id: string) => Promise<void>;
   createProject: (title: string) => Promise<void>;
+  /** Put the sample story on the shelf, on request only. */
+  openSample: () => Promise<void>;
   /** Storage bucket status; null until boot has asked. */
   durability: Durability | null;
   /** Lossless graph export (ADR-0001 envelope). */
@@ -57,6 +63,9 @@ type Actions = {
   undo: () => void;
   redo: () => void;
   forceSave: () => Promise<void>;
+  /** Push the open story now, forking if the cloud has moved on. */
+  syncNow: () => Promise<void>;
+  refreshCloud: () => Promise<void>;
 };
 
 let undoStack: HistoryEntry[] = [];
@@ -125,6 +134,14 @@ async function flush(): Promise<void> {
     deadNodes.clear();
     deadEdges.clear();
     useGraphStore.setState({ status: "saved" });
+    // Local save landed; the cloud is now behind. Marking dirty before the push
+    // is scheduled means a crash in between leaves the story queued, not "clean".
+    const pid = s.projectId;
+    if (pid) {
+      await markSyncDirty(pid);
+      void refreshCloud();
+      scheduleCloudPush();
+    }
   } catch {
     useGraphStore.setState({ status: "error" });
   }
@@ -192,6 +209,105 @@ function commit(
   });
 }
 
+/* --------------------------------------------------------------- cloud -- */
+
+/** Longer than the local flush: the network is slower and far more expensive. */
+const CLOUD_MS = 2500;
+let cloudTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Re-read the current project from IndexedDB without the switchProject guard. */
+async function reloadProject(id: string): Promise<void> {
+  const [nodesArr, edgesArr] = await Promise.all([
+    dbGetAll<GraphNode>("nodes"),
+    dbGetAll<GraphEdge>("edges"),
+  ]);
+  const allNodes: Record<string, GraphNode> = {};
+  for (const n of nodesArr) allNodes[n.id] = n;
+  const allEdges: Record<string, GraphEdge> = {};
+  for (const e of edgesArr) allEdges[e.id] = e;
+  const scoped = scopeToProject(allNodes, allEdges, id);
+  useGraphStore.setState({
+    nodes: scoped.nodes,
+    edges: scoped.edges,
+    projects: Object.values(allNodes).filter((n) => n.type === "project"),
+    selection: [],
+  });
+}
+
+async function refreshCloud(): Promise<void> {
+  const s = useGraphStore.getState();
+  if (!s.projectId) return;
+  const [local, gate] = await Promise.all([readSync(s.projectId), readGate()]);
+  useGraphStore.setState({ cloud: cloudStatus(local, gate, cloudTimer !== null) });
+}
+
+/**
+ * The cloud refused our push because another device got there first.
+ *
+ * Keep OUR version as a separate story, then take theirs into the story that
+ * owns the cloud row. Nothing is discarded: the writer ends up with both, and
+ * the one they were just typing into is the one that keeps its identity.
+ */
+async function applyConflict(remote: Envelope, remoteRevision: number): Promise<void> {
+  const s = useGraphStore.getState();
+  const pid = s.projectId;
+  const project = pid ? s.nodes[pid] : undefined;
+  if (!pid || !project) return;
+
+  // 1. Our version, copied out under fresh ids so it cannot collide with theirs.
+  const forkId = uuidv7();
+  const remap = new Map<string, string>([[pid, forkId]]);
+  const mine = Object.values(s.nodes).filter((n) => n.id !== pid);
+  for (const n of mine) remap.set(n.id, uuidv7());
+
+  const container: GraphNode = { ...project, id: forkId, title: forkTitle(project.title) };
+  const forkNodes: GraphNode[] = [container];
+  for (const n of mine) {
+    const copy: GraphNode = { ...n, id: remap.get(n.id) as string };
+    if (n.parentId) copy.parentId = remap.get(n.parentId) ?? forkId;
+    if (n.order) {
+      copy.order = n.order.map((i) => remap.get(i)).filter((x): x is string => Boolean(x));
+    }
+    forkNodes.push(copy);
+  }
+  if (container.order) {
+    container.order = container.order
+      .map((i) => remap.get(i))
+      .filter((x): x is string => Boolean(x));
+  }
+  const forkEdges: GraphEdge[] = Object.values(s.edges).map((e) => ({
+    ...e,
+    id: uuidv7(),
+    from: remap.get(e.from) as string,
+    to: remap.get(e.to) as string,
+  }));
+
+  // Written BEFORE anything is removed: if this fails, we have changed nothing.
+  await dbPut("nodes", forkNodes);
+  await dbPut("edges", forkEdges);
+  await writeSync(forkId, { base: null, dirty: true });
+
+  // 2. Their version replaces ours in the story that owns the cloud row.
+  await dbDelete(
+    "nodes",
+    Object.keys(s.nodes).filter((id) => id !== pid),
+  );
+  await dbDelete("edges", Object.keys(s.edges));
+  await dbPut("nodes", [{ ...remote.project, id: pid }, ...remote.nodes]);
+  await dbPut("edges", remote.edges);
+  await writeSync(pid, { base: remoteRevision, dirty: false });
+
+  await reloadProject(pid);
+}
+
+function scheduleCloudPush(): void {
+  if (cloudTimer) clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(() => {
+    cloudTimer = null;
+    void useGraphStore.getState().syncNow();
+  }, CLOUD_MS);
+}
+
 export const useGraphStore = create<State & Actions>()((set, get) => ({
   status: "booting",
   durability: null,
@@ -203,6 +319,7 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   canUndo: false,
   canRedo: false,
   bootError: null,
+  cloud: "off",
 
   boot: async () => {
     set({ status: "booting" });
@@ -210,15 +327,12 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
     // blocks boot: a refusal is normal on a first visit, not an error.
     void requestDurableStorage().then((d) => set({ durability: d }));
     try {
-      let nodesArr = await dbGetAll<GraphNode>("nodes");
-      let edgesArr = await dbGetAll<GraphEdge>("edges");
-      if (nodesArr.length === 0) {
-        const seeded = demoGraph();
-        nodesArr = seeded.nodes;
-        edgesArr = seeded.edges;
-        await dbPut("nodes", nodesArr);
-        await dbPut("edges", edgesArr);
-      }
+      const nodesArr = await dbGetAll<GraphNode>("nodes");
+      const edgesArr = await dbGetAll<GraphEdge>("edges");
+      // No demo is seeded here any more (ADR-0007 decision 4). Under automatic
+      // sync a fabricated story would upload itself to the account and then
+      // appear on every device the writer owns. The sample is now something you
+      // ask for, via openSample().
       const allNodes: Record<string, GraphNode> = {};
       for (const n of nodesArr) allNodes[n.id] = n;
       const allEdges: Record<string, GraphEdge> = {};
@@ -251,7 +365,10 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   /** Two-level shell (T4): swap the workspace to another story. */
   switchProject: async (id) => {
     if (get().projectId === id) return;
-    await forceSave();
+    // get().forceSave, not a bare forceSave: there is no module-level function of
+    // that name, so this threw ReferenceError on every project switch from
+    // 82942eb until the auto-seeded demo stopped hiding the path.
+    await get().forceSave();
     try {
       const [nodesArr, edgesArr] = await Promise.all([
         dbGetAll<GraphNode>("nodes"),
@@ -332,6 +449,16 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
     set({ projects: [...get().projects, container] });
     await get().switchProject(newProjectId);
     return null;
+  },
+
+  openSample: async () => {
+    const seeded = demoGraph();
+    await dbPut("nodes", seeded.nodes);
+    await dbPut("edges", seeded.edges);
+    const added = seeded.nodes.filter((n) => n.type === "project");
+    set({ projects: [...get().projects, ...added] });
+    const first = added[0];
+    if (first) await get().switchProject(first.id);
   },
 
   createProject: async (title) => {
@@ -530,6 +657,20 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
     commit(set, get, flashback ? "Add flashback" : "Add scene", forward);
     set({ selection: [node.id] });
     return node.id;
+  },
+
+  refreshCloud,
+
+  syncNow: async () => {
+    const s = get();
+    const project = s.projectId ? s.nodes[s.projectId] : undefined;
+    if (!project) return;
+    useGraphStore.setState({ cloud: "syncing" });
+    const outcome = await pushOne(project, s.nodes, s.edges);
+    if (outcome.kind === "conflict") {
+      await applyConflict(outcome.remote, outcome.remoteRevision);
+    }
+    await refreshCloud();
   },
 
   undo: () => {

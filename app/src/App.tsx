@@ -6,6 +6,8 @@ import {
   isAuthExchangePending,
   onAuthChange,
 } from "./data/cloud";
+import { cloudLabel } from "./data/sync";
+import { hasChosenOffline } from "./views/SignInScreen";
 import { useGraphStore } from "./store";
 import AuthDialog from "./views/AuthDialog";
 import MapView from "./views/MapView";
@@ -19,7 +21,7 @@ import Palette from "./views/Palette";
 
 const SAVE_LABEL: Record<string, string> = {
   booting: "Loading…",
-  saved: "Saved ✓",
+  saved: "Saved on this device",
   saving: "Saving…",
   dirty: "Unsaved edits",
   error: "Save failed — retry with Ctrl+S",
@@ -43,6 +45,7 @@ export default function App() {
   const forceSave = useGraphStore((s) => s.forceSave);
   const exportProject = useGraphStore((s) => s.exportProject);
   const projectId = useGraphStore((s) => s.projectId);
+  const cloud = useGraphStore((s) => s.cloud);
   const [lens, setLens] = useState<Lens>("map");
   const [level, setLevel] = useState<"library" | "workspace">("workspace");
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -81,6 +84,13 @@ export default function App() {
     // than land in the workspace with no sign that anything happened.
     void handleAuthCallback().finally(() => {
       setCompleting(false);
+      // Sign-in first (ADR-0007 decision 6). Checked only after the callback
+      // settles, so someone returning from a link is never bounced back to the
+      // screen they just came from. The offline choice is remembered, not re-asked.
+      if (isAuthCallback() || hasChosenOffline()) return;
+      void cloudState().then((st) => {
+        if (st.kind !== "signed-in") location.replace("/signin");
+      });
     });
   }, []);
 
@@ -124,10 +134,16 @@ export default function App() {
         <span className="tln-header__sub">
           {level === "workspace" ? (project?.title ?? "") : "Library"}
         </span>
+        {/* Two indicators (ADR-0007 decision 10). They report different
+            guarantees, and the local one deliberately never shows a tick — a
+            story saved here is not a story you can open on another machine. */}
         <span className={`tln-save tln-save--${status}`}>
           {status === "error"
             ? `Error: ${useGraphStore.getState().bootError ?? "unknown"}`
             : SAVE_LABEL[status]}
+        </span>
+        <span className={`tln-cloud tln-cloud--${cloud}`} title="Cloud sync">
+          {cloudLabel(cloud)}
         </span>
         {level === "workspace" && (
           <button
@@ -173,7 +189,7 @@ export default function App() {
         </span>
       </header>
 
-      {level === "library" ? (
+      {level === "library" || !projectId ? (
         <LibraryView onSignIn={() => setAuthOpen(true)} />
       ) : (
         <div className="tln-workspace">

@@ -460,7 +460,24 @@ export function explainAuthError(message: string): string | null {
   return null;
 }
 
-export type PushResult = { ok: true; revision: number } | { ok: false; error: string };
+export type PushResult =
+  | { ok: true; revision: number }
+  /** The cloud moved past what this device last saw. Caller must fork, not retry. */
+  | { ok: false; stale: true; remote: number; error: string }
+  | { ok: false; stale: false; error: string };
+
+/** Current cloud revision for a story, or null if it has none. */
+export async function remoteRevision(localId: string): Promise<number | null> {
+  const c = getClient();
+  if (!c) return null;
+  const { data, error } = await c
+    .from("projects")
+    .select("revision")
+    .eq("local_id", localId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return (data as { revision: number }).revision;
+}
 
 /**
  * Push one project as a whole envelope.
@@ -474,31 +491,67 @@ export async function pushProject(
   project: GraphNode,
   nodes: Record<string, GraphNode>,
   edges: Record<string, GraphEdge>,
+  /** Revision this device last exchanged; null means "we believe there is none". */
+  expect: number | null = null,
 ): Promise<PushResult> {
   const c = getClient();
-  if (!c) return { ok: false, error: "Sync is not configured." };
+  if (!c) return { ok: false, stale: false, error: "Sync is not configured." };
   const { data: sess } = await c.auth.getSession();
   const owner = sess.session?.user.id;
-  if (!owner) return { ok: false, error: "Not signed in." };
+  if (!owner) return { ok: false, stale: false, error: "Not signed in." };
 
   const envelope = buildEnvelope(project, nodes, edges);
+  const row = {
+    owner_id: owner,
+    local_id: project.id,
+    title: project.title,
+    schema_version: envelope.schemaVersion,
+    payload: envelope,
+  };
+
+  // No upsert. An upsert cannot express "only if the cloud is still where I left
+  // it", so it silently wins every race — which is exactly the overwrite ADR-0007
+  // exists to prevent. Insert when we believe there is no cloud copy, and
+  // otherwise update CONDITIONALLY on the revision we last saw; the trigger bumps
+  // revision server-side, so a device that has fallen behind matches zero rows.
+  if (expect === null) {
+    const { data, error } = await c.from("projects").insert(row).select("revision").single();
+    if (!error) return { ok: true, revision: (data as { revision: number }).revision };
+    // Unique violation means a cloud copy exists that this device did not know
+    // about: divergence, not a failure to retry.
+    const remote = await remoteRevision(project.id);
+    if (remote !== null) {
+      return {
+        ok: false,
+        stale: true,
+        remote,
+        error: "This story already exists in your account.",
+      };
+    }
+    return { ok: false, stale: false, error: error.message };
+  }
+
   const { data, error } = await c
     .from("projects")
-    .upsert(
-      {
-        owner_id: owner,
-        local_id: project.id,
-        title: project.title,
-        schema_version: envelope.schemaVersion,
-        payload: envelope,
-      },
-      { onConflict: "owner_id,local_id" },
-    )
+    .update(row)
+    .eq("local_id", project.id)
+    .eq("revision", expect)
     .select("revision")
-    .single();
+    .maybeSingle();
 
-  if (error) return { ok: false, error: error.message };
-  return { ok: true, revision: (data as { revision: number }).revision };
+  if (error) return { ok: false, stale: false, error: error.message };
+  if (data) return { ok: true, revision: (data as { revision: number }).revision };
+
+  const remote = await remoteRevision(project.id);
+  if (remote === null) {
+    return { ok: false, stale: false, error: "The cloud copy of this story has gone." };
+  }
+  return {
+    ok: false,
+    stale: true,
+    remote,
+    error: `Cloud is at revision ${remote}; this device last saw ${expect}.`,
+  };
 }
 
 export type RemoteProject = {
