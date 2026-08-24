@@ -20,7 +20,7 @@ bun run dev        # http://localhost:4517
 cd app
 bun run check      # fmt + lint + typecheck + tests
 bun run build      # next build → app/.next  (route `/` prerenders static)
-bun run verify:ui  # 13 headless assertions; dev server must be running
+bun run verify:ui  # 39 headless assertions; dev server must be running
 ```
 
 The editor is loaded with `ssr: false` (`src/app/ClientApp.tsx`) because it is a
