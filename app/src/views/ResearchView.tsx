@@ -93,7 +93,10 @@ export default function ResearchView() {
   const add = (): void => {
     const t = draft.trim();
     if (!t) return;
-    void addReference(t, scope === "all" || scope === "shared" ? null : scope);
+    // Opened immediately. Collapsed, a new item is a line of text and the Add
+    // button looks like it did nothing — the notes field is the thing you came
+    // to write in, so put the cursor where the work happens.
+    void addReference(t, scope === "all" || scope === "shared" ? null : scope).then(setOpenId);
     setDraft("");
   };
 

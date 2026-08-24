@@ -25,7 +25,22 @@ function open(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains("files"))
           db.createObjectStore("files", { keyPath: "id" });
       };
-      req.onsuccess = () => resolve(req.result);
+      // An upgrade cannot proceed while another tab holds the old version open,
+      // and the default behaviour is to wait forever in silence — the app simply
+      // never finishes loading, with nothing on screen to explain why.
+      req.onblocked = () => {
+        reject(
+          new Error(
+            "Throughline is open in another tab running an older version. Close the other tabs and reload.",
+          ),
+        );
+      };
+      req.onsuccess = () => {
+        // A newer version elsewhere will ask us to close; holding the handle
+        // would block that tab the same way.
+        req.result.onversionchange = () => req.result.close();
+        resolve(req.result);
+      };
       req.onerror = () => reject(req.error);
     });
   }
