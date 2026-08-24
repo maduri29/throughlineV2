@@ -200,7 +200,7 @@ export default function App() {
       </header>
 
       {level === "library" || !projectId ? (
-        <LibraryView onSignIn={() => setAuthOpen(true)} />
+        <LibraryView onSignIn={() => setAuthOpen(true)} onOpen={() => setLevel("workspace")} />
       ) : (
         <div className="tln-workspace">
           <div className="tln-workspace__lens">

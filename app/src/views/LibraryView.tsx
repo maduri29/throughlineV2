@@ -4,7 +4,19 @@ import { describeUsage } from "../data/durability";
 import { useGraphStore } from "../store";
 import SyncPanel from "./SyncPanel";
 
-export default function LibraryView({ onSignIn }: { onSignIn: () => void }) {
+/**
+ * `onOpen` exists because choosing a story is two things at once: which project
+ * is loaded (store) and which level is on screen (App). Without it, picking a
+ * card swapped the project underneath a Library that stayed put — from the
+ * outside, clicking a story did nothing at all.
+ */
+export default function LibraryView({
+  onSignIn,
+  onOpen,
+}: {
+  onSignIn: () => void;
+  onOpen: () => void;
+}) {
   const projects = useGraphStore((s) => s.projects);
   const switchProject = useGraphStore((s) => s.switchProject);
   const createProject = useGraphStore((s) => s.createProject);
@@ -38,7 +50,7 @@ export default function LibraryView({ onSignIn }: { onSignIn: () => void }) {
         {/* Storage lives in this browser. Say so plainly rather than implying
             a cloud that does not exist. */}
         {projects.length === 0 && (
-          <button className="tln-btn" onClick={() => void openSample()}>
+          <button className="tln-btn" onClick={() => void openSample().then(onOpen)}>
             Open the sample story
           </button>
         )}
@@ -75,7 +87,11 @@ export default function LibraryView({ onSignIn }: { onSignIn: () => void }) {
       )}
       <div className="tln-library__grid">
         {projects.map((p) => (
-          <button key={p.id} className="tln-storycard" onClick={() => void switchProject(p.id)}>
+          <button
+            key={p.id}
+            className="tln-storycard"
+            onClick={() => void switchProject(p.id).then(onOpen)}
+          >
             <span className="tln-storycard__title">{p.title}</span>
             <span className="tln-storycard__by">
               {p.author ? `by ${p.author}` : "untitled author"}
@@ -90,7 +106,7 @@ export default function LibraryView({ onSignIn }: { onSignIn: () => void }) {
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && title.trim()) {
-                void createProject(title.trim());
+                void createProject(title.trim()).then(onOpen);
                 setTitle("");
               }
             }}
@@ -100,7 +116,7 @@ export default function LibraryView({ onSignIn }: { onSignIn: () => void }) {
             disabled={!title.trim()}
             onClick={() => {
               if (!title.trim()) return;
-              void createProject(title.trim());
+              void createProject(title.trim()).then(onOpen);
               setTitle("");
             }}
           >

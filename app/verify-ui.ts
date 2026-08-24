@@ -92,6 +92,17 @@ async function main(): Promise<void> {
     await page.getByRole("button", { name: "Open the sample story" }).click();
     await page.waitForSelector(".tln-lens-tab", { timeout: 20_000 });
 
+    // Choosing a story must actually take you into it. Picking a card changed
+    // which project was loaded but left the Library on screen, so from the
+    // outside clicking a story did nothing — and nothing here would have caught
+    // it, because the workspace happened to be showing already.
+    await page.getByTitle("Library / Workspace").click();
+    await page.waitForSelector(".tln-library", { timeout: 20_000 });
+    await page.locator(".tln-storycard:not(.tln-storycard--new)").first().click();
+    await page.waitForSelector(".tln-workspace", { timeout: 20_000 });
+    const inLibrary = await page.locator(".tln-library").count();
+    check("opening a story leaves the Library", inLibrary === 0, `${inLibrary} library panes`);
+
     /* ---- two indicators, and the local one makes no cloud claim ---- */
     const localChip = (await page.locator(".tln-save").textContent()) ?? "";
     check(
