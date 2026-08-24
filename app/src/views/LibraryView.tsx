@@ -10,6 +10,8 @@ export default function LibraryView({ onSignIn }: { onSignIn: () => void }) {
   const createProject = useGraphStore((s) => s.createProject);
   const importProject = useGraphStore((s) => s.importProject);
   const openSample = useGraphStore((s) => s.openSample);
+  const forks = useGraphStore((s) => s.forks);
+  const dismissForks = useGraphStore((s) => s.dismissForks);
   const durability = useGraphStore((s) => s.durability);
   const [title, setTitle] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
@@ -52,6 +54,25 @@ export default function LibraryView({ onSignIn }: { onSignIn: () => void }) {
       </div>
 
       {importError && <p className="tln-library__error">Import failed — {importError}</p>}
+
+      {/* A conflict leaves an extra card on the shelf. Unexplained, that reads as
+          a bug; explained, it reads as the app having saved you from one. */}
+      {Object.keys(forks).length > 0 && (
+        <div className="tln-library__forks">
+          <p className="tln-library__forks-head">
+            {Object.keys(forks).length === 1 ? "A copy was" : "Copies were"} kept aside
+          </p>
+          <p className="tln-library__forks-body">
+            Another device had already saved{" "}
+            {[...new Set(Object.values(forks))].map((t) => `“${t}”`).join(", ")}. Rather than
+            overwrite what you wrote here, your version was kept as a separate story marked{" "}
+            <em>unsynced copy</em>. Nothing was lost — merge what you want and delete the rest.
+          </p>
+          <button className="tln-btn" onClick={() => void dismissForks()}>
+            Got it
+          </button>
+        </div>
+      )}
       <div className="tln-library__grid">
         {projects.map((p) => (
           <button key={p.id} className="tln-storycard" onClick={() => void switchProject(p.id)}>

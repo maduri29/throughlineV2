@@ -30,6 +30,7 @@ import {
   type AuthDiagnostics,
   type CloudState,
 } from "../data/cloud";
+import { useGraphStore } from "../store";
 
 /** Supabase's built-in mailer is rate-limited; a cooldown avoids earning a 429. */
 const RESEND_SECONDS = 45;
@@ -47,6 +48,11 @@ export default function AuthDialog({
 }) {
   const [state, setState] = useState<CloudState | null>(null);
   const [diag, setDiag] = useState<AuthDiagnostics | null>(null);
+  // With a project compiled into the build, "unconfigured" never happens, so
+  // the connect screen would be unreachable. Kept and demoted (decision 3):
+  // its validateConfig guard is what refuses a secret key, and it is the only
+  // in-app way to repoint the app when the built-in project is wrong.
+  const [advanced, setAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -106,15 +112,17 @@ export default function AuthDialog({
 
   const screen: Screen = completing
     ? "signIn"
-    : state?.kind === "signed-in"
-      ? "account"
-      : state?.kind === "unconfigured"
-        ? hasBuiltinConfig()
-          ? "signIn" // project compiled in; go straight to proving who you are
-          : "connect"
-        : sentTo
-          ? "inbox"
-          : "signIn";
+    : advanced
+      ? "connect"
+      : state?.kind === "signed-in"
+        ? "account"
+        : state?.kind === "unconfigured"
+          ? hasBuiltinConfig()
+            ? "signIn" // project compiled in; go straight to proving who you are
+            : "connect"
+          : sentTo
+            ? "inbox"
+            : "signIn";
 
   const onConnect = (): void => {
     const problem = writeConfig(url, key);
@@ -210,6 +218,18 @@ export default function AuthDialog({
             <button className="tln-auth__primary" onClick={onConnect}>
               Connect
             </button>
+            {advanced && (
+              <button
+                className="tln-auth__ghost"
+                onClick={() => {
+                  setAdvanced(false);
+                  setError(null);
+                  void refresh();
+                }}
+              >
+                Back
+              </button>
+            )}
           </div>
         )}
 
@@ -324,6 +344,12 @@ export default function AuthDialog({
             >
               {busy ? "Sending…" : "Email me a link"}
             </button>
+            {/* Demoted, not deleted (decision 3). The audience most likely to
+                want a local-first writing tool is the one most likely to want to
+                own the backend it syncs to. */}
+            <button className="tln-auth__ghost" onClick={() => setAdvanced(true)}>
+              Advanced — use your own Supabase project
+            </button>
             {/* Only an action when it would change something: while the app is
                 already on the built-in project this button was a no-op that
                 looked like a setting. When a self-hoster has overridden the
@@ -394,23 +420,57 @@ export default function AuthDialog({
             <h2 className="tln-auth__title">Signed in</h2>
             <p className="tln-auth__sub">{state.email ?? "unknown account"}</p>
             <p className="tln-auth__hint">
-              Your stories still live on this machine. Push and pull from the Library — sync is
-              last-write-wins per story, not collaboration.
+              Your stories live on this machine and are copied to your account as you write. If
+              another device saved first, your version is kept as a separate story rather than
+              overwritten — nothing is discarded.
             </p>
             <button
               className="tln-auth__primary"
               disabled={busy}
               onClick={() => {
                 setBusy(true);
-                void signOut().then(() => {
-                  setBusy(false);
-                  setSentTo(null);
-                  void refresh();
-                });
+                setError(null);
+                // Signing out ends the session that would have uploaded whatever
+                // is still waiting, so the upload goes first (decision 11). Only
+                // a failure needs a decision from the writer.
+                void useGraphStore
+                  .getState()
+                  .syncAllNow()
+                  .then(async (stranded) => {
+                    if (stranded > 0) {
+                      setBusy(false);
+                      setError(
+                        `${stranded} ${stranded === 1 ? "story is" : "stories are"} not in your account yet and could not be uploaded. Signing out now would leave ${stranded === 1 ? "it" : "them"} on this device only.`,
+                      );
+                      return;
+                    }
+                    await signOut();
+                    setBusy(false);
+                    setSentTo(null);
+                    void refresh();
+                  });
               }}
             >
-              Sign out
+              {busy ? "Saving first…" : "Sign out"}
             </button>
+            {/* The override has to exist: refusing outright is its own kind of
+                broken, and someone on a dead connection still needs to leave. */}
+            {error !== null && (
+              <button
+                className="tln-auth__ghost"
+                onClick={() => {
+                  setBusy(true);
+                  void signOut().then(() => {
+                    setBusy(false);
+                    setSentTo(null);
+                    setError(null);
+                    void refresh();
+                  });
+                }}
+              >
+                Sign out anyway
+              </button>
+            )}
             {!isUsingBuiltinConfig() && (
               <button
                 className="tln-auth__ghost"

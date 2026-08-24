@@ -5,7 +5,16 @@ import { demoGraph, uuidv7 } from "./demo";
 import { splitSceneChunks } from "./data/fountain";
 import { requestDurableStorage, type Durability } from "./data/durability";
 import { buildEnvelope, downloadEnvelope, parseEnvelope, type Envelope } from "./data/envelope";
-import { markSyncDirty, pushOne, readGate, readSync, writeSync } from "./data/cloudSync";
+import {
+  markSyncDirty,
+  PLACEHOLDER,
+  pullOne,
+  pushOne,
+  readGate,
+  readSync,
+  unknownRemote,
+  writeSync,
+} from "./data/cloudSync";
 import { cloudStatus, forkTitle, type CloudStatus } from "./data/sync";
 import { dbDelete, dbGetAll, dbPut, metaGet, metaSet } from "./data/idb";
 import { scopeToProject } from "./data/scopes";
@@ -33,6 +42,8 @@ type State = {
   bootError: string | null;
   /** Cloud side of the indicator pair. Local status stays in `status` (ADR-0007). */
   cloud: CloudStatus;
+  /** Stories kept aside after a conflict: fork id -> what it was forked from. */
+  forks: Record<string, string>;
 };
 
 type Actions = {
@@ -66,6 +77,15 @@ type Actions = {
   /** Push the open story now, forking if the cloud has moved on. */
   syncNow: () => Promise<void>;
   refreshCloud: () => Promise<void>;
+  /** Fetch the open story if the account has something newer. */
+  pullCurrent: () => Promise<void>;
+  /** Put stories that exist only in the account onto the shelf. */
+  syncLibrary: () => Promise<void>;
+  /** Upload everything this device holds that the account does not. */
+  adoptLocalStories: () => Promise<void>;
+  /** Push every unsynced story; resolves to how many are still unsynced. */
+  syncAllNow: () => Promise<number>;
+  dismissForks: () => Promise<void>;
 };
 
 let undoStack: HistoryEntry[] = [];
@@ -93,7 +113,7 @@ function collectIds(ops: Op[]): { nodeIds: string[]; edgeIds: string[] } {
     else if (op.t === "deleteNodes") {
       nodeIds.push(...op.nodes.map((n) => n.id));
       edgeIds.push(...op.edges.map((e) => e.id));
-    } else if (op.t === "addEdge" || op.t === "patchEdge") edgeIds.push(op.edge.id);
+    } else if (op.t === "patchEdge") edgeIds.push(op.id);
     else edgeIds.push(op.edge.id);
   }
   return { nodeIds, edgeIds };
@@ -248,6 +268,27 @@ async function refreshCloud(): Promise<void> {
  * owns the cloud row. Nothing is discarded: the writer ends up with both, and
  * the one they were just typing into is the one that keeps its identity.
  */
+/**
+ * Replace the OPEN story's content with the cloud copy.
+ *
+ * Only ever called once the caller has established that nothing local is at
+ * risk — either planPull said so, or applyConflict has already set our version
+ * aside. Scoped to the open project because `s.nodes` holds only that project.
+ */
+async function adoptRemote(pid: string, remote: Envelope, revision: number): Promise<void> {
+  const s = useGraphStore.getState();
+  if (s.projectId !== pid) return;
+  await dbDelete(
+    "nodes",
+    Object.keys(s.nodes).filter((id) => id !== pid),
+  );
+  await dbDelete("edges", Object.keys(s.edges));
+  await dbPut("nodes", [{ ...remote.project, id: pid }, ...remote.nodes]);
+  await dbPut("edges", remote.edges);
+  await writeSync(pid, { base: revision, dirty: false });
+  await reloadProject(pid);
+}
+
 async function applyConflict(remote: Envelope, remoteRevision: number): Promise<void> {
   const s = useGraphStore.getState();
   const pid = s.projectId;
@@ -287,17 +328,14 @@ async function applyConflict(remote: Envelope, remoteRevision: number): Promise<
   await dbPut("edges", forkEdges);
   await writeSync(forkId, { base: null, dirty: true });
 
-  // 2. Their version replaces ours in the story that owns the cloud row.
-  await dbDelete(
-    "nodes",
-    Object.keys(s.nodes).filter((id) => id !== pid),
-  );
-  await dbDelete("edges", Object.keys(s.edges));
-  await dbPut("nodes", [{ ...remote.project, id: pid }, ...remote.nodes]);
-  await dbPut("edges", remote.edges);
-  await writeSync(pid, { base: remoteRevision, dirty: false });
+  // Recorded so the Library can explain the extra card, rather than leaving a
+  // mystery duplicate on the shelf.
+  const forks = { ...useGraphStore.getState().forks, [forkId]: project.title };
+  await metaSet("forkNotices", forks);
+  useGraphStore.setState({ forks });
 
-  await reloadProject(pid);
+  // 2. Their version replaces ours in the story that owns the cloud row.
+  await adoptRemote(pid, remote, remoteRevision);
 }
 
 function scheduleCloudPush(): void {
@@ -320,6 +358,7 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   canRedo: false,
   bootError: null,
   cloud: "off",
+  forks: {},
 
   boot: async () => {
     set({ status: "booting" });
@@ -338,6 +377,7 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
       const allEdges: Record<string, GraphEdge> = {};
       for (const e of edgesArr) allEdges[e.id] = e;
       const projects = Object.values(allNodes).filter((n) => n.type === "project");
+      const forks = (await metaGet<Record<string, string>>("forkNotices")) ?? {};
       const lastId = await metaGet<string>("lastProjectId");
       const project = projects.find((p) => p.id === lastId) ?? projects[0] ?? null;
       if (project) {
@@ -356,6 +396,7 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
         canUndo: undoStack.length > 0,
         canRedo: redoStack.length > 0,
         selection: [],
+        forks,
       });
     } catch (err) {
       set({ status: "error", bootError: String(err) });
@@ -390,6 +431,9 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
         canRedo: redoStack.length > 0,
         status: "saved",
       });
+      // Payload arrives on open, not on boot (ADR-0007 decision 12). A shell
+      // placed by syncLibrary() fills itself in here.
+      void get().pullCurrent();
     } catch {
       set({ status: "error" });
     }
@@ -471,7 +515,7 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   select: (ids) => set({ selection: ids }),
 
   addNode: (partial) => {
-    const node: GraphNode = { id: uuidv7(), title: partial.title, ...partial };
+    const node: GraphNode = { ...partial, id: partial.id ?? uuidv7() };
     commit(set, get, `Add ${partial.type} “${partial.title}”`, [{ t: "addNode", node }]);
     return node.id;
   },
@@ -660,6 +704,68 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   },
 
   refreshCloud,
+
+  pullCurrent: async () => {
+    const pid = get().projectId;
+    if (!pid) return;
+    const out = await pullOne(pid);
+    if (out.kind === "adopt") await adoptRemote(pid, out.remote, out.revision);
+    else if (out.kind === "conflict") await applyConflict(out.remote, out.revision);
+    await refreshCloud();
+  },
+
+  syncLibrary: async () => {
+    const known = new Set(get().projects.map((p) => p.id));
+    const missing = await unknownRemote(known);
+    if (missing.length === 0) return;
+    // Title-only shells so the story appears on the shelf; the payload arrives
+    // when it is opened (ADR-0007 decision 12). PLACEHOLDER marks them clean, so
+    // an empty shell can never push itself over the real thing.
+    const shells: GraphNode[] = missing.map((r) => ({
+      id: r.localId,
+      type: "project",
+      title: r.title,
+    }));
+    await dbPut("nodes", shells);
+    for (const shell of shells) await writeSync(shell.id, PLACEHOLDER);
+    set({ projects: [...get().projects, ...shells] });
+  },
+
+  adoptLocalStories: async () => {
+    await get().syncAllNow();
+  },
+
+  syncAllNow: async () => {
+    const [nodesArr, edgesArr] = await Promise.all([
+      dbGetAll<GraphNode>("nodes"),
+      dbGetAll<GraphEdge>("edges"),
+    ]);
+    const allNodes: Record<string, GraphNode> = {};
+    for (const n of nodesArr) allNodes[n.id] = n;
+    const allEdges: Record<string, GraphEdge> = {};
+    for (const e of edgesArr) allEdges[e.id] = e;
+
+    let stranded = 0;
+    for (const p of get().projects) {
+      const meta = await readSync(p.id);
+      if (!meta.dirty) continue;
+      const scoped = scopeToProject(allNodes, allEdges, p.id);
+      const container = allNodes[p.id];
+      if (!container) continue;
+      const out = await pushOne(container, scoped.nodes, scoped.edges);
+      // A conflict on a story that is not open cannot be forked here -- forking
+      // rewrites the open project's scoped state. It stays dirty and surfaces
+      // the moment the writer opens it, which is where they can see what changed.
+      if (out.kind !== "pushed") stranded++;
+    }
+    await refreshCloud();
+    return stranded;
+  },
+
+  dismissForks: async () => {
+    await metaSet("forkNotices", {});
+    set({ forks: {} });
+  },
 
   syncNow: async () => {
     const s = get();

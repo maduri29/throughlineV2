@@ -4,10 +4,17 @@
 // bookkeeping. Deliberately thin: anything here that grows a branch worth
 // reasoning about belongs in sync.ts, where it can be swept exhaustively rather
 // than reasoned about by hand — which is how the pull-overwrite hole was found.
-import { cloudState, pullProject, pushProject } from "./cloud";
+import {
+  cloudState,
+  listRemote,
+  pullProject,
+  pushProject,
+  remoteRevision,
+  type RemoteProject,
+} from "./cloud";
 import type { Envelope } from "./envelope";
 import { metaGet, metaSet } from "./idb";
-import { planPush, type Gate, type LocalSync } from "./sync";
+import { planPull, planPush, type Gate, type LocalSync } from "./sync";
 import type { GraphEdge, GraphNode } from "../types";
 
 /**
@@ -91,3 +98,52 @@ export async function pushOne(
   if (typeof remote === "string") return { kind: "failed", error: remote };
   return { kind: "conflict", remote, remoteRevision: res.remote };
 }
+
+export type PullOutcome =
+  | { kind: "skipped"; reason: string }
+  | { kind: "failed"; error: string }
+  /** Safe to take wholesale — nothing local is at risk. */
+  | { kind: "adopt"; remote: Envelope; revision: number }
+  /** Take theirs, but fork ours first. */
+  | { kind: "conflict"; remote: Envelope; revision: number };
+
+/**
+ * Fetch one story if the cloud has something newer.
+ *
+ * Unlike push, this must read the revision before deciding: there is no
+ * conditional GET to lean on, and downloading a whole envelope only to discover
+ * it matches what we already hold is the expensive way to learn nothing.
+ */
+export async function pullOne(projectId: string): Promise<PullOutcome> {
+  const local = await readSync(projectId);
+  const gate = await readGate();
+  const rev = await remoteRevision(projectId);
+  const plan = planPull(local, rev === null ? null : { revision: rev }, gate);
+  if (plan.kind === "skip") return { kind: "skipped", reason: plan.reason };
+
+  const remote = await pullProject(projectId);
+  if (typeof remote === "string") return { kind: "failed", error: remote };
+
+  const revision = plan.kind === "adopt" ? plan.revision : plan.remote;
+  return plan.kind === "adopt"
+    ? { kind: "adopt", remote, revision }
+    : { kind: "conflict", remote, revision };
+}
+
+/**
+ * Stories in the account that this device has never seen.
+ *
+ * Metadata only (ADR-0007 decision 12): the caller stands each one up as a
+ * placeholder so it appears on the shelf, and the payload is fetched when the
+ * writer actually opens it. Eagerly downloading a back catalogue on every boot
+ * costs startup time for stories nobody asked for.
+ */
+export async function unknownRemote(knownIds: Set<string>): Promise<RemoteProject[]> {
+  const gate = await readGate();
+  if (!gate.signedIn || !gate.online) return [];
+  const remote = await listRemote();
+  return remote.filter((r) => !knownIds.has(r.localId));
+}
+
+/** A story listed in the account but not yet downloaded. */
+export const PLACEHOLDER: LocalSync = { base: null, dirty: false };

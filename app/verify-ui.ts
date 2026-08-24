@@ -181,6 +181,24 @@ async function main(): Promise<void> {
 
     const inlineAuth = await page.locator(".tln-sync input").count();
     check("no credential fields inline in the library", inlineAuth === 0, `${inlineAuth} inputs`);
+
+    // Decision 3: the bring-your-own-project path is demoted, not deleted. With
+    // a project compiled into the build it is otherwise unreachable, and the
+    // secret-key guard would go untested with it.
+    await page.getByRole("button", { name: /Advanced/ }).click();
+    await page.getByLabel("Project URL").waitFor({ timeout: 10_000 });
+    await page.getByLabel("Project URL").fill("https://abcdefghijkl.supabase.co");
+    await page.getByLabel("Publishable key").fill("sb_secret_AbCdEf123456");
+    await page.getByRole("button", { name: "Connect", exact: true }).click();
+    const refusal = (await page.locator(".tln-auth__error").first().textContent()) ?? "";
+    check(
+      "secret key is still refused behind Advanced",
+      refusal.includes("SECRET"),
+      refusal.slice(0, 42),
+    );
+
+    const stored = await page.evaluate(() => localStorage.getItem("TLN_SUPABASE_PUBLISHABLE_KEY"));
+    check("refused key was never stored", stored === null, stored === null ? "absent" : "STORED");
   } catch (err) {
     check("run completed without error", false, String(err).slice(0, 160));
   } finally {

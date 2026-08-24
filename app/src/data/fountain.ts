@@ -1,7 +1,7 @@
 // Fountain subset engine (T2 spec: research/fountain-subset.md).
 // Pure functions only — parse, render preview HTML, build skeletons, assemble export.
 import { TODS } from "../types";
-import type { GraphEdge, GraphNode } from "../types";
+import type { GraphEdge, GraphNode, Tod } from "../types";
 
 /* ---------------------------------- slugs --------------------------------- */
 
@@ -91,8 +91,9 @@ export function parseFountain(src: string): { titlePage: Record<string, string[]
     if (line.trim() === "") break;
     const m = /^([^a-z][^:]{0,48}):\s*(.*)$/.exec(line);
     if (m && !/^\s/.test(line)) {
-      lastKey = m[1].trim();
-      titlePage[lastKey] = m[2].trim() ? [m[2].trim()] : [];
+      lastKey = (m[1] ?? "").trim();
+      const value = (m[2] ?? "").trim();
+      titlePage[lastKey] = value ? [value] : [];
     } else if (lastKey && /^\s{3,}|\t/.test(line)) {
       titlePage[lastKey]?.push(line.trim());
     } else {
@@ -460,7 +461,7 @@ export function scriptSequence(
   const out: SequenceItem[] = [];
   const containers = (project.order ?? [])
     .map((id) => nodes[id])
-    .filter((c): c is GraphNode => Boolean(c) && c.type === "episode");
+    .filter((c): c is GraphNode => c !== undefined && c.type === "episode");
 
   const emitContainer = (container: GraphNode | null): void => {
     for (const sid of container?.order ?? []) {

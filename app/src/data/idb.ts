@@ -31,7 +31,10 @@ function open(): Promise<IDBDatabase> {
 async function run<T>(
   store: StoreName,
   mode: IDBTransactionMode,
-  fn: (os: IDBObjectStore) => IDBRequest,
+  // Callers that issue several requests in one transaction (dbPut, dbDelete)
+  // return nothing; the transaction's own oncomplete is what resolves us, and
+  // `req?.result` below already copes with there being no single request.
+  fn: (os: IDBObjectStore) => IDBRequest | void,
 ): Promise<T> {
   const db = await open();
   return new Promise<T>((resolve, reject) => {

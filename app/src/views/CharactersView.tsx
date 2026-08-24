@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { CHAR_ROLE_SUGGESTIONS } from "../types";
 import type { GraphNode } from "../types";
 import { useGraphStore } from "../store";
-import { characterDetails } from "../data/characters";
+import { characterDetails, type CharacterDetail } from "../data/characters";
 
 export default function CharactersView() {
   const nodes = useGraphStore((s) => s.nodes);
@@ -36,7 +36,9 @@ export default function CharactersView() {
     [nodes],
   );
   const details = useMemo(
-    () => (project ? characterDetails(project, nodes, edges) : new Map()),
+    // Typed fallback: a bare `new Map()` is Map<any, any>, which widened the
+    // whole memo to any and silently erased types through every card below.
+    () => (project ? characterDetails(project, nodes, edges) : new Map<string, CharacterDetail>()),
     [project, nodes, edges],
   );
 

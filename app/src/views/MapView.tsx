@@ -275,7 +275,10 @@ function MapInner() {
   /* Drag-connect opens the legality picker (T5 §4); Esc or backdrop cancels. */
   const onConnectEnd: OnConnectEnd = useCallback((event, state) => {
     const from = state.fromNode?.id;
-    const to = state.targetNode?.id;
+    // React Flow 12 calls this `toNode`; `targetNode` does not exist on
+    // FinalConnectionState, so this was always undefined and the handler always
+    // returned early — drag-connect never opened the picker.
+    const to = state.toNode?.id;
     if (!from || !to || from === to) return;
     const ev = "clientX" in event ? event : event.changedTouches[0];
     if (!ev) return;

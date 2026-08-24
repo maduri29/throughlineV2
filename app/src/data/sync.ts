@@ -54,7 +54,11 @@ export type Gate = { online: boolean; signedIn: boolean };
 export function planPush(local: LocalSync, remote: RemoteSync, gate: Gate): PushPlan {
   if (!gate.signedIn) return { kind: "skip", reason: "not signed in" };
   if (!gate.online) return { kind: "skip", reason: "offline" };
-  if (!local.dirty && local.base !== null) return { kind: "skip", reason: "up to date" };
+  // Nothing dirty means nothing to send, whatever `base` says. The `base !== null`
+  // clause this replaced made a not-yet-downloaded story (a library placeholder,
+  // which is `{base: null, dirty: false}`) fall through to `create` and collide
+  // with the cloud copy it was standing in for.
+  if (!local.dirty) return { kind: "skip", reason: "up to date" };
 
   if (remote === null) return { kind: "create" };
   if (local.base === remote.revision) return { kind: "update", expect: remote.revision };

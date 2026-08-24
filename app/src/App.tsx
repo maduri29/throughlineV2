@@ -59,6 +59,16 @@ export default function App() {
     const read = (): void => {
       void cloudState().then((s) => {
         setAccount(s.kind === "signed-in" ? (s.email ?? "account") : null);
+        if (s.kind !== "signed-in") return;
+        // Signing in adopts what is already here (decision 5), then brings down
+        // anything this device has never seen. Order matters: uploading first
+        // means a story written offline cannot be mistaken for a stale copy of
+        // something the account already holds.
+        const store = useGraphStore.getState();
+        void store
+          .adoptLocalStories()
+          .then(() => store.syncLibrary())
+          .then(() => store.pullCurrent());
       });
     };
     read();
