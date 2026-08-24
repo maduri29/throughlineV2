@@ -40,6 +40,12 @@ const LENSES: Array<[Lens, string]> = [
   ["script", "Script"],
 ];
 
+/**
+ * Guards against bouncing to sign-in more than once per page load. Belongs
+ * outside the component so a remount cannot reset it mid-loop.
+ */
+let sentToSignIn = false;
+
 export default function App() {
   const status = useGraphStore((s) => s.status);
   const canUndo = useGraphStore((s) => s.canUndo);
@@ -102,13 +108,58 @@ export default function App() {
     return onAuthChange(read);
   }, []);
 
-  // "/" stays the landing spot because that is where auth links come back to;
-  // handing off to a real URL waits until the callback has been spent, or the
-  // token in the address bar would be thrown away with the redirect.
+  /**
+   * One place decides where you land, because two did not agree.
+   *
+   * The root handoff ("/" -> a real URL) and the sign-in gate were separate
+   * effects both calling replace, so at "/" they raced and whichever ran last
+   * won at random. Deciding once, in order — finish the callback, then ask
+   * whether we are signed in, then navigate — is what makes it stable.
+   *
+   * "/" stays the landing spot because that is where auth links come back to,
+   * and the handoff waits for the callback to be spent or the token in the
+   * address bar goes with the redirect.
+   */
   useEffect(() => {
-    if (pathname !== "/" || status === "booting" || completing) return;
-    const pid = useGraphStore.getState().projectId;
-    router.replace(pid ? `/stories/${pid}` : "/stories");
+    if (status === "booting" || completing) return;
+    let cancelled = false;
+
+    void (async () => {
+      const atRoot = pathname === "/";
+      const stay = (): void => {
+        if (!atRoot || cancelled) return;
+        const pid = useGraphStore.getState().projectId;
+        router.replace(pid ? `/stories/${pid}` : "/stories");
+      };
+
+      // Mid-callback, or having explicitly chosen to work offline: never bounce.
+      if (isAuthCallback() || hasChosenOffline() || sentToSignIn) {
+        stay();
+        return;
+      }
+      try {
+        const st = await cloudState();
+        if (cancelled) return;
+        if (st.kind === "signed-in") {
+          stay();
+          return;
+        }
+        // Once per load. location.replace restarted the app on every hop, which
+        // restarted session restoration, which raced this check again — a
+        // sign-in screen that reappeared after signing in successfully, and a
+        // store that never finished booting because the page kept reloading.
+        sentToSignIn = true;
+        router.replace("/signin");
+      } catch {
+        // Unreadable auth state is not a reason to lock someone out of their own
+        // local work. Fail open rather than into a redirect.
+        stay();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [pathname, status, completing, router]);
 
   useEffect(() => {
@@ -135,15 +186,10 @@ export default function App() {
     // The dialog is opened for the duration either way: someone who has just
     // clicked a sign-in link should see it resolve, success or failure, rather
     // than land in the workspace with no sign that anything happened.
+    // Where to land is decided in one place below, once the callback and boot
+    // have both settled. Doing it here as well is what let two redirects race.
     void handleAuthCallback().finally(() => {
       setCompleting(false);
-      // Sign-in first (ADR-0007 decision 6). Checked only after the callback
-      // settles, so someone returning from a link is never bounced back to the
-      // screen they just came from. The offline choice is remembered, not re-asked.
-      if (isAuthCallback() || hasChosenOffline()) return;
-      void cloudState().then((st) => {
-        if (st.kind !== "signed-in") location.replace("/signin");
-      });
     });
   }, []);
 

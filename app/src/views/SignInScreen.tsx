@@ -8,6 +8,7 @@
 // adopts every local story (decision 5), continuing without signing in is NOT a
 // privacy choice — it is "offline for now", and everything written that way
 // uploads at the next sign-in. The button says so.
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   authDiagnostics,
@@ -23,16 +24,28 @@ import {
 
 export const SKIP_KEY = "TLN_SKIP_SIGNIN";
 
+/**
+ * In-memory fallback for the offline choice.
+ *
+ * The escape hatch used to live only in localStorage. Where storage is blocked
+ * the write silently fails, the gate keeps deciding you have not chosen, and
+ * there is no way out of the sign-in screen at all — the one situation where an
+ * escape hatch has to work.
+ */
+let chosenOfflineInMemory = false;
+
 /** Remember the offline choice so the gate does not ask again every load. */
 export function chooseOffline(): void {
+  chosenOfflineInMemory = true;
   try {
     localStorage.setItem(SKIP_KEY, "1");
   } catch {
-    /* private mode: the gate simply asks again, which is survivable */
+    /* storage blocked: the in-memory flag still gets you through this session */
   }
 }
 
 export function hasChosenOffline(): boolean {
+  if (chosenOfflineInMemory) return true;
   try {
     return localStorage.getItem(SKIP_KEY) === "1";
   } catch {
@@ -41,6 +54,7 @@ export function hasChosenOffline(): boolean {
 }
 
 export default function SignInScreen() {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -52,11 +66,14 @@ export default function SignInScreen() {
       const s = await cloudState();
       setDiag(await authDiagnostics());
       // Already signed in — nothing to ask. Go where the work is.
-      if (s.kind === "signed-in") location.replace("/stories");
+      // router.replace, not location.replace: a full page load restarts session
+      // restoration, and racing it against the gate on /stories is what produced
+      // a sign-in screen that reappeared after a successful login.
+      if (s.kind === "signed-in") router.replace("/stories");
     } catch (err) {
       setError(String(err));
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     // oxlint-disable-next-line react/set-state-in-effect
@@ -168,7 +185,7 @@ export default function SignInScreen() {
             className="tln-signin__ghost"
             onClick={() => {
               chooseOffline();
-              location.replace("/stories");
+              router.replace("/stories");
             }}
           >
             Keep writing without signing in

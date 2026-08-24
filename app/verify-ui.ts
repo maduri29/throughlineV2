@@ -58,6 +58,15 @@ async function main(): Promise<void> {
     browser = await chromium.launch({ channel: "msedge", headless: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 
+    /* ---- the gate settles instead of ping-ponging ---- */
+    // A sign-in screen that reappears after a successful login is a redirect
+    // loop, and a page that keeps reloading never finishes booting the store —
+    // which presents as every button in the app doing nothing.
+    const hops: string[] = [];
+    page.on("framenavigated", (f) => {
+      if (f === page.mainFrame()) hops.push(new URL(f.url()).pathname);
+    });
+
     /* ---- ADR-0007: sign-in is the first screen, with an honest escape ---- */
     await page.goto(BASE, { waitUntil: "domcontentloaded" });
     await page.waitForURL(/\/signin/, { timeout: 20_000 });
@@ -81,6 +90,14 @@ async function main(): Promise<void> {
     await page.getByRole("button", { name: /Keep writing without signing in/ }).click();
     await page.waitForURL(/\/stories/, { timeout: 20_000 });
     check("the Library has its own URL", new URL(page.url()).pathname === "/stories", page.url());
+
+    await page.waitForTimeout(2500);
+    const signinHops = hops.filter((h) => h === "/signin").length;
+    check(
+      "the sign-in gate settles rather than looping",
+      signinHops <= 1 && new URL(page.url()).pathname === "/stories",
+      `${signinHops} hops to /signin, ended at ${new URL(page.url()).pathname}`,
+    );
 
     /* ---- ADR-0007: nothing is fabricated on first run ---- */
     await page.waitForSelector(".tln-library", { timeout: 20_000 });
