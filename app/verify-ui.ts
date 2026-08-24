@@ -327,8 +327,11 @@ async function main(): Promise<void> {
     );
 
     // Ticking is the point: it must move progress and survive a reload.
-    await page.locator('.tln-beat input[type="checkbox"]').first().check();
-    await page.waitForTimeout(400);
+    // Plain click, not .check(): React replaces the input on re-render, so
+    // .check() re-queries a stale handle and reports "state did not change"
+    // even where it plainly did — confirmed by hand against production.
+    await page.locator('.tln-beat input[type="checkbox"]').first().click({ force: true });
+    await page.waitForTimeout(900);
     const progress = (await page.locator(".tln-beats__count").textContent()) ?? "";
     check("ticking a beat moves progress", progress.includes("1 of 15"), progress.trim());
 
