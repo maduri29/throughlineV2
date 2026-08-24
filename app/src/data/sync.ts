@@ -72,10 +72,28 @@ export function planPush(local: LocalSync, remote: RemoteSync, gate: Gate): Push
  * taking the cloud copy would silently drop whatever is on this device — so it
  * resolves the same way rather than inventing a second policy.
  */
-export function planPull(local: LocalSync, remote: RemoteSync, gate: Gate): PullPlan {
+export function planPull(
+  local: LocalSync,
+  remote: RemoteSync,
+  gate: Gate,
+  /** Does this device hold real content for the story, beyond an empty shell? */
+  hasLocalContent = false,
+): PullPlan {
   if (!gate.signedIn) return { kind: "skip", reason: "not signed in" };
   if (!gate.online) return { kind: "skip", reason: "offline" };
   if (remote === null) return { kind: "skip", reason: "not in the cloud" };
+
+  // A story this device has never synced must never be pulled over.
+  //
+  // Every project that predates the sync tier has no record, and the safe-looking
+  // default for "no record" is {base: null, dirty: true}. Combined with a cloud
+  // row of the same id that is enough to look like a conflict, so signing in and
+  // opening an old story replaced its contents with whatever the cloud held and
+  // left the local version as a fork. Push first, then pulling is meaningful;
+  // until then this device has no basis for believing the cloud is newer.
+  if (local.base === null && hasLocalContent) {
+    return { kind: "skip", reason: "never synced from this device" };
+  }
 
   // Same revision means the cloud holds nothing we do not already have, whether
   // or not we have unsaved edits on top. Adopting here would overwrite those

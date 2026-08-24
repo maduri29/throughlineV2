@@ -826,7 +826,10 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   pullCurrent: async () => {
     const pid = get().projectId;
     if (!pid) return;
-    const out = await pullOne(pid);
+    // Anything beyond the project node itself counts as content worth protecting:
+    // a story this device has never synced must not be replaced by a cloud copy.
+    const hasLocalContent = Object.keys(get().nodes).length > 1;
+    const out = await pullOne(pid, hasLocalContent);
     if (out.kind === "adopt") await adoptRemote(pid, out.remote, out.revision);
     else if (out.kind === "conflict") await applyConflict(out.remote, out.revision);
     await refreshCloud();

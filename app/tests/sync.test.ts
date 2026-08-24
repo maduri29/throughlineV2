@@ -158,3 +158,45 @@ test("no push or pull plan ever replaces local work without forking first", () =
   }
   expect(forks).toBeGreaterThan(0); // the sweep actually exercised the branch
 });
+
+/* --------------------------------------------- never pull over local work -- */
+
+test("a story this device has never synced is never pulled over", () => {
+  // Every project predating the sync tier has no record, and the default for
+  // "no record" is {base: null, dirty: true}. With a cloud row of the same id
+  // that looked exactly like a conflict, so signing in and opening an old story
+  // replaced its contents with the cloud copy. Destructive, and only when
+  // signed in, which is why it survived every signed-out test.
+  const plan = planPull({ base: null, dirty: true }, { revision: 4 }, ON, true);
+  expect(plan).toEqual({ kind: "skip", reason: "never synced from this device" });
+});
+
+test("an empty shell still pulls, because there is nothing to lose", () => {
+  // syncLibrary puts title-only placeholders on the shelf; those exist precisely
+  // to be filled in from the cloud.
+  expect(planPull({ base: null, dirty: false }, { revision: 4 }, ON, false)).toEqual({
+    kind: "adopt",
+    revision: 4,
+  });
+});
+
+test("once pushed, pulling behaves normally again", () => {
+  expect(planPull({ base: 2, dirty: false }, { revision: 5 }, ON, true)).toEqual({
+    kind: "adopt",
+    revision: 5,
+  });
+  expect(planPull({ base: 2, dirty: true }, { revision: 5 }, ON, true)).toEqual({
+    kind: "fork",
+    saw: 2,
+    remote: 5,
+  });
+});
+
+test("no pull plan ever replaces content a device has not yet pushed", () => {
+  for (const dirty of [true, false]) {
+    for (const revision of [1, 2, 9]) {
+      const plan = planPull({ base: null, dirty }, { revision }, ON, true);
+      expect(plan.kind).toBe("skip");
+    }
+  }
+});

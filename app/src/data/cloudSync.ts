@@ -114,11 +114,11 @@ export type PullOutcome =
  * conditional GET to lean on, and downloading a whole envelope only to discover
  * it matches what we already hold is the expensive way to learn nothing.
  */
-export async function pullOne(projectId: string): Promise<PullOutcome> {
+export async function pullOne(projectId: string, hasLocalContent = false): Promise<PullOutcome> {
   const local = await readSync(projectId);
   const gate = await readGate();
   const rev = await remoteRevision(projectId);
-  const plan = planPull(local, rev === null ? null : { revision: rev }, gate);
+  const plan = planPull(local, rev === null ? null : { revision: rev }, gate, hasLocalContent);
   if (plan.kind === "skip") return { kind: "skipped", reason: plan.reason };
 
   const remote = await pullProject(projectId);
