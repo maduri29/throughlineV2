@@ -1,0 +1,874 @@
+<title>Two Devices, One Story</title>
+<style>
+  :root {
+    --bg: #f6f7fb;
+    --card: #ffffff;
+    --panel: #fbfcff;
+    --ink: #171d2e;
+    --ink-2: #3d4761;
+    --dim: #7b8499;
+    --line: #e3e7f2;
+    --line-strong: #ccd3e5;
+    --accent: #5b5bd6;
+    --a: #4f6ef7;
+    --b: #e0457b;
+    --ok: #16a34a;
+    --warn: #c98a12;
+    --danger: #d94436;
+    --tint: rgb(91 91 214 / 8%);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151f;
+      --card: #1a1f2e;
+      --panel: #161b28;
+      --ink: #eef1f8;
+      --ink-2: #c2cade;
+      --dim: #8b95ab;
+      --line: #2a3145;
+      --line-strong: #3a4359;
+      --accent: #8b8bf0;
+      --a: #7d95ff;
+      --b: #f4779f;
+      --ok: #4ade80;
+      --warn: #eab308;
+      --danger: #f87171;
+      --tint: rgb(139 139 240 / 12%);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #12151f;
+    --card: #1a1f2e;
+    --panel: #161b28;
+    --ink: #eef1f8;
+    --ink-2: #c2cade;
+    --dim: #8b95ab;
+    --line: #2a3145;
+    --line-strong: #3a4359;
+    --accent: #8b8bf0;
+    --a: #7d95ff;
+    --b: #f4779f;
+    --ok: #4ade80;
+    --warn: #eab308;
+    --danger: #f87171;
+    --tint: rgb(139 139 240 / 12%);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 34px 22px 70px;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  h1 {
+    font-size: 27px;
+    margin: 0 0 8px;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .lede {
+    color: var(--ink-2);
+    margin: 0 0 6px;
+    max-width: 68ch;
+  }
+
+  .q {
+    color: var(--dim);
+    font-size: 13.5px;
+    margin: 0 0 22px;
+    max-width: 68ch;
+  }
+
+  .q strong { color: var(--ink-2); }
+
+  h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--dim);
+    margin: 30px 0 10px;
+    font-weight: 700;
+  }
+
+  /* ---------------------------------------------------------- invariant -- */
+  .inv {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 13px 16px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    align-items: center;
+  }
+
+  .inv--bad { border-color: var(--danger); background: rgb(217 68 54 / 7%); }
+
+  .inv__item { display: flex; align-items: baseline; gap: 7px; padding-right: 16px; }
+  .inv__k { font-size: 12px; color: var(--dim); }
+  .inv__v {
+    font: 600 15px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  .inv__v--ok { color: var(--ok); }
+  .inv__v--bad { color: var(--danger); }
+  .inv__verdict { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--ok); }
+  .inv__verdict--bad { color: var(--danger); }
+
+  /* ------------------------------------------------------------- board -- */
+  .board {
+    display: grid;
+    grid-template-columns: 1fr 0.85fr 1fr;
+    gap: 14px;
+    margin-top: 12px;
+  }
+
+  @media (max-width: 900px) { .board { grid-template-columns: 1fr; } }
+
+  .col {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    padding: 14px 15px 15px;
+    min-width: 0;
+  }
+
+  .col--a { border-top: 3px solid var(--a); }
+  .col--b { border-top: 3px solid var(--b); }
+  .col--srv { border-top: 3px solid var(--line-strong); background: var(--panel); }
+
+  .col__head { display: flex; align-items: center; gap: 8px; margin: 0 0 3px; }
+  .col__name { font-size: 15px; font-weight: 700; }
+  .col--a .col__name { color: var(--a); }
+  .col--b .col__name { color: var(--b); }
+
+  .pill {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    color: var(--dim);
+  }
+  .pill--on { color: var(--ok); border-color: currentColor; }
+  .pill--off { color: var(--danger); border-color: currentColor; }
+
+  .col__meta { font-size: 12px; color: var(--dim); margin: 0 0 11px; }
+
+  /* -------------------------------------------------------------- story -- */
+  .story {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 10px;
+    margin-bottom: 8px;
+    background: var(--panel);
+  }
+  .col--srv .story { background: var(--card); }
+  .story--fork { border-color: var(--warn); }
+
+  .story__top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  .story__title { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .story__rev {
+    font: 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  .tokens { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .tok {
+    font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: var(--tint);
+    color: var(--ink-2);
+  }
+  .tok--a { background: rgb(79 110 247 / 15%); color: var(--a); }
+  .tok--b { background: rgb(224 69 123 / 15%); color: var(--b); }
+
+  .state {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+  }
+  .state--synced { background: rgb(22 163 74 / 14%); color: var(--ok); }
+  .state--dirty { background: rgb(201 138 18 / 16%); color: var(--warn); }
+  .state--local { background: var(--tint); color: var(--accent); }
+
+  .row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* ------------------------------------------------------------ buttons -- */
+  button {
+    font: 500 12.5px/1 inherit;
+    font-family: inherit;
+    border: 1px solid var(--line-strong);
+    background: var(--card);
+    color: var(--ink);
+    border-radius: 7px;
+    padding: 6px 11px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button:disabled { opacity: 0.38; cursor: default; border-color: var(--line); color: var(--ink); }
+
+  .btn--primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .btn--primary:hover { color: #fff; opacity: 0.9; }
+  .btn--done { background: var(--tint); border-color: var(--accent); color: var(--accent); }
+
+  /* ---------------------------------------------------------- scenarios -- */
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tab {
+    border-radius: 999px;
+    padding: 6px 13px;
+  }
+  .tab--on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .tab--on:hover { color: #fff; }
+
+  .scenario {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    padding: 16px 18px 18px;
+  }
+  .scenario__desc { margin: 0 0 5px; color: var(--ink-2); font-size: 14px; max-width: 70ch; }
+  .scenario__watch { margin: 0 0 14px; color: var(--dim); font-size: 13px; max-width: 70ch; }
+  .scenario__watch strong { color: var(--warn); font-weight: 600; }
+
+  .steps { display: flex; flex-direction: column; gap: 7px; }
+  .step { display: flex; align-items: center; gap: 10px; }
+  .step__n {
+    width: 21px; height: 21px;
+    flex: none;
+    display: grid; place-items: center;
+    border-radius: 999px;
+    background: var(--line);
+    color: var(--dim);
+    font: 700 11px/1 ui-monospace, monospace;
+  }
+  .step--done .step__n { background: var(--ok); color: #fff; }
+  .step--next .step__n { background: var(--accent); color: #fff; }
+  .step__label { font-size: 13px; color: var(--dim); }
+  .step--next .step__label { color: var(--ink); }
+
+  /* ---------------------------------------------------------------- log -- */
+  .log {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    padding: 10px 14px;
+    max-height: 260px;
+    overflow-y: auto;
+    font: 12.5px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .log__line { padding: 2px 0; color: var(--ink-2); }
+  .log__line--ok { color: var(--ok); }
+  .log__line--warn { color: var(--warn); }
+  .log__line--danger { color: var(--danger); font-weight: 600; }
+  .log__empty { color: var(--dim); }
+
+  footer { margin-top: 30px; font-size: 12.5px; color: var(--dim); max-width: 70ch; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; }
+</style>
+
+<div class="wrap">
+  <h1>Two Devices, One Story</h1>
+  <p class="lede">
+    Throughline is getting automatic cloud sync so one writer can work from several machines at
+    different times. This drives that state machine by hand.
+  </p>
+  <p class="q">
+    <strong>The question:</strong> when two devices edit the same story and both try to save,
+    the plan is to <strong>reject the stale save and keep the loser's version as a separate
+    story</strong> rather than overwrite. Does that actually hold up — and can any sequence of
+    edits, pushes and disconnections make written work disappear?
+    Every edit is a numbered token, so you can see for yourself.
+  </p>
+
+  <div id="inv" class="inv"></div>
+
+  <h2>The board</h2>
+  <div id="board" class="board"></div>
+
+  <h2>Guided walkthroughs</h2>
+  <div id="tabs" class="tabs"></div>
+  <div id="scenario" class="scenario"></div>
+
+  <h2>What happened</h2>
+  <div id="log" class="log"></div>
+
+  <footer>
+    Throwaway prototype — in-memory only, no network, no database. It exists to answer the one
+    question above. The state machine in this file is written to be lifted into
+    <code>app/src/data/</code> once the answer is in; the page around it is disposable.
+  </footer>
+</div>
+
+<script>
+/* ===========================================================================
+   THE MODULE UNDER TEST — pure, no DOM, liftable into the real codebase.
+
+   One writer, two devices, one server. Every story carries a `revision`; a push
+   is only accepted if the pushing device last saw the revision the server still
+   holds. A stale push is refused and the local version is kept as a separate
+   story, so nothing written is ever discarded.
+   ======================================================================== */
+
+function initial() {
+  return {
+    seq: { A: 0, B: 0 },
+    forkSeq: 0,
+    allEdits: [],
+    server: {},            // id -> { title, revision, content[] }
+    devices: {
+      A: { name: "Laptop", online: true, signedIn: true, stories: {} },
+      B: { name: "Phone",  online: true, signedIn: true, stories: {} },
+    },
+    log: [],
+  };
+}
+
+const clone = (s) => JSON.parse(JSON.stringify(s));
+
+function say(s, text, kind) {
+  s.log.push({ text, kind: kind || "" });
+  return s;
+}
+
+/** Local story state, derived rather than stored, so it can never drift. */
+function storyState(st) {
+  if (st.base === null) return "local";
+  return st.dirty ? "dirty" : "synced";
+}
+
+function apply(prev, action) {
+  const s = clone(prev);
+  const d = action.device ? s.devices[action.device] : null;
+
+  switch (action.type) {
+    case "reset":
+      return say(initial(), "Reset.");
+
+    case "createStory": {
+      const id = action.id;
+      d.stories[id] = { title: action.title, content: [], base: null, dirty: true, forkOf: null };
+      return say(s, `${d.name}: started "${action.title}" (not in the cloud yet)`);
+    }
+
+    case "edit": {
+      const st = d.stories[action.id];
+      if (!st) return say(s, `${d.name}: no such story`, "warn");
+      const token = action.device + (++s.seq[action.device]);
+      st.content.push(token);
+      st.dirty = true;
+      s.allEdits.push(token);
+      return say(s, `${d.name}: wrote ${token} into "${st.title}"`);
+    }
+
+    case "setOnline":
+      d.online = action.online;
+      return say(s, `${d.name}: ${action.online ? "back online" : "went offline"}`,
+        action.online ? "" : "warn");
+
+    case "signIn": {
+      d.signedIn = true;
+      say(s, `${d.name}: signed in`);
+      // Decision 9(b): signing in adopts every local story automatically.
+      const localOnly = Object.keys(d.stories).filter((id) => d.stories[id].base === null);
+      for (const id of localOnly) applyInto(s, { type: "push", device: action.device, id });
+      if (localOnly.length) {
+        say(s, `${d.name}: adopted ${localOnly.length} local ${localOnly.length === 1 ? "story" : "stories"} into the account`, "ok");
+      }
+      return s;
+    }
+
+    case "signOut": {
+      // Decision 11(a): push everything first; only a failure needs a decision.
+      const dirty = Object.keys(d.stories).filter((id) => storyState(d.stories[id]) !== "synced");
+      if (dirty.length && !action.force) {
+        if (!d.online) {
+          return say(s, `${d.name}: sign-out held — ${dirty.length} unsynced ${dirty.length === 1 ? "story" : "stories"} and no connection. Use "Sign out anyway" to override.`, "danger");
+        }
+        for (const id of dirty) applyInto(s, { type: "push", device: action.device, id });
+        const still = Object.keys(d.stories).filter((id) => storyState(d.stories[id]) !== "synced");
+        if (still.length) {
+          return say(s, `${d.name}: sign-out held — ${still.length} could not be pushed.`, "danger");
+        }
+      }
+      d.signedIn = false;
+      return say(s, `${d.name}: signed out`, action.force && dirty.length ? "danger" : "");
+    }
+
+    case "push":
+      return applyInto(s, action);
+
+    case "pull":
+      return applyInto(s, action);
+
+    case "openApp": {
+      say(s, `${d.name}: opened the app`);
+      // Decision 12: metadata for everything, payloads for what you already hold.
+      for (const id of Object.keys(s.server)) {
+        if (!d.stories[id]) {
+          d.stories[id] = {
+            title: s.server[id].title,
+            content: [...s.server[id].content],
+            base: s.server[id].revision,
+            dirty: false,
+            forkOf: null,
+          };
+          say(s, `${d.name}: found "${s.server[id].title}" in the account`, "ok");
+        } else {
+          applyInto(s, { type: "pull", device: action.device, id });
+        }
+      }
+      return s;
+    }
+
+    default:
+      return s;
+  }
+}
+
+/** push / pull, written to be callable from inside other transitions. */
+function applyInto(s, action) {
+  const d = s.devices[action.device];
+  const st = d.stories[action.id];
+  if (!st) return say(s, `${d.name}: no such story`, "warn");
+
+  if (action.type === "push") {
+    if (!d.signedIn) return say(s, `${d.name}: not signed in — "${st.title}" stays on this device`, "warn");
+    if (!d.online) return say(s, `${d.name}: offline — "${st.title}" queued, will sync`, "warn");
+    if (storyState(st) === "synced") return say(s, `${d.name}: "${st.title}" already up to date`);
+
+    const remote = s.server[action.id];
+
+    if (!remote) {
+      s.server[action.id] = { title: st.title, revision: 1, content: [...st.content] };
+      st.base = 1;
+      st.dirty = false;
+      return say(s, `${d.name}: saved "${st.title}" to the cloud (r1)`, "ok");
+    }
+
+    if (remote.revision === st.base) {
+      remote.content = [...st.content];
+      remote.revision += 1;
+      st.base = remote.revision;
+      st.dirty = false;
+      return say(s, `${d.name}: saved "${st.title}" to the cloud (r${remote.revision})`, "ok");
+    }
+
+    /* ---- the case this whole prototype exists to test ------------------- */
+    const sawRevision = st.base;
+    const forkId = `${action.id}~f${++s.forkSeq}`;
+    d.stories[forkId] = {
+      title: `${st.title} (from ${d.name})`,
+      content: [...st.content],
+      base: null,
+      dirty: true,
+      forkOf: action.id,
+    };
+    st.content = [...remote.content];
+    st.base = remote.revision;
+    st.dirty = false;
+    return say(
+      s,
+      `${d.name}: REFUSED to save "${st.title}" — cloud moved to r${remote.revision}, this device last saw r${sawRevision}. Your version kept as "${d.stories[forkId].title}".`,
+      "danger",
+    );
+  }
+
+  if (action.type === "pull") {
+    const remote = s.server[action.id];
+    if (!remote) return say(s, `${d.name}: "${st.title}" is not in the cloud`);
+
+    // Same revision means the cloud holds nothing we do not already have,
+    // whether or not there are unsaved edits on top. Adopting here would
+    // overwrite those edits with the very content they were written on top of.
+    // This branch originally read `&& !st.dirty` and fell through to adopt —
+    // silent loss, missed by all five walkthroughs, caught by the exhaustive
+    // sweep in app/tests/sync.test.ts.
+    if (remote.revision === st.base) return say(s, `${d.name}: "${st.title}" already up to date`);
+
+    if (st.dirty) {
+      // Same rule as a rejected push: never drop local work to take the remote.
+      const sawRevision = st.base;
+      const forkId = `${action.id}~f${++s.forkSeq}`;
+      d.stories[forkId] = {
+        title: `${st.title} (from ${d.name})`,
+        content: [...st.content],
+        base: null,
+        dirty: true,
+        forkOf: action.id,
+      };
+      st.content = [...remote.content];
+      st.base = remote.revision;
+      st.dirty = false;
+      return say(
+        s,
+        `${d.name}: cloud had newer work for "${st.title}" (r${remote.revision} vs r${sawRevision}). Took it, and kept your unsaved version as "${d.stories[forkId].title}".`,
+        "danger",
+      );
+    }
+
+    st.content = [...remote.content];
+    st.base = remote.revision;
+    st.dirty = false;
+    return say(s, `${d.name}: brought "${st.title}" up to date (r${remote.revision})`, "ok");
+  }
+
+  return s;
+}
+
+/** The invariant: every word ever written is still readable somewhere. */
+function reachable(s) {
+  const found = new Set();
+  for (const st of Object.values(s.server)) st.content.forEach((t) => found.add(t));
+  for (const d of Object.values(s.devices)) {
+    for (const st of Object.values(d.stories)) st.content.forEach((t) => found.add(t));
+  }
+  return found;
+}
+
+/* ===========================================================================
+   THROWAWAY PAGE BELOW — nothing above this line touches the DOM.
+   ======================================================================== */
+
+let state = initial();
+let tab = 0;
+let stepAt = 0;
+
+const SCENARIOS = [
+  {
+    name: "Everyday sync",
+    desc: "Write on the laptop, save, then pick the phone up later and carry on. The case that has to feel invisible.",
+    watch: "The phone should find the story on its own, with the laptop's words already in it.",
+    steps: [
+      ["Laptop: start “Neon Harvest”", { type: "createStory", device: "A", id: "s1", title: "Neon Harvest" }],
+      ["Laptop: write a scene", { type: "edit", device: "A", id: "s1" }],
+      ["Laptop: write another", { type: "edit", device: "A", id: "s1" }],
+      ["Laptop: save to cloud", { type: "push", device: "A", id: "s1" }],
+      ["Phone: open the app", { type: "openApp", device: "B" }],
+      ["Phone: write a scene", { type: "edit", device: "B", id: "s1" }],
+      ["Phone: save to cloud", { type: "push", device: "B", id: "s1" }],
+      ["Laptop: open the app again", { type: "openApp", device: "A" }],
+    ],
+  },
+  {
+    name: "Both devices, no connection",
+    desc: "The awkward one. Both devices go offline holding the same story, both get written on, then both come back and try to save.",
+    watch: "The second device to reach the cloud must be refused — and must keep its own words as a separate story rather than losing them.",
+    steps: [
+      ["Laptop: start “Neon Harvest”", { type: "createStory", device: "A", id: "s1", title: "Neon Harvest" }],
+      ["Laptop: save to cloud", { type: "push", device: "A", id: "s1" }],
+      ["Phone: open the app", { type: "openApp", device: "B" }],
+      ["Laptop: go offline", { type: "setOnline", device: "A", online: false }],
+      ["Phone: go offline", { type: "setOnline", device: "B", online: false }],
+      ["Laptop: write a scene", { type: "edit", device: "A", id: "s1" }],
+      ["Phone: write a different scene", { type: "edit", device: "B", id: "s1" }],
+      ["Phone: back online", { type: "setOnline", device: "B", online: true }],
+      ["Phone: save to cloud", { type: "push", device: "B", id: "s1" }],
+      ["Laptop: back online", { type: "setOnline", device: "A", online: true }],
+      ["Laptop: save to cloud — refused", { type: "push", device: "A", id: "s1" }],
+    ],
+  },
+  {
+    name: "Writing on a plane",
+    desc: "One device only, no connection for a while, several scenes written. Nothing exotic — just the ordinary offline stretch.",
+    watch: "Nothing should be lost or duplicated. One save when the connection returns, and the story is simply up to date.",
+    steps: [
+      ["Laptop: start “Neon Harvest”", { type: "createStory", device: "A", id: "s1", title: "Neon Harvest" }],
+      ["Laptop: save to cloud", { type: "push", device: "A", id: "s1" }],
+      ["Laptop: go offline", { type: "setOnline", device: "A", online: false }],
+      ["Laptop: write a scene", { type: "edit", device: "A", id: "s1" }],
+      ["Laptop: write another", { type: "edit", device: "A", id: "s1" }],
+      ["Laptop: try to save — queued", { type: "push", device: "A", id: "s1" }],
+      ["Laptop: write a third", { type: "edit", device: "A", id: "s1" }],
+      ["Laptop: back online", { type: "setOnline", device: "A", online: true }],
+      ["Laptop: save to cloud", { type: "push", device: "A", id: "s1" }],
+    ],
+  },
+  {
+    name: "Signing out mid-sentence",
+    desc: "Unsaved work on a device with no connection, and someone hits sign out. Signing out ends the session that would have saved it.",
+    watch: "The sign-out should be held back and say why — and the override should still exist, because refusing outright is its own kind of broken.",
+    steps: [
+      ["Laptop: start “Neon Harvest”", { type: "createStory", device: "A", id: "s1", title: "Neon Harvest" }],
+      ["Laptop: write a scene", { type: "edit", device: "A", id: "s1" }],
+      ["Laptop: go offline", { type: "setOnline", device: "A", online: false }],
+      ["Laptop: sign out — held", { type: "signOut", device: "A" }],
+      ["Laptop: back online", { type: "setOnline", device: "A", online: true }],
+      ["Laptop: sign out — saves first", { type: "signOut", device: "A" }],
+    ],
+  },
+  {
+    name: "Starting offline, signing in later",
+    desc: "Someone chooses “keep writing without signing in”, works for a while, then signs in.",
+    watch: "Everything written beforehand should be taken into the account in one go — which is exactly why that button cannot be sold as a privacy setting.",
+    steps: [
+      ["Phone: sign out", { type: "signOut", device: "B" }],
+      ["Phone: start “Cold Open”", { type: "createStory", device: "B", id: "s2", title: "Cold Open" }],
+      ["Phone: write a scene", { type: "edit", device: "B", id: "s2" }],
+      ["Phone: write another", { type: "edit", device: "B", id: "s2" }],
+      ["Phone: try to save — nowhere to go", { type: "push", device: "B", id: "s2" }],
+      ["Phone: sign in", { type: "signIn", device: "B" }],
+      ["Laptop: open the app", { type: "openApp", device: "A" }],
+    ],
+  },
+];
+
+function dispatch(action) {
+  state = apply(state, action);
+  render();
+}
+
+function resetTo(i) {
+  tab = i;
+  stepAt = 0;
+  state = initial();
+  render();
+}
+
+function runStep() {
+  const sc = SCENARIOS[tab];
+  if (stepAt >= sc.steps.length) return;
+  const [, action] = sc.steps[stepAt];
+  stepAt += 1;
+  dispatch(action);
+}
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+
+function renderTokens(content) {
+  const box = el("div", "tokens");
+  if (!content.length) {
+    box.appendChild(el("span", "tok", "empty"));
+    return box;
+  }
+  for (const t of content) {
+    box.appendChild(el("span", "tok tok--" + t[0].toLowerCase(), t));
+  }
+  return box;
+}
+
+function renderInvariant() {
+  const host = document.getElementById("inv");
+  host.textContent = "";
+  const found = reachable(state);
+  const total = state.allEdits.length;
+  const kept = state.allEdits.filter((t) => found.has(t)).length;
+  const lost = total - kept;
+  const forks = Object.values(state.devices)
+    .flatMap((d) => Object.values(d.stories))
+    .filter((st) => st.forkOf).length;
+
+  host.className = "inv" + (lost > 0 ? " inv--bad" : "");
+
+  const item = (k, v, cls) => {
+    const wrap = el("div", "inv__item");
+    wrap.appendChild(el("span", "inv__k", k));
+    wrap.appendChild(el("span", "inv__v" + (cls ? " inv__v--" + cls : ""), String(v)));
+    return wrap;
+  };
+
+  host.appendChild(item("Scenes written", total));
+  host.appendChild(item("Still readable somewhere", kept, lost > 0 ? "bad" : "ok"));
+  host.appendChild(item("Lost", lost, lost > 0 ? "bad" : "ok"));
+  host.appendChild(item("Kept-aside copies", forks));
+
+  const verdict = el(
+    "div",
+    "inv__verdict" + (lost > 0 ? " inv__verdict--bad" : ""),
+    lost > 0 ? `${lost} scene${lost === 1 ? "" : "s"} destroyed` : "No writing lost",
+  );
+  host.appendChild(verdict);
+}
+
+function renderDevice(key) {
+  const d = state.devices[key];
+  const col = el("div", "col col--" + key.toLowerCase());
+
+  const head = el("div", "col__head");
+  head.appendChild(el("span", "col__name", d.name));
+  head.appendChild(el("span", "pill " + (d.online ? "pill--on" : "pill--off"), d.online ? "online" : "offline"));
+  head.appendChild(el("span", "pill " + (d.signedIn ? "pill--on" : "pill--off"), d.signedIn ? "signed in" : "signed out"));
+  col.appendChild(head);
+
+  const ids = Object.keys(d.stories);
+  col.appendChild(el("p", "col__meta", ids.length ? `${ids.length} ${ids.length === 1 ? "story" : "stories"} on this device` : "No stories on this device"));
+
+  for (const id of ids) {
+    const st = d.stories[id];
+    const card = el("div", "story" + (st.forkOf ? " story--fork" : ""));
+    const top = el("div", "story__top");
+    top.appendChild(el("span", "story__title", st.title));
+    top.appendChild(el("span", "story__rev", st.base === null ? "not saved" : "r" + st.base));
+    card.appendChild(top);
+
+    const stName = storyState(st);
+    card.appendChild(el("span", "state state--" + stName,
+      stName === "synced" ? "in the cloud" : stName === "dirty" ? "unsaved changes" : "this device only"));
+
+    card.appendChild(renderTokens(st.content));
+
+    const row = el("div", "row");
+    const mk = (label, action, disabled) => {
+      const b = el("button", "", label);
+      b.disabled = !!disabled;
+      b.onclick = () => dispatch(action);
+      row.appendChild(b);
+    };
+    mk("Write a scene", { type: "edit", device: key, id });
+    mk("Save", { type: "push", device: key, id });
+    mk("Refresh", { type: "pull", device: key, id });
+    card.appendChild(row);
+    col.appendChild(card);
+  }
+
+  const row = el("div", "row");
+  const mk = (label, action) => {
+    const b = el("button", "", label);
+    b.onclick = () => dispatch(action);
+    row.appendChild(b);
+  };
+  mk("Open the app", { type: "openApp", device: key });
+  mk(d.online ? "Go offline" : "Go online", { type: "setOnline", device: key, online: !d.online });
+  if (d.signedIn) {
+    mk("Sign out", { type: "signOut", device: key });
+    mk("Sign out anyway", { type: "signOut", device: key, force: true });
+  } else {
+    mk("Sign in", { type: "signIn", device: key });
+  }
+  const nb = el("button", "", "New story");
+  nb.onclick = () => {
+    const n = Object.keys(state.devices[key].stories).length + Object.keys(state.server).length + 1;
+    dispatch({ type: "createStory", device: key, id: "s" + n + key, title: "Untitled " + n });
+  };
+  row.appendChild(nb);
+  col.appendChild(row);
+
+  return col;
+}
+
+function renderServer() {
+  const col = el("div", "col col--srv");
+  const head = el("div", "col__head");
+  head.appendChild(el("span", "col__name", "The cloud"));
+  col.appendChild(head);
+
+  const ids = Object.keys(state.server);
+  col.appendChild(el("p", "col__meta", ids.length ? `${ids.length} ${ids.length === 1 ? "story" : "stories"} in the account` : "Nothing saved yet"));
+
+  for (const id of ids) {
+    const r = state.server[id];
+    const card = el("div", "story");
+    const top = el("div", "story__top");
+    top.appendChild(el("span", "story__title", r.title));
+    top.appendChild(el("span", "story__rev", "r" + r.revision));
+    card.appendChild(top);
+    card.appendChild(renderTokens(r.content));
+    col.appendChild(card);
+  }
+  return col;
+}
+
+function renderBoard() {
+  const host = document.getElementById("board");
+  host.textContent = "";
+  host.appendChild(renderDevice("A"));
+  host.appendChild(renderServer());
+  host.appendChild(renderDevice("B"));
+}
+
+function renderScenario() {
+  const tabsHost = document.getElementById("tabs");
+  tabsHost.textContent = "";
+  SCENARIOS.forEach((sc, i) => {
+    const b = el("button", "tab" + (i === tab ? " tab--on" : ""), sc.name);
+    b.onclick = () => resetTo(i);
+    tabsHost.appendChild(b);
+  });
+
+  const host = document.getElementById("scenario");
+  host.textContent = "";
+  const sc = SCENARIOS[tab];
+  host.appendChild(el("p", "scenario__desc", sc.desc));
+  const watch = el("p", "scenario__watch");
+  watch.appendChild(el("strong", "", "Watch for: "));
+  watch.appendChild(document.createTextNode(sc.watch));
+  host.appendChild(watch);
+
+  const steps = el("div", "steps");
+  sc.steps.forEach(([label], i) => {
+    const done = i < stepAt;
+    const next = i === stepAt;
+    const row = el("div", "step" + (done ? " step--done" : next ? " step--next" : ""));
+    row.appendChild(el("span", "step__n", done ? "✓" : String(i + 1)));
+    if (next) {
+      const b = el("button", "btn--primary", label);
+      b.onclick = runStep;
+      row.appendChild(b);
+    } else {
+      const b = el("button", done ? "btn--done" : "", label);
+      b.disabled = true;
+      row.appendChild(b);
+    }
+    steps.appendChild(row);
+  });
+  host.appendChild(steps);
+
+  const foot = el("div", "row");
+  foot.style.marginTop = "14px";
+  const rb = el("button", "", "Start this walkthrough over");
+  rb.onclick = () => resetTo(tab);
+  foot.appendChild(rb);
+  host.appendChild(foot);
+}
+
+function renderLog() {
+  const host = document.getElementById("log");
+  host.textContent = "";
+  if (!state.log.length) {
+    host.appendChild(el("div", "log__empty", "Nothing yet — press a step above, or poke at the buttons on the board."));
+    return;
+  }
+  state.log.slice().reverse().forEach((l) => {
+    host.appendChild(el("div", "log__line" + (l.kind ? " log__line--" + l.kind : ""), l.text));
+  });
+}
+
+function render() {
+  renderInvariant();
+  renderBoard();
+  renderScenario();
+  renderLog();
+}
+
+render();
+</script>
