@@ -9,6 +9,8 @@
 // These are prompts, not doctrine. Nothing in the app treats a story following
 // one as more correct than a story that ignores them.
 
+import type { Beat } from "../types";
+
 export type BeatSheet = {
   id: string;
   name: string;
@@ -76,7 +78,7 @@ export const BEAT_SHEETS: BeatSheet[] = [
   },
 ];
 
-/** Body for the note a template creates: one unchecked line per beat. */
-export function beatSheetBody(sheet: BeatSheet): string {
-  return sheet.beats.map((b) => `- [ ] ${b}`).join("\n");
+/** Structured rows for a fresh sheet. Nothing is ticked and nothing is linked. */
+export function beatSheetRows(sheet: BeatSheet, newId: () => string): Beat[] {
+  return sheet.beats.map((name) => ({ id: newId(), name, done: false }));
 }

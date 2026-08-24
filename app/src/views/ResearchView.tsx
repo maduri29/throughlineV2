@@ -6,10 +6,13 @@
 // would mean copying a beat sheet each time, and forcing nothing to would lose
 // the association that makes a reference worth keeping at all.
 import { useEffect, useState } from "react";
-import { BEAT_SHEETS, beatSheetBody } from "../data/beatsheets";
+import { BEAT_SHEETS, beatSheetRows } from "../data/beatsheets";
+import { dbGetAll } from "../data/idb";
+import { scopeToProject } from "../data/scopes";
+import BeatSheet from "./BeatSheet";
 import { describeSize, hasBytes, MAX_FILE_BYTES, openAttachment, putFile } from "../data/files";
 import { useGraphStore } from "../store";
-import type { Attachment, GraphNode } from "../types";
+import type { Attachment, Beat, GraphEdge, GraphNode } from "../types";
 
 export default function ResearchView() {
   const references = useGraphStore((s) => s.references);
@@ -23,6 +26,33 @@ export default function ResearchView() {
   const [draft, setDraft] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   const [present, setPresent] = useState<Record<string, boolean>>({});
+  const [scenesByProject, setScenesByProject] = useState<Record<string, GraphNode[]>>({});
+
+  // Scenes for linking. The store holds only the open project, so a sheet that
+  // belongs to some other story has no scenes to offer without reading the graph.
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const [nodesArr, edgesArr] = await Promise.all([
+        dbGetAll<GraphNode>("nodes"),
+        dbGetAll<GraphEdge>("edges"),
+      ]);
+      const allNodes: Record<string, GraphNode> = {};
+      for (const n of nodesArr) allNodes[n.id] = n;
+      const allEdges: Record<string, GraphEdge> = {};
+      for (const e of edgesArr) allEdges[e.id] = e;
+      const next: Record<string, GraphNode[]> = {};
+      for (const p of projects) {
+        next[p.id] = Object.values(scopeToProject(allNodes, allEdges, p.id).nodes).filter(
+          (n) => n.type === "scene",
+        );
+      }
+      if (live) setScenesByProject(next);
+    })();
+    return () => {
+      live = false;
+    };
+  }, [projects, references]);
 
   // Which attachments actually have bytes on this device. Recorded metadata
   // travels with the story; the file itself does not (data/files.ts).
@@ -57,7 +87,7 @@ export default function ResearchView() {
     const sheet = BEAT_SHEETS.find((b) => b.id === sheetId);
     if (!sheet) return;
     void addReference(sheet.name, scope === "all" || scope === "shared" ? null : scope, {
-      synopsis: beatSheetBody(sheet),
+      beats: beatSheetRows(sheet, () => crypto.randomUUID()),
     }).then(setOpenId);
   };
 
@@ -190,6 +220,14 @@ export default function ResearchView() {
                   </div>
                 )}
 
+                {open && r.beats ? (
+                  <BeatSheet
+                    beats={r.beats}
+                    scenes={r.parentId ? (scenesByProject[r.parentId] ?? []) : []}
+                    onChange={(next: Beat[]) => void patchReference(r.id, { beats: next })}
+                  />
+                ) : null}
+
                 {open && (
                   <>
                     <input
@@ -201,8 +239,12 @@ export default function ResearchView() {
                     />
                     <textarea
                       className="tln-seed__note"
-                      rows={8}
-                      placeholder="Notes, quotes, a beat sheet you are filling in…"
+                      rows={r.beats ? 3 : 8}
+                      placeholder={
+                        r.beats
+                          ? "Anything about this sheet as a whole…"
+                          : "Notes, quotes, a link you want to remember…"
+                      }
                       value={r.synopsis ?? ""}
                       onChange={(e) => void patchReference(r.id, { synopsis: e.target.value })}
                     />

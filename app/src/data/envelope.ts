@@ -18,6 +18,7 @@ import {
   type GraphNode,
   type NodeType,
   type Attachment,
+  type Beat,
   type StoryTime,
   type Tod,
 } from "../types";
@@ -121,6 +122,26 @@ function readNode(v: unknown, where: string): GraphNode | string {
   // Attachment METADATA only — the bytes live in the IndexedDB `files` store and
   // deliberately do not travel (data/files.ts). Importing keeps the record so the
   // reader can see a file was collected, and the UI marks it as elsewhere.
+  // Beats are validated field by field: a sheet is the one place a bad import
+  // could silently attach a beat to a scene that is not there.
+  const rawBeats = v["beats"];
+  if (Array.isArray(rawBeats)) {
+    const kept: Beat[] = [];
+    for (const b of rawBeats) {
+      if (!isRecord(b)) continue;
+      const { id, name, done, note, sceneId } = b;
+      if (typeof id !== "string" || typeof name !== "string") continue;
+      kept.push({
+        id,
+        name,
+        done: done === true,
+        ...(typeof note === "string" && note ? { note } : {}),
+        ...(typeof sceneId === "string" && sceneId ? { sceneId } : {}),
+      });
+    }
+    if (kept.length > 0) node.beats = kept;
+  }
+
   const atts = v["attachments"];
   if (Array.isArray(atts)) {
     const kept: Attachment[] = [];

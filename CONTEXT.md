@@ -141,8 +141,12 @@ creates a project and leaves the seed in place, linked by **Grew Into**, because
 where a story came from is worth being able to look up.
 
 **Research**:
-The surface for references, and where a beat sheet is applied. Applying one
-writes a checklist to fill in; it never creates scenes.
+The surface for references, and where a beat sheet is applied.
+
+**Beat**:
+One row of a beat sheet: a name, whether it is covered, a note, and optionally
+the scene that fulfils it. Applying a sheet creates beats, never scenes. A beat
+links to a scene that already exists; it cannot conjure one.
 
 **Inspector**:
 The panel for reading and editing whatever is currently selected.

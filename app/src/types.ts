@@ -82,6 +82,17 @@ export type GraphNode = {
    * and a size, and the UI says plainly when the bytes are not on this one.
    */
   attachments?: Attachment[];
+  /** Reference-node beat sheet. Structured is the source of truth (data/beats.ts). */
+  beats?: Beat[];
+};
+
+export type Beat = {
+  id: string;
+  name: string;
+  done: boolean;
+  note?: string;
+  /** Scene that fulfils this beat, if one has been linked. */
+  sceneId?: string;
 };
 
 export type Attachment = {

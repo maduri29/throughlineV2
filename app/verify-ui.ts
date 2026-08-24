@@ -317,12 +317,41 @@ async function main(): Promise<void> {
 
     await page.getByRole("button", { name: "Save the Cat", exact: true }).click();
     await page.waitForSelector(".tln-seed", { timeout: 20_000 });
-    const body = (await page.locator(".tln-seed__note").inputValue()) ?? "";
+    await page.waitForSelector(".tln-beatlist", { timeout: 20_000 });
+    const rows = await page.locator(".tln-beat").count();
+    const firstName = await page.locator(".tln-beat__name").first().inputValue();
     check(
-      "a beat sheet arrives as a checklist to fill in",
-      body.includes("Opening Image") && body.includes("- [ ]"),
-      body.slice(0, 40),
+      "a beat sheet arrives as tickable rows, not a paragraph",
+      rows === 15 && firstName === "Opening Image",
+      `${rows} rows, first="${firstName}"`,
     );
+
+    // Ticking is the point: it must move progress and survive a reload.
+    await page.locator('.tln-beat input[type="checkbox"]').first().check();
+    await page.waitForTimeout(400);
+    const progress = (await page.locator(".tln-beats__count").textContent()) ?? "";
+    check("ticking a beat moves progress", progress.includes("1 of 15"), progress.trim());
+
+    // The raw view must fold back without losing a row — two representations of
+    // one thing is the usual way to lose data quietly (data/beats.ts).
+    await page.getByRole("button", { name: "Edit as text" }).click();
+    const rawText = await page.locator(".tln-beats__raw").inputValue();
+    check(
+      "the text view shows the ticked state",
+      rawText.startsWith("- [x] Opening Image"),
+      rawText.slice(0, 26),
+    );
+    await page.getByRole("button", { name: "Done editing" }).click();
+    await page.waitForSelector(".tln-beatlist", { timeout: 20_000 });
+    const afterRound = await page.locator(".tln-beat").count();
+    check("a text round trip loses no beats", afterRound === rows, `${rows} → ${afterRound}`);
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".tln-sheets", { timeout: 20_000 });
+    await page.locator(".tln-seed__title").first().click();
+    await page.waitForSelector(".tln-beatlist", { timeout: 20_000 });
+    const persisted = (await page.locator(".tln-beats__count").textContent()) ?? "";
+    check("a ticked beat survives a reload", persisted.includes("1 of 15"), persisted.trim());
 
     await page.getByRole("button", { name: "Stories", exact: true }).click();
     await page.waitForURL(/\/stories$/, { timeout: 20_000 });
