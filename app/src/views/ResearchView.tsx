@@ -14,6 +14,17 @@ import { describeSize, hasBytes, MAX_FILE_BYTES, openAttachment, putFile } from 
 import { useGraphStore } from "../store";
 import type { Attachment, Beat, GraphEdge, GraphNode } from "../types";
 
+/**
+ * randomUUID exists only in a secure context. On a plain-http host every beat
+ * sheet button would throw, which presents exactly as the button doing nothing.
+ * Module scope rather than inside the component: it is not render logic.
+ */
+function newId(): string {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export default function ResearchView() {
   const references = useGraphStore((s) => s.references);
   const projects = useGraphStore((s) => s.projects);
@@ -96,16 +107,29 @@ export default function ResearchView() {
     // Opened immediately. Collapsed, a new item is a line of text and the Add
     // button looks like it did nothing — the notes field is the thing you came
     // to write in, so put the cursor where the work happens.
-    void addReference(t, scope === "all" || scope === "shared" ? null : scope).then(setOpenId);
+    setProblem(null);
+    addReference(t, scope === "all" || scope === "shared" ? null : scope)
+      .then(setOpenId)
+      .catch((err: unknown) => setProblem(String(err)));
     setDraft("");
   };
 
   const applySheet = (sheetId: string): void => {
     const sheet = BEAT_SHEETS.find((b) => b.id === sheetId);
     if (!sheet) return;
-    void addReference(sheet.name, scope === "all" || scope === "shared" ? null : scope, {
-      beats: beatSheetRows(sheet, () => crypto.randomUUID()),
-    }).then(setOpenId);
+    setProblem(null);
+    // Guarded because a throw in here is the difference between "the button did
+    // nothing" and knowing why. randomUUID needs a secure context, which is easy
+    // to lose on a plain-http host.
+    try {
+      addReference(sheet.name, scope === "all" || scope === "shared" ? null : scope, {
+        beats: beatSheetRows(sheet, () => newId()),
+      })
+        .then(setOpenId)
+        .catch((err: unknown) => setProblem(String(err)));
+    } catch (err) {
+      setProblem(String(err));
+    }
   };
 
   const attach = async (ref: GraphNode, file: File): Promise<void> => {
@@ -117,7 +141,7 @@ export default function ResearchView() {
     }
     setProblem(null);
     const meta: Attachment = {
-      id: crypto.randomUUID(),
+      id: newId(),
       name: file.name,
       mime: file.type,
       size: file.size,

@@ -524,6 +524,9 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   },
 
   addReference: async (title, projectId, extra) => {
+    // Throwing here used to be invisible: the caller void-ed the promise, so a
+    // failed write looked identical to a dead button. Failures are rethrown with
+    // context so the view can say what went wrong.
     // Like seeds, written straight through: a reference attached to no project
     // has no project history to live in, and one attached to a project is
     // material *about* the story rather than a change *to* it.
@@ -534,7 +537,11 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
       title,
       ...(projectId ? { parentId: projectId } : {}),
     };
-    await dbPut("nodes", [node]);
+    try {
+      await dbPut("nodes", [node]);
+    } catch (err) {
+      throw new Error(`Could not save to this browser's storage — ${String(err)}`);
+    }
     set({ references: [...get().references, node] });
     return node.id;
   },

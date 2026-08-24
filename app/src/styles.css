@@ -2851,3 +2851,22 @@ body,
 .tln-beat__scene:disabled {
   opacity: 0.45;
 }
+
+/* A dead store presents as buttons that do nothing. Say so where it happened,
+   on every surface, not only inside a story where the status chip lives. */
+.tln-fault {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: rgb(217 68 54 / 10%);
+  border-bottom: 1px solid var(--danger);
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tln-fault strong {
+  font-weight: 700;
+}

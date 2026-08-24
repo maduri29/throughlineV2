@@ -89,12 +89,23 @@ export default function LibraryView({
     });
   };
 
+  // Every one of these writes to IndexedDB. Fire-and-forget made a failed write
+  // indistinguishable from a dead button, which is how it was reported.
   const create = (): void => {
     const name = title.trim();
     if (!name) return;
-    void createProject(name).then(onOpen);
+    createProject(name)
+      .then(onOpen)
+      .catch((err: unknown) => setImportError(`Could not create the story — ${String(err)}`));
     setTitle("");
     setNaming(false);
+  };
+
+  const sample = (): void => {
+    setImportError(null);
+    openSample()
+      .then((id) => id && onOpen(id))
+      .catch((err: unknown) => setImportError(`Could not open the sample — ${String(err)}`));
   };
 
   const empty = projects.length === 0;
@@ -188,10 +199,7 @@ export default function LibraryView({
             <button className="tln-btn tln-btn--accent" onClick={() => setNaming(true)}>
               New story
             </button>
-            <button
-              className="tln-btn"
-              onClick={() => void openSample().then((id) => id && onOpen(id))}
-            >
+            <button className="tln-btn" onClick={sample}>
               Open the sample story
             </button>
             <label className="tln-btn">

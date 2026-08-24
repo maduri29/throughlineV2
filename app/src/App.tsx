@@ -50,6 +50,7 @@ export default function App() {
   const exportProject = useGraphStore((s) => s.exportProject);
   const projectId = useGraphStore((s) => s.projectId);
   const cloud = useGraphStore((s) => s.cloud);
+  const bootError = useGraphStore((s) => s.bootError);
   const [lens, setLens] = useState<Lens>("map");
   const router = useRouter();
   const pathname = usePathname();
@@ -330,6 +331,21 @@ export default function App() {
           )}
         </button>
       </header>
+
+      {/* Boot failures used to be visible only inside a story, because that is
+          where the status chip lives. On the shelf, the boneyard and research
+          that meant a dead store presented as buttons that silently did nothing
+          — which is precisely how it was reported. */}
+      {status === "error" && (
+        <div className="tln-fault" role="alert">
+          <strong>Throughline could not reach this browser&rsquo;s storage.</strong>{" "}
+          {bootError ?? "Unknown error."} Nothing you do will be saved until this clears. If the app
+          is open in another tab, close it and reload.
+          <button className="tln-btn" onClick={() => location.reload()}>
+            Reload
+          </button>
+        </div>
+      )}
 
       {section === "boneyard" ? (
         <BoneyardView onGrown={(id) => router.push(`/stories/${id}`)} />
