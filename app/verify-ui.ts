@@ -267,6 +267,79 @@ async function main(): Promise<void> {
     );
     await page.setViewportSize({ width: 1440, height: 900 });
 
+    /* ---- the boneyard: an idea, kept, then grown into a story ---- */
+    // The account dialog from the checks above is modal and would swallow this
+    // click. Nav tabs also exist only outside a story, so leave the workspace
+    // too — itself the behaviour the header assertions pin down.
+    await page.keyboard.press("Escape");
+    await page.waitForSelector(".tln-auth", { state: "detached", timeout: 10_000 });
+    await page.locator(".tln-brand").click();
+    await page.waitForURL(/\/stories$/, { timeout: 20_000 });
+    await page.getByRole("button", { name: "Boneyard", exact: true }).click();
+    await page.waitForURL(/\/boneyard/, { timeout: 20_000 });
+    await page.waitForSelector(".tln-jot__input", { timeout: 20_000 });
+    check("the boneyard has its own URL", new URL(page.url()).pathname === "/boneyard", page.url());
+
+    await page.getByLabel("New idea").fill("A lighthouse keeper who never sleeps");
+    await page.getByRole("button", { name: "Keep it" }).click();
+    await page.waitForSelector(".tln-seed", { timeout: 20_000 });
+    const kept = await page.locator(".tln-seed").count();
+    check("an idea can be kept in one gesture", kept === 1, `${kept} seeds`);
+
+    // Growing must not consume the idea: where a story came from is worth being
+    // able to look up, and deleting it would make growing a destructive act.
+    await page.getByRole("button", { name: /Grow into a story/ }).click();
+    await page.waitForURL(/\/stories\//, { timeout: 20_000 });
+    check(
+      "growing an idea opens the new story",
+      /\/stories\/[^/]+$/.test(new URL(page.url()).pathname),
+      new URL(page.url()).pathname,
+    );
+
+    await page.locator(".tln-brand").click();
+    await page.waitForURL(/\/stories$/, { timeout: 20_000 });
+    await page.getByRole("button", { name: "Boneyard", exact: true }).click();
+    await page.waitForSelector(".tln-seed", { timeout: 20_000 });
+    const survived = await page.locator(".tln-seed").count();
+    check("the idea survives being grown", survived === 1, `${survived} seeds`);
+
+    /* ---- research: a beat sheet becomes something to fill in, not scenes ---- */
+    await page.getByRole("button", { name: "Research", exact: true }).click();
+    await page.waitForURL(/\/research/, { timeout: 20_000 });
+    await page.waitForSelector(".tln-sheets", { timeout: 20_000 });
+    check("research has its own URL", new URL(page.url()).pathname === "/research", page.url());
+
+    await page.getByRole("button", { name: "Stories", exact: true }).click();
+    await page.waitForURL(/\/stories$/, { timeout: 20_000 });
+    const shelfBefore = await page.locator(".tln-storycard:not(.tln-storycard--new)").count();
+    await page.getByRole("button", { name: "Research", exact: true }).click();
+    await page.waitForSelector(".tln-sheets", { timeout: 20_000 });
+
+    await page.getByRole("button", { name: "Save the Cat", exact: true }).click();
+    await page.waitForSelector(".tln-seed", { timeout: 20_000 });
+    const body = (await page.locator(".tln-seed__note").inputValue()) ?? "";
+    check(
+      "a beat sheet arrives as a checklist to fill in",
+      body.includes("Opening Image") && body.includes("- [ ]"),
+      body.slice(0, 40),
+    );
+
+    await page.getByRole("button", { name: "Stories", exact: true }).click();
+    await page.waitForURL(/\/stories$/, { timeout: 20_000 });
+
+    // Applying a structure must not put scenes in the story graph: that commits
+    // the writer to a shape before anything is written.
+    const shelfAfterSheet = await page.locator(".tln-storycard:not(.tln-storycard--new)").count();
+    check(
+      "a beat sheet creates no story of its own",
+      shelfAfterSheet === shelfBefore,
+      `${shelfBefore} before, ${shelfAfterSheet} after`,
+    );
+
+    // The account dialog was closed to reach the nav; the checks below need it.
+    await page.locator(".tln-account").click();
+    await page.waitForSelector(".tln-auth", { timeout: 20_000 });
+
     const inlineAuth = await page.locator(".tln-sync input").count();
     check("no credential fields inline in the library", inlineAuth === 0, `${inlineAuth} inputs`);
 

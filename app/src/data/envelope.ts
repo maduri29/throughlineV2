@@ -17,6 +17,7 @@ import {
   type GraphEdge,
   type GraphNode,
   type NodeType,
+  type Attachment,
   type StoryTime,
   type Tod,
 } from "../types";
@@ -104,6 +105,7 @@ function readNode(v: unknown, where: string): GraphNode | string {
     "contact",
     "role",
     "backstory",
+    "url",
   ]) {
     str(k);
   }
@@ -115,6 +117,26 @@ function readNode(v: unknown, where: string): GraphNode | string {
   }
   const st = readStoryTime(v["storyTime"]);
   if (st) node.storyTime = st;
+
+  // Attachment METADATA only — the bytes live in the IndexedDB `files` store and
+  // deliberately do not travel (data/files.ts). Importing keeps the record so the
+  // reader can see a file was collected, and the UI marks it as elsewhere.
+  const atts = v["attachments"];
+  if (Array.isArray(atts)) {
+    const kept: Attachment[] = [];
+    for (const a of atts) {
+      if (!isRecord(a)) continue;
+      const { id, name, mime, size } = a;
+      if (typeof id !== "string" || typeof name !== "string") continue;
+      kept.push({
+        id,
+        name,
+        mime: typeof mime === "string" ? mime : "",
+        size: typeof size === "number" ? size : 0,
+      });
+    }
+    if (kept.length > 0) node.attachments = kept;
+  }
   return node;
 }
 

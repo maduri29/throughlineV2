@@ -15,6 +15,11 @@ tier can sync a copy for durability across devices; signed out, nothing leaves t
 A raw idea kept before it belongs to any project.
 _Avoid_: spark, idea note
 
+**Reference**:
+Material collected about the work rather than part of it — a source, a note, a
+beat sheet being filled in. Attached to one story, or shared across all of them.
+_Avoid_: asset, attachment (an attachment is a file *on* a reference)
+
 **Project**:
 A developed story work — a feature, a series, a limited series, or a short.
 _Avoid_: story, document
@@ -127,7 +132,17 @@ The lens centered on characters and their webs of Relates To bonds.
 The lens where each scene's Fountain text is written and previewed.
 
 **Library**:
-The home surface listing every project and seed.
+The home surface listing every project. Reached at `/stories`; a story is a
+sub-route beneath it.
+
+**Boneyard**:
+The surface for seeds — ideas kept before they belong to a story. Growing one
+creates a project and leaves the seed in place, linked by **Grew Into**, because
+where a story came from is worth being able to look up.
+
+**Research**:
+The surface for references, and where a beat sheet is applied. Applying one
+writes a checklist to fill in; it never creates scenes.
 
 **Inspector**:
 The panel for reading and editing whatever is currently selected.

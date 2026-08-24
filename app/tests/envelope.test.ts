@@ -61,3 +61,64 @@ describe("envelope round-trip", () => {
     expect(out.envelope.edges).toHaveLength(0);
   });
 });
+
+/* ---- research material (reference nodes) ---------------------------------- */
+
+test("a reference survives a round trip with its link", () => {
+  const project: GraphNode = { id: "p1", type: "project", title: "Neon Harvest" };
+  const ref: GraphNode = {
+    id: "r1",
+    type: "reference",
+    title: "Save the Cat",
+    parentId: "p1",
+    url: "https://example.com/beats",
+    synopsis: "- [ ] Opening Image",
+  };
+  const env = buildEnvelope(project, { p1: project, r1: ref }, {});
+  const back = parseEnvelope(envelopeToJson(env));
+  expect(back.ok).toBe(true);
+  if (!back.ok) return;
+  const got = back.envelope.nodes.find((n) => n.id === "r1");
+  expect(got?.type).toBe("reference");
+  expect(got?.url).toBe("https://example.com/beats");
+  expect(got?.parentId).toBe("p1");
+});
+
+test("attachment metadata travels but is never trusted blindly", () => {
+  const project: GraphNode = { id: "p1", type: "project", title: "Neon Harvest" };
+  const ref: GraphNode = {
+    id: "r1",
+    type: "reference",
+    title: "Location photos",
+    attachments: [{ id: "f1", name: "pier.jpg", mime: "image/jpeg", size: 40_000 }],
+  };
+  const env = buildEnvelope(project, { p1: project, r1: ref }, {});
+  const back = parseEnvelope(envelopeToJson(env));
+  expect(back.ok).toBe(true);
+  if (!back.ok) return;
+  expect(back.envelope.nodes.find((n) => n.id === "r1")?.attachments?.[0]?.name).toBe("pier.jpg");
+});
+
+test("malformed attachment entries are dropped, not imported", () => {
+  const raw = JSON.stringify({
+    schemaVersion: 1,
+    project: { id: "p1", type: "project", title: "P" },
+    nodes: [
+      {
+        id: "r1",
+        type: "reference",
+        title: "Mixed",
+        attachments: [{ name: "no-id.pdf" }, "nonsense", { id: "f2", name: "ok.pdf" }],
+      },
+    ],
+    edges: [],
+  });
+  const back = parseEnvelope(raw);
+  expect(back.ok).toBe(true);
+  if (!back.ok) return;
+  const atts = back.envelope.nodes[0]?.attachments ?? [];
+  expect(atts.length).toBe(1);
+  expect(atts[0]?.id).toBe("f2");
+  // Absent size/mime become defaults rather than undefined holes downstream.
+  expect(atts[0]?.size).toBe(0);
+});

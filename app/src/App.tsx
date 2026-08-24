@@ -11,7 +11,9 @@ import { cloudLabel } from "./data/sync";
 import { hasChosenOffline } from "./views/SignInScreen";
 import { useGraphStore } from "./store";
 import AuthDialog from "./views/AuthDialog";
+import BoneyardView from "./views/BoneyardView";
 import Logo from "./views/Logo";
+import ResearchView from "./views/ResearchView";
 import MapView from "./views/MapView";
 import TimelineView from "./views/TimelineView";
 import CharactersView from "./views/CharactersView";
@@ -62,6 +64,15 @@ export default function App() {
   const routeId = pathname.startsWith("/stories/")
     ? decodeURIComponent(pathname.slice("/stories/".length))
     : null;
+
+  /** Top-level sections. A story is its own place, not a fourth tab. */
+  const section: "stories" | "boneyard" | "research" | "story" = routeId
+    ? "story"
+    : pathname.startsWith("/boneyard")
+      ? "boneyard"
+      : pathname.startsWith("/research")
+        ? "research"
+        : "stories";
   const level: "library" | "workspace" = routeId ? "workspace" : "library";
   const [paletteOpen, setPaletteOpen] = useState(false);
   // Opened automatically when this page load is the return leg of a magic link,
@@ -182,13 +193,79 @@ export default function App() {
           </>
         )}
 
+        {/* Top-level tabs, only outside a story — inside one, the header is
+            already carrying that story's controls and a second row of
+            navigation would compete with them. */}
+        {section !== "story" && (
+          <nav className="tln-nav">
+            {(
+              [
+                ["stories", "Stories", "/stories"],
+                ["boneyard", "Boneyard", "/boneyard"],
+                ["research", "Research", "/research"],
+              ] as const
+            ).map(([id, label, href]) => (
+              <button
+                key={id}
+                className={`tln-nav__tab${section === id ? " tln-nav__tab--on" : ""}`}
+                onClick={() => router.push(href)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        )}
+
         <span className="tln-header__gap" />
 
         {level === "workspace" && (
           <>
-            {/* Two indicators (ADR-0007 decision 10), but one object: they answer
-                the same question at different distances, and the local half never
-                shows a bare tick — saved here is not saved anywhere else. */}
+            {/* History first, then the two save indicators (ADR-0007 decision 10)
+                as one quiet line, then backup alone. Undo/redo lead because they
+                act on the story; the indicators report; download is a rare,
+                deliberate act and sits apart for it. */}
+            <span className="tln-tools">
+              <button className="tln-tool" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+                <svg
+                  className="tln-tool__icon"
+                  viewBox="0 0 16 16"
+                  width="15"
+                  height="15"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M3.5 6.5h6a3.5 3.5 0 0 1 0 7H7" />
+                  <path d="M6.5 3.5 3.5 6.5l3 3" />
+                </svg>
+              </button>
+              <button
+                className="tln-tool"
+                onClick={redo}
+                disabled={!canRedo}
+                title="Redo (Ctrl+Shift+Z)"
+              >
+                <svg
+                  className="tln-tool__icon"
+                  viewBox="0 0 16 16"
+                  width="15"
+                  height="15"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12.5 6.5h-6a3.5 3.5 0 0 0 0 7H9" />
+                  <path d="m9.5 3.5 3 3-3 3" />
+                </svg>
+              </button>
+            </span>
+
             <span className="tln-status">
               <span className={`tln-status__part tln-status__local--${status}`}>
                 <i className="tln-status__dot" aria-hidden="true" />
@@ -202,26 +279,28 @@ export default function App() {
               </span>
             </span>
 
-            <span className="tln-tools">
-              <button className="tln-tool" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-                ↶
-              </button>
-              <button
-                className="tln-tool"
-                onClick={redo}
-                disabled={!canRedo}
-                title="Redo (Ctrl+Shift+Z)"
+            <button
+              className="tln-tool tln-tool--lone"
+              onClick={exportProject}
+              title="Download a lossless backup of this story"
+            >
+              <svg
+                className="tln-tool__icon"
+                viewBox="0 0 16 16"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
               >
-                ↷
-              </button>
-              <button
-                className="tln-tool"
-                onClick={exportProject}
-                title="Download a lossless backup of this story"
-              >
-                ↓
-              </button>
-            </span>
+                <path d="M8 2.5V10" />
+                <path d="m4.75 7 3.25 3 3.25-3" />
+                <path d="M2.75 11.25v.75a1.5 1.5 0 0 0 1.5 1.5h7.5a1.5 1.5 0 0 0 1.5-1.5v-.75" />
+              </svg>
+            </button>
 
             <span className="tln-lens-tabs">
               {LENSES.map(([id, label]) => (
@@ -252,7 +331,11 @@ export default function App() {
         </button>
       </header>
 
-      {level === "library" ? (
+      {section === "boneyard" ? (
+        <BoneyardView onGrown={(id) => router.push(`/stories/${id}`)} />
+      ) : section === "research" ? (
+        <ResearchView />
+      ) : level === "library" ? (
         <LibraryView
           onSignIn={() => setAuthOpen(true)}
           onOpen={(id) => router.push(`/stories/${id}`)}

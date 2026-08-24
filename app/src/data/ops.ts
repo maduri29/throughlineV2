@@ -101,6 +101,7 @@ const ANY = new Set<NodeType>([
   "character",
   "location",
   "theme",
+  "reference",
 ]);
 
 /** Which edge types may legally run from `a` to `b` (self-loops never legal). */
@@ -124,6 +125,9 @@ export function legalEdgeTypes(a: NodeType, b: NodeType): EdgeType[] {
   push("sets_up", a === "scene" && b === "scene");
   push("embodies", (a === "character" || a === "scene") && b === "theme");
   push("grew_into", a === "seed" && (b === "project" || b === "scene"));
+  // A reference is material *about* something, so it attaches to anything and
+  // constrains nothing. Giving it its own verbs would be inventing structure the
+  // writer has not asked for; related_to already means "these belong together".
   push("related_to", a !== b && ANY.has(a) && ANY.has(b));
   return legal;
 }

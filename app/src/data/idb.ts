@@ -1,9 +1,9 @@
 // Normalized IndexedDB access for ADR-0001 (build-phase adapter that replaces the
-// scaffold's idb-keyval blob). Four object stores, one database.
+// scaffold's idb-keyval blob). Five object stores, one database.
 const DB_NAME = "throughline.v1";
-const VERSION = 1;
+const VERSION = 2;
 
-export type StoreName = "nodes" | "edges" | "meta" | "history";
+export type StoreName = "nodes" | "edges" | "meta" | "history" | "files";
 
 let dbp: Promise<IDBDatabase> | null = null;
 
@@ -20,6 +20,10 @@ function open(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" });
         if (!db.objectStoreNames.contains("history"))
           db.createObjectStore("history", { keyPath: "projectId" });
+        // v2: attachment bytes. Separate store because they are large, opaque
+        // and deliberately excluded from the exported/synced graph (data/files.ts).
+        if (!db.objectStoreNames.contains("files"))
+          db.createObjectStore("files", { keyPath: "id" });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);

@@ -6,6 +6,7 @@ export const NODE_TYPES = [
   "character",
   "location",
   "theme",
+  "reference",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
@@ -69,6 +70,26 @@ export type GraphNode = {
   role?: string;
   /** Character-node off-screen history; longer form than synopsis. */
   backstory?: string;
+  /** Reference-node source link. */
+  url?: string;
+  /**
+   * Reference-node attachments: metadata only, deliberately.
+   *
+   * The bytes live in the IndexedDB `files` store. They are NOT here because
+   * this record is what the lossless envelope exports and what the sync tier
+   * pushes as jsonb — base64 blobs would bloat every push and be re-uploaded on
+   * every unrelated edit. So a file follows the story between devices as a name
+   * and a size, and the UI says plainly when the bytes are not on this one.
+   */
+  attachments?: Attachment[];
+};
+
+export type Attachment = {
+  id: string;
+  name: string;
+  /** MIME type as reported by the browser; may be empty for unknown types. */
+  mime: string;
+  size: number;
 };
 
 export type GraphEdge = {

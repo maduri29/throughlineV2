@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { demoGraph, uuidv7 } from "./demo";
 import { splitSceneChunks } from "./data/fountain";
 import { requestDurableStorage, type Durability } from "./data/durability";
+import { deleteFile } from "./data/files";
 import { buildEnvelope, downloadEnvelope, parseEnvelope, type Envelope } from "./data/envelope";
 import {
   markSyncDirty,
@@ -40,6 +41,10 @@ type State = {
   canUndo: boolean;
   canRedo: boolean;
   bootError: string | null;
+  /** Raw ideas not yet belonging to any project (CONTEXT: Seed). */
+  seeds: GraphNode[];
+  /** Research material. Parentless ones are shared across every story. */
+  references: GraphNode[];
   /** Cloud side of the indicator pair. Local status stays in `status` (ADR-0007). */
   cloud: CloudStatus;
   /** Stories kept aside after a conflict: fork id -> what it was forked from. */
@@ -64,6 +69,20 @@ type Actions = {
   switchProject: (id: string) => Promise<void>;
   /** Resolves to the new project id so the caller can navigate to it. */
   createProject: (title: string) => Promise<string>;
+  /** Add research material; `projectId` null keeps it shared across stories. */
+  addReference: (
+    title: string,
+    projectId: string | null,
+    extra?: Partial<GraphNode>,
+  ) => Promise<string>;
+  patchReference: (id: string, patch: Partial<GraphNode>) => Promise<void>;
+  deleteReference: (id: string) => Promise<void>;
+  /** Jot an idea into the boneyard; resolves to its id. */
+  addSeed: (title: string) => Promise<string>;
+  patchSeed: (id: string, patch: Partial<GraphNode>) => Promise<void>;
+  deleteSeed: (id: string) => Promise<void>;
+  /** Turn an idea into a story, keeping the link back (CONTEXT: Grew Into). */
+  growSeed: (id: string) => Promise<string | null>;
   /** Put the sample story on the shelf, on request only; resolves to its id. */
   openSample: () => Promise<string | null>;
   /** Storage bucket status; null until boot has asked. */
@@ -360,6 +379,8 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   bootError: null,
   cloud: "off",
   forks: {},
+  seeds: [],
+  references: [],
 
   boot: async () => {
     set({ status: "booting" });
@@ -378,6 +399,10 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
       const allEdges: Record<string, GraphEdge> = {};
       for (const e of edgesArr) allEdges[e.id] = e;
       const projects = Object.values(allNodes).filter((n) => n.type === "project");
+      // Parentless seeds only: one that has been adopted into a story belongs
+      // to that story now, and listing it in the boneyard would double it.
+      const seeds = Object.values(allNodes).filter((n) => n.type === "seed" && !n.parentId);
+      const references = Object.values(allNodes).filter((n) => n.type === "reference");
       const forks = (await metaGet<Record<string, string>>("forkNotices")) ?? {};
       const lastId = await metaGet<string>("lastProjectId");
       const project = projects.find((p) => p.id === lastId) ?? projects[0] ?? null;
@@ -398,6 +423,8 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
         canRedo: redoStack.length > 0,
         selection: [],
         forks,
+        seeds,
+        references,
       });
     } catch (err) {
       set({ status: "error", bootError: String(err) });
@@ -494,6 +521,87 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
     set({ projects: [...get().projects, container] });
     await get().switchProject(newProjectId);
     return null;
+  },
+
+  addReference: async (title, projectId, extra) => {
+    // Like seeds, written straight through: a reference attached to no project
+    // has no project history to live in, and one attached to a project is
+    // material *about* the story rather than a change *to* it.
+    const node: GraphNode = {
+      ...extra,
+      id: uuidv7(),
+      type: "reference",
+      title,
+      ...(projectId ? { parentId: projectId } : {}),
+    };
+    await dbPut("nodes", [node]);
+    set({ references: [...get().references, node] });
+    return node.id;
+  },
+
+  patchReference: async (id, patch) => {
+    const cur = get().references.find((r) => r.id === id);
+    if (!cur) return;
+    const next: GraphNode = { ...cur, ...patch, id: cur.id, type: "reference" };
+    await dbPut("nodes", [next]);
+    set({ references: get().references.map((r) => (r.id === id ? next : r)) });
+  },
+
+  deleteReference: async (id) => {
+    const cur = get().references.find((r) => r.id === id);
+    // Bytes go with the record: an orphaned blob is invisible, counts against
+    // the browser quota, and nothing would ever reclaim it.
+    for (const a of cur?.attachments ?? []) await deleteFile(a.id);
+    await dbDelete("nodes", [id]);
+    set({ references: get().references.filter((r) => r.id !== id) });
+  },
+
+  addSeed: async (title) => {
+    // Written straight through rather than through the op-log: the log is scoped
+    // to a project (ADR-0003) and a seed belongs to none, so there is no history
+    // for it to live in. Losing an undo on a one-line idea is the cheaper trade.
+    const node: GraphNode = { id: uuidv7(), type: "seed", title };
+    await dbPut("nodes", [node]);
+    set({ seeds: [...get().seeds, node] });
+    return node.id;
+  },
+
+  patchSeed: async (id, patch) => {
+    const cur = get().seeds.find((s) => s.id === id);
+    if (!cur) return;
+    const next: GraphNode = { ...cur, ...patch, id: cur.id, type: "seed" };
+    await dbPut("nodes", [next]);
+    set({ seeds: get().seeds.map((s) => (s.id === id ? next : s)) });
+  },
+
+  deleteSeed: async (id) => {
+    await dbDelete("nodes", [id]);
+    set({ seeds: get().seeds.filter((s) => s.id !== id) });
+  },
+
+  growSeed: async (id) => {
+    const seed = get().seeds.find((s) => s.id === id);
+    if (!seed) return null;
+    const project: GraphNode = {
+      id: uuidv7(),
+      type: "project",
+      title: seed.title,
+      ...(seed.synopsis ? { synopsis: seed.synopsis } : {}),
+    };
+    // The seed is kept and linked rather than consumed: where an idea came from
+    // is worth being able to look up later, and deleting it would make growing
+    // a story a destructive act nobody would expect.
+    const edge: GraphEdge = {
+      id: uuidv7(),
+      type: "grew_into",
+      from: seed.id,
+      to: project.id,
+    };
+    await dbPut("nodes", [project]);
+    await dbPut("edges", [edge]);
+    set({ projects: [...get().projects, project] });
+    await get().switchProject(project.id);
+    return project.id;
   },
 
   openSample: async () => {
