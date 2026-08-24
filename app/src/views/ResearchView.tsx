@@ -17,11 +17,25 @@ import type { Attachment, Beat, GraphEdge, GraphNode } from "../types";
 export default function ResearchView() {
   const references = useGraphStore((s) => s.references);
   const projects = useGraphStore((s) => s.projects);
+  const openProjectId = useGraphStore((s) => s.projectId);
   const addReference = useGraphStore((s) => s.addReference);
   const patchReference = useGraphStore((s) => s.patchReference);
   const deleteReference = useGraphStore((s) => s.deleteReference);
 
-  const [scope, setScope] = useState<string>("all");
+  // Defaults to the story you were last in, not Shared: a sheet created shared
+  // has no scenes to link, so the headline feature arrives disabled and reads as
+  // broken. Tracked separately from the user's own choice because projectId is
+  // null on first render and only arrives once boot finishes — initialising from
+  // it once meant that after a reload the filter said Shared while the items
+  // were parented, and the tab looked empty.
+  const [scope, setScope] = useState<string>("shared");
+  const [chosen, setChosen] = useState(false);
+
+  useEffect(() => {
+    if (chosen || !openProjectId) return;
+    // oxlint-disable-next-line react/set-state-in-effect
+    setScope(openProjectId);
+  }, [openProjectId, chosen]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
@@ -127,7 +141,10 @@ export default function ResearchView() {
             className="tln-select"
             aria-label="Which story"
             value={scope}
-            onChange={(e) => setScope(e.target.value)}
+            onChange={(e) => {
+              setChosen(true);
+              setScope(e.target.value);
+            }}
           >
             <option value="all">Everything</option>
             <option value="shared">Shared across stories</option>
@@ -189,7 +206,25 @@ export default function ResearchView() {
                   <button className="tln-seed__title" onClick={() => setOpenId(open ? null : r.id)}>
                     {r.title}
                   </button>
-                  <span className="tln-ref__scope">{titleOf(r.parentId)}</span>
+                  {/* Attachable after the fact. Without this a sheet created
+                      shared could never gain scenes, and one created under the
+                      wrong story could never be moved. */}
+                  <select
+                    className="tln-ref__scope"
+                    aria-label={`Which story ${r.title} belongs to`}
+                    value={r.parentId ?? ""}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) =>
+                      void patchReference(r.id, { parentId: e.target.value || undefined })
+                    }
+                  >
+                    <option value="">Shared</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     className="tln-btn tln-btn--quiet"
                     onClick={() => void deleteReference(r.id)}

@@ -111,16 +111,14 @@ body,
 }
 
 /* ------------------------------------------------------------- status pair --
-   One bordered object with two halves. They answer the same question — is my
-   work safe — at different distances, so they belong together; two loose pills
-   made the reader compare them themselves. */
+   Two quiet halves, no chrome: the dots carry the state colour and the words
+   carry the meaning, so the pair reads at a glance without competing with the
+   story title beside it. They answer the same question — is my work safe — at
+   different distances. */
 .tln-status {
   display: inline-flex;
-  align-items: stretch;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--panel);
+  align-items: center;
+  gap: 14px;
   font-size: 11.5px;
   white-space: nowrap;
 }
@@ -129,12 +127,6 @@ body,
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 10px;
-  color: var(--dim);
-}
-
-.tln-status__part + .tln-status__part {
-  border-left: 1px solid var(--line);
 }
 
 .tln-status__dot {
@@ -177,35 +169,54 @@ body,
 }
 
 /* ------------------------------------------------------------------ tools --
-   Undo, redo and backup are one grouped control rather than three lone
-   buttons; they are the same kind of thing and were the noisiest part. */
+   Undo and redo are one grouped control; download stands alone because it is
+   a rare, deliberate act rather than an editing reflex. Icons are inline SVGs
+   so they inherit colour and weight instead of trusting font glyphs. */
 .tln-tools {
   display: inline-flex;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 999px;
   overflow: hidden;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(23 29 46 / 4%);
 }
 
 .tln-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
-  background: var(--card);
-  color: var(--ink-2);
-  font: 14px/1 inherit;
-  padding: 5px 10px;
+  background: none;
+  color: var(--dim);
+  padding: 6px 10px;
   cursor: pointer;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease;
 }
 
-.tln-tool + .tln-tool {
+.tln-tool__icon {
+  display: block;
+}
+
+.tln-tools .tln-tool + .tln-tool {
   border-left: 1px solid var(--line);
 }
 
+.tln-tool--lone {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(23 29 46 / 4%);
+}
+
 .tln-tool:hover:not(:disabled) {
-  background: var(--bg);
-  color: var(--accent);
+  background: var(--panel);
+  color: var(--ink);
 }
 
 .tln-tool:disabled {
-  opacity: 0.3;
+  opacity: 0.35;
   cursor: default;
 }
 
@@ -2619,6 +2630,8 @@ body,
   color: var(--dim);
 }
 
+/* A control, not a label: a sheet created shared could otherwise never gain
+   scenes, and one filed under the wrong story could never be moved. */
 .tln-ref__scope {
   font-size: 11px;
   color: var(--dim);
@@ -2626,6 +2639,22 @@ body,
   border-radius: 999px;
   padding: 2px 8px;
   white-space: nowrap;
+  background: var(--panel);
+  cursor: pointer;
+  max-width: 170px;
+}
+
+.tln-ref__scope:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tln-beats__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 3px;
 }
 
 .tln-ref__url {

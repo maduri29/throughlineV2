@@ -356,6 +356,36 @@ async function main(): Promise<void> {
     const persisted = (await page.locator(".tln-beats__count").textContent()) ?? "";
     check("a ticked beat survives a reload", persisted.includes("1 of 15"), persisted.trim());
 
+    // The headline feature has to be reachable. A sheet lands on the story you
+    // were last in, and can be moved between stories afterwards — without that
+    // the scene dropdown arrives disabled and the tab reads as broken.
+    const scopeValue = await page.locator(".tln-ref__scope").first().inputValue();
+    check("a sheet lands on a story, not adrift", scopeValue !== "", scopeValue || "shared");
+
+    // Point it at a story that actually has scenes. The one it landed on was
+    // grown from an idea moments ago and has none — correct behaviour, useless
+    // evidence for whether linking works.
+    // Widen the filter first: reparenting an item while filtered to one story
+    // correctly removes it from view, which would hide what we are measuring.
+    await page.getByLabel("Which story", { exact: true }).selectOption("all");
+    await page.waitForTimeout(600);
+
+    const named = page.locator(".tln-ref__scope").first().locator("option");
+    const hasSample = await named.filter({ hasText: "HIGH WATER" }).count();
+    if (hasSample > 0) {
+      await page.locator(".tln-ref__scope").first().selectOption({ label: "HIGH WATER" });
+      await page.waitForTimeout(900);
+    }
+    const sceneOptions = await page.locator(".tln-beat__scene").first().locator("option").count();
+    check("beats can point at scenes of that story", sceneOptions > 1, `${sceneOptions} options`);
+
+    // Moving a sheet to Shared while the filter is a story correctly removes it
+    // from view, so assert the move happened rather than that the row stayed.
+    await page.locator(".tln-ref__scope").first().selectOption("");
+    await page.waitForTimeout(900);
+    const backToShared = await page.locator(".tln-ref__scope").first().inputValue();
+    check("a sheet can be moved back to shared", backToShared === "", backToShared || "shared");
+
     await page.getByRole("button", { name: "Stories", exact: true }).click();
     await page.waitForURL(/\/stories$/, { timeout: 20_000 });
 

@@ -126,7 +126,7 @@ export default function BeatSheet({
               </button>
             </li>
           ))}
-          <li>
+          <li className="tln-beats__foot">
             <button
               className="tln-btn"
               onClick={() =>
@@ -135,6 +135,14 @@ export default function BeatSheet({
             >
               Add a beat
             </button>
+            {/* Said out loud, not left as a disabled dropdown. A shared sheet
+                has no scenes to offer, and a control that is dead with no
+                explanation reads as a broken feature. */}
+            {scenes.length === 0 && (
+              <span className="tln-ref__hint">
+                Set this sheet to a story above and each beat can point at the scene that covers it.
+              </span>
+            )}
           </li>
         </ul>
       )}
