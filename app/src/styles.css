@@ -1258,74 +1258,225 @@ body,
 /* Library */
 .tln-library {
   flex: 1;
-  padding: 40px;
+  padding: 34px 40px 60px;
   overflow-y: auto;
 }
 
 .tln-library__head {
-  font-size: 22px;
-  color: #3d4761;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  max-width: 980px;
+  margin: 0 0 22px;
+}
+
+.tln-library__title {
+  font-size: 25px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.tln-library__count {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: var(--dim);
+}
+
+.tln-library__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tln-btn--accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.tln-btn--accent:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.tln-library__new {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 980px;
   margin: 0 0 20px;
+  flex-wrap: wrap;
+}
+
+.tln-library__new-input {
+  flex: 1;
+  min-width: 220px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: 14px/1.2 inherit;
+  color: var(--ink);
+  background: var(--card);
+}
+
+.tln-library__new-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
 }
 
 .tln-library__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-  max-width: 900px;
+  grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
+  gap: 14px;
+  max-width: 980px;
 }
 
+/* Enough on a card to choose without opening: how big it is, and whether it
+   exists anywhere other than this browser. */
 .tln-storycard {
   all: unset;
   cursor: pointer;
-  background: var(--card, #ffffff);
-  border: 1px solid var(--line, #e3e7f2);
-  border-radius: 14px;
-  padding: 22px 18px;
-  box-shadow: 0 2px 12px rgb(30 40 90 / 7%);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-height: 110px;
+  gap: 3px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 15px 16px 14px;
+  transition:
+    border-color 120ms ease,
+    transform 120ms ease;
 }
 
 .tln-storycard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgb(30 40 90 / 12%);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.tln-storycard:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .tln-storycard__title {
-  font-weight: 700;
-  font-size: 17px;
-  color: #3d4761;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .tln-storycard__by {
   font-size: 12px;
-  color: #7b8499;
+  color: var(--dim);
 }
 
-.tln-storycard--new {
-  cursor: default;
-  justify-content: center;
+.tln-storycard__stats {
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-top: 8px;
+}
+
+.tln-storycard__cloud {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+/* --------------------------------------------------------------- empty --- */
+.tln-empty {
+  max-width: 460px;
+  margin: 40px auto 0;
+  text-align: center;
+}
+
+.tln-empty__mark {
+  display: inline-flex;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+.tln-empty__head {
+  font-size: 20px;
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+
+.tln-empty__body {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+.tln-empty__actions {
+  display: flex;
   gap: 8px;
-  border-style: dashed;
-  box-shadow: none;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
-.tln-storycard--new:hover {
-  transform: none;
+/* ---------------------------------------------------------- cloud strip ---
+   One line, because the machinery it used to expose now runs by itself. */
+.tln-cloudstrip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  max-width: 980px;
+  margin: 30px 0 0;
+  padding: 12px 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 11px;
 }
 
-.tln-storycard__input {
-  font-family: inherit;
-  font-size: 14px;
-  color: #3d4761;
-  background: transparent;
-  border: none;
-  border-bottom: 1px dashed #c3ccea;
-  outline: none;
-  padding: 2px 0 4px;
+.tln-cloudstrip--out {
+  justify-content: space-between;
+}
+
+.tln-cloudstrip__who {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.tln-cloudstrip__head {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.tln-cloudstrip__body {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--dim);
+  flex: 1;
+  min-width: 200px;
+}
+
+.tln-cloudstrip__note {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--ok);
+}
+
+.tln-library__storage {
+  max-width: 980px;
+  margin: 18px 0 0;
+  font-size: 11.5px;
+  color: var(--dim);
 }
 
 .tln-header__sub {

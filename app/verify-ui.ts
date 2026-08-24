@@ -95,8 +95,9 @@ async function main(): Promise<void> {
       tools: document.querySelectorAll(".tln-tool").length,
       status: document.querySelectorAll(".tln-status").length,
       brand: document.querySelectorAll(".tln-brand").length,
-      logo: document.querySelectorAll(".tln-logo").length,
+      logo: document.querySelectorAll(".tln-header .tln-logo").length,
       account: document.querySelectorAll(".tln-account").length,
+      emptyMark: document.querySelectorAll(".tln-empty__mark .tln-logo").length,
     }));
     check(
       "the Library header carries no story controls",
@@ -107,6 +108,11 @@ async function main(): Promise<void> {
       "brand and account are still there",
       shelfChrome.brand === 1 && shelfChrome.logo === 1 && shelfChrome.account === 1,
       `brand=${shelfChrome.brand} logo=${shelfChrome.logo} account=${shelfChrome.account}`,
+    );
+    check(
+      "an empty shelf says so rather than showing an empty grid",
+      shelfChrome.emptyMark === 1,
+      `${shelfChrome.emptyMark} empty-state marks`,
     );
 
     const sample = await page.getByRole("button", { name: "Open the sample story" }).count();
