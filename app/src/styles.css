@@ -114,13 +114,15 @@ body,
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 16px;
+  padding: 8px 18px;
   border-bottom: 1px solid var(--line);
-  background: var(--panel);
-  backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(16px);
   color: var(--ink);
-  min-height: 48px;
+  min-height: 50px;
   box-sizing: border-box;
+  z-index: 100;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 /* Pushes everything story-specific to the right, so the Library header is just
@@ -150,9 +152,9 @@ body,
 }
 
 .tln-brand__name {
-  font-size: 14.5px;
-  font-weight: 750;
-  letter-spacing: 0.04em;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink);
 }
@@ -447,38 +449,48 @@ select option {
 
 .tln-chips {
   position: absolute;
-  top: 12px;
+  top: 14px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
   display: flex;
-  gap: 6px;
-  background: var(--panel);
-  border: 1px solid var(--line);
+  align-items: center;
+  gap: 5px;
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  padding: 4px 8px;
-  box-shadow: var(--shadow-md);
-  backdrop-filter: blur(8px);
+  padding: 4px 6px;
+  box-shadow:
+    0 8px 24px -4px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
 }
 
 .tln-chip {
   all: unset;
   cursor: pointer;
+  font-family: inherit;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.03em;
-  padding: 3px 12px;
+  padding: 4px 12px;
   border-radius: 999px;
   color: var(--ink-2);
   background: var(--card);
   border: 1px solid var(--line);
-  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tln-chip:hover {
   color: var(--accent);
   background: var(--tint);
   border-color: var(--line-strong);
+  transform: translateY(-0.5px);
+}
+
+.tln-chip:active {
+  transform: scale(0.96);
 }
 
 .tln-chip--off {
@@ -1341,15 +1353,23 @@ select option {
 .tln-charcard {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.15s ease;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition:
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.15s ease;
 }
 
 .tln-charcard:hover {
   border-color: var(--line-strong);
-  box-shadow: var(--shadow-md);
+  box-shadow:
+    0 8px 24px -4px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
 }
 
 .tln-charcard--open {
@@ -1600,17 +1620,6 @@ select option {
   align-items: center;
 }
 
-.tln-btn--accent {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  font-weight: 600;
-}
-
-.tln-btn--accent:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
 .tln-library__new {
   display: flex;
   gap: 8px;
@@ -1622,25 +1631,31 @@ select option {
 
 .tln-library__new-input {
   flex: 1;
-  min-width: 220px;
+  min-width: 240px;
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font: 14px/1.2 inherit;
+  border-radius: 9px;
+  padding: 9px 15px;
+  font: 14px/1.35 inherit;
   color: var(--ink);
   background: var(--card);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .tln-library__new-input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline: none;
   border-color: var(--accent);
+  box-shadow:
+    0 0 0 2px var(--tint),
+    inset 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .tln-library__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
   max-width: 980px;
 }
 
@@ -1651,22 +1666,48 @@ select option {
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 18px 20px;
-  box-shadow: var(--shadow-sm);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
   transition:
-    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.15s ease,
-    border-color 0.15s ease;
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.2s ease;
+}
+
+.tln-storycard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
 .tln-storycard:hover {
   border-color: var(--line-strong);
-  box-shadow: var(--shadow-md);
+  box-shadow:
+    0 8px 24px -4px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transform: translateY(-2px);
+}
+
+.tln-storycard:hover::before {
+  opacity: 1;
+}
+
+.tln-storycard:active {
+  transform: scale(0.99) translateY(-1px);
 }
 
 .tln-storycard:focus-visible {
@@ -1689,6 +1730,7 @@ select option {
 
 .tln-storycard__stats {
   font-size: 11.5px;
+  font-family: var(--font-mono);
   color: var(--ink-2);
   margin-top: 8px;
 }
@@ -1785,22 +1827,26 @@ select option {
 .tln-card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 14px;
-  width: 224px;
-  font-size: 11.5px;
+  border-radius: 12px;
+  padding: 12px 16px;
+  width: 232px;
+  font-size: 12px;
   color: var(--ink);
-  box-shadow: var(--shadow-sm);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1),
     border-color 0.15s ease;
 }
 
 .tln-card:hover {
   border-color: var(--line-strong);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  box-shadow:
+    0 8px 22px -3px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
 }
 
 .tln-card--flashback {
@@ -2094,17 +2140,23 @@ select option {
 .tln-jot__input {
   flex: 1;
   border: 1px solid var(--line-strong);
-  border-radius: 9px;
-  padding: 10px 13px;
-  font: 14px/1.3 inherit;
+  border-radius: 10px;
+  padding: 10px 15px;
+  font: 14px/1.35 inherit;
   color: var(--ink);
   background: var(--card);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .tln-jot__input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline: none;
   border-color: var(--accent);
+  box-shadow:
+    0 0 0 2px var(--tint),
+    inset 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .tln-boneyard__empty {
@@ -2121,18 +2173,36 @@ select option {
   max-width: 720px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .tln-seed {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tln-seed:hover {
+  border-color: var(--line-strong);
+  box-shadow:
+    0 4px 14px -2px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
 }
 
 .tln-seed--open {
-  border-color: var(--line-strong);
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 6px 18px -2px rgba(0, 0, 0, 0.3);
 }
 
 .tln-seed__row {
