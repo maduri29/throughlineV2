@@ -25,6 +25,16 @@ export function scopeToProject(
   edges: Record<string, GraphEdge>,
   projectId: string,
 ): ScopedMaps {
+  // Pre-index children by parentId in one O(N) pass.
+  const childrenByParent = new Map<string, string[]>();
+  for (const n of Object.values(nodes)) {
+    if (n.parentId) {
+      const arr = childrenByParent.get(n.parentId);
+      if (arr) arr.push(n.id);
+      else childrenByParent.set(n.parentId, [n.id]);
+    }
+  }
+
   // Union of every project's parent subtree, minus this project's own —
   // nodes claimed structurally elsewhere may not be edge-pulled in.
   const claimed = new Set<string>();
@@ -32,11 +42,12 @@ export function scopeToProject(
     if (p.type !== "project" || p.id === projectId) continue;
     const stack = [p.id];
     while (stack.length > 0) {
-      const cur = stack.pop();
-      if (cur === undefined || claimed.has(cur)) continue;
+      const cur = stack.pop()!;
+      if (claimed.has(cur)) continue;
       claimed.add(cur);
-      for (const n of Object.values(nodes)) {
-        if (n.parentId === cur) stack.push(n.id);
+      const kids = childrenByParent.get(cur);
+      if (kids) {
+        for (const kid of kids) stack.push(kid);
       }
     }
   }
@@ -46,10 +57,15 @@ export function scopeToProject(
   while (grew) {
     grew = false;
     // Structural ownership first (deterministic priority).
-    for (const n of Object.values(nodes)) {
-      if (!keep.has(n.id) && n.parentId && keep.has(n.parentId)) {
-        keep.add(n.id);
-        grew = true;
+    for (const id of Array.from(keep)) {
+      const kids = childrenByParent.get(id);
+      if (kids) {
+        for (const kid of kids) {
+          if (!keep.has(kid)) {
+            keep.add(kid);
+            grew = true;
+          }
+        }
       }
     }
     for (const e of Object.values(edges)) {

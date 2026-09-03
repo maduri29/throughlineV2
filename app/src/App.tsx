@@ -1,5 +1,6 @@
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useGraphStore } from "./store";
 import BoneyardView from "./views/BoneyardView";
 import Logo from "./views/Logo";
@@ -7,11 +8,13 @@ import ResearchView from "./views/ResearchView";
 import MapView from "./views/MapView";
 import TimelineView from "./views/TimelineView";
 import CharactersView from "./views/CharactersView";
-import ScriptView from "./views/ScriptView";
 import LibraryView from "./views/LibraryView";
 import Inspector from "./views/Inspector";
 import ConnectionAdd from "./views/ConnectionAdd";
-import Palette from "./views/Palette";
+
+const ScriptView = lazy(() => import("./views/ScriptView"));
+const Palette = lazy(() => import("./views/Palette"));
+const SyncModal = lazy(() => import("./views/SyncModal"));
 
 const SAVE_LABEL: Record<string, string> = {
   booting: "Loading…",
@@ -31,15 +34,34 @@ const LENSES: Array<[Lens, string]> = [
 ];
 
 export default function App() {
-  const status = useGraphStore((s) => s.status);
-  const canUndo = useGraphStore((s) => s.canUndo);
-  const canRedo = useGraphStore((s) => s.canRedo);
-  const undo = useGraphStore((s) => s.undo);
-  const redo = useGraphStore((s) => s.redo);
-  const forceSave = useGraphStore((s) => s.forceSave);
-  const exportProject = useGraphStore((s) => s.exportProject);
-  const projectId = useGraphStore((s) => s.projectId);
-  const bootError = useGraphStore((s) => s.bootError);
+  const {
+    status,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+    forceSave,
+    exportProject,
+    projectId,
+    bootError,
+    syncStatus,
+    syncMessage,
+  } = useGraphStore(
+    useShallow((s) => ({
+      status: s.status,
+      canUndo: s.canUndo,
+      canRedo: s.canRedo,
+      undo: s.undo,
+      redo: s.redo,
+      forceSave: s.forceSave,
+      exportProject: s.exportProject,
+      projectId: s.projectId,
+      bootError: s.bootError,
+      syncStatus: s.syncStatus,
+      syncMessage: s.syncMessage,
+    })),
+  );
+  const [syncOpen, setSyncOpen] = useState(false);
   const [lens, setLens] = useState<Lens>("map");
   const router = useRouter();
   const pathname = usePathname();
@@ -90,14 +112,6 @@ export default function App() {
 
   useEffect(() => {
     void useGraphStore.getState().boot();
-    // A magic link returns to "/", so the callback has to be finished here — the
-    // dialog may never be opened, and nothing else would spend the token in the
-    // URL. No-op when sync is unconfigured, so the local-first boot path is
-    // unchanged (ADR-0005).
-    //
-    // The dialog is opened for the duration either way: someone who has just
-    // clicked a sign-in link should see it resolve, success or failure, rather
-    // than land in the workspace with no sign that anything happened.
   }, []);
 
   useEffect(() => {
@@ -171,6 +185,20 @@ export default function App() {
         )}
 
         <span className="tln-header__gap" />
+
+        <button
+          className="tln-sync-btn"
+          onClick={() => setSyncOpen(true)}
+          title={syncMessage ?? "Cross-device cloud sync (Turso)"}
+          aria-label="Cloud sync"
+        >
+          <span className={`tln-sync-icon tln-sync-icon--${syncStatus}`}>
+            {syncStatus === "syncing" ? "⟳" : "☁"}
+          </span>
+          <span className="tln-sync-label">
+            {syncStatus === "syncing" ? "Syncing…" : syncStatus === "synced" ? "Synced" : "Sync"}
+          </span>
+        </button>
 
         {level === "workspace" && (
           <>
@@ -297,7 +325,17 @@ export default function App() {
             {lens === "map" ? <MapView /> : null}
             {lens === "timeline" ? <TimelineView /> : null}
             {lens === "characters" ? <CharactersView /> : null}
-            {lens === "script" ? <ScriptView /> : null}
+            {lens === "script" ? (
+              <Suspense
+                fallback={
+                  <div className="tln-script">
+                    <div className="tln-boot">Loading editor…</div>
+                  </div>
+                }
+              >
+                <ScriptView />
+              </Suspense>
+            ) : null}
           </div>
           {lens !== "script" && lens !== "characters" ? (
             <div className="tln-dock">
@@ -307,7 +345,16 @@ export default function App() {
           ) : null}
         </div>
       )}
-      <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jumpTo} />
+      {paletteOpen && (
+        <Suspense fallback={null}>
+          <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jumpTo} />
+        </Suspense>
+      )}
+      {syncOpen && (
+        <Suspense fallback={null}>
+          <SyncModal onClose={() => setSyncOpen(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

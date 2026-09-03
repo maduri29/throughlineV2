@@ -5,8 +5,7 @@ Read this before touching git or deploying. Last verified: 2026-08-23.
 ## Gates
 
 ```bash
-cd app
-bun run check      # fmt + lint + typecheck + tests — must pass before commit/deploy
+bun run check      # fmt + lint + typecheck + tests — run from repo root or app/
 ```
 
 ## Git identity (hard rule)

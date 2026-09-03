@@ -11,17 +11,25 @@
     "fmt:check": "oxfmt --check",
     "lint": "oxlint --deny-warnings",
     "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage",
+    "test:bail": "bun test --bail",
+    "profile:cpu": "bun --cpu-prof --cpu-prof-md test",
+    "profile:heap": "bun --heap-prof --heap-prof-md test",
+    "dedupe": "bun dedupe",
+    "audit": "bun audit",
     "verify:ui": "bun verify-ui.ts",
     "check": "bun run fmt:check && bun run lint && bun run typecheck && bun test",
     "start": "next start -p 4517"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.0",
-    "@codemirror/state": "^6.7.1",
-    "@codemirror/view": "^6.43.9",
-    "@xyflow/react": "^12.11.3",
+    "@codemirror/state": "^6.7.2",
+    "@codemirror/view": "^6.43.10",
+    "@libsql/client": "^0.18.0",
+    "@xyflow/react": "^12.11.6",
     "idb-keyval": "^6.3.0",
-    "next": "16",
+    "next": "^16.3.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "zustand": "^5.0.15"
@@ -29,9 +37,9 @@
   "devDependencies": {
     "@types/bun": "^1.4.0",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "oxfmt": "^0.64.0",
-    "oxlint": "^1.79.0",
+    "@types/react-dom": "^19.2.5",
+    "oxfmt": "^0.66.0",
+    "oxlint": "^1.81.0",
     "playwright-core": "^1.62.1",
     "typescript": "^7.0.2"
   }

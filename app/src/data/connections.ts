@@ -18,6 +18,20 @@ export function connectionTargets(
 ): ConnectionCandidate[] {
   const source = nodes[sourceId];
   if (!source) return [];
+
+  // Pre-index existing edge types from sourceId by target in one O(E) pass.
+  const existingTypesByTarget = new Map<string, Set<EdgeType>>();
+  for (const e of Object.values(edges)) {
+    if (e.from === sourceId) {
+      let s = existingTypesByTarget.get(e.to);
+      if (!s) {
+        s = new Set<EdgeType>();
+        existingTypesByTarget.set(e.to, s);
+      }
+      s.add(e.type);
+    }
+  }
+
   const out: ConnectionCandidate[] = [];
   for (const n of Object.values(nodes)) {
     if (n.id === sourceId) continue;
@@ -25,12 +39,8 @@ export function connectionTargets(
     // related_to is any↔any and always legal, so `types` is never empty here;
     // skip pairs already joined by every legal type to keep the picker honest.
     if (types.length === 0) continue;
-    const existing = new Set(
-      Object.values(edges)
-        .filter((e) => e.from === sourceId && e.to === n.id)
-        .map((e) => e.type),
-    );
-    const remaining = types.filter((t) => !existing.has(t));
+    const existing = existingTypesByTarget.get(n.id);
+    const remaining = existing ? types.filter((t) => !existing.has(t)) : types;
     if (remaining.length > 0) out.push({ targetId: n.id, types: remaining });
   }
   return out.sort((a, b) => {

@@ -1,0 +1,23 @@
+{
+  "name": "throughline",
+  "private": true,
+  "scripts": {
+    "dev": "bun --cwd app dev",
+    "build": "bun --cwd app build",
+    "check": "bun --cwd app check",
+    "test": "bun --cwd app test",
+    "test:coverage": "bun --cwd app test:coverage",
+    "test:watch": "bun --cwd app test:watch",
+    "test:bail": "bun --cwd app test:bail",
+    "profile:cpu": "bun --cwd app profile:cpu",
+    "profile:heap": "bun --cwd app profile:heap",
+    "fmt": "bun --cwd app fmt",
+    "fmt:check": "bun --cwd app fmt:check",
+    "lint": "bun --cwd app lint",
+    "typecheck": "bun --cwd app typecheck",
+    "dedupe": "bun --cwd app dedupe",
+    "audit": "bun --cwd app audit",
+    "verify:ui": "bun --cwd app verify:ui"
+  }
+}
+

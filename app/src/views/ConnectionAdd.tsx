@@ -3,15 +3,20 @@
 // sees concurrent edits. Legality-aware: targets and edge types come from
 // connectionTargets(), already-used types are filtered, connect() re-checks.
 import { useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { connectionTargets } from "../data/connections";
 import { useGraphStore } from "../store";
 import type { EdgeType } from "../types";
 
 export default function ConnectionAdd() {
-  const nodeId = useGraphStore((s) => s.selection.find((id) => Boolean(s.nodes[id])) ?? null);
-  const nodes = useGraphStore((s) => s.nodes);
-  const edges = useGraphStore((s) => s.edges);
-  const connect = useGraphStore((s) => s.connect);
+  const { nodeId, nodes, edges, connect } = useGraphStore(
+    useShallow((s) => ({
+      nodeId: s.selection.find((id) => Boolean(s.nodes[id])) ?? null,
+      nodes: s.nodes,
+      edges: s.edges,
+      connect: s.connect,
+    })),
+  );
 
   const candidates = useMemo(
     () => (nodeId ? connectionTargets(nodes, edges, nodeId) : []),

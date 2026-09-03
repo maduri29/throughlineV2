@@ -41,6 +41,17 @@ export default function ScriptView() {
     [project, nodeMap, edgeMap],
   );
 
+  const locationBySceneId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of Object.values(edgeMap)) {
+      if (e.type === "takes_place_at") {
+        const title = nodeMap[e.to]?.title;
+        if (title) map.set(e.from, title);
+      }
+    }
+    return map;
+  }, [nodeMap, edgeMap]);
+
   // Derived initial pick — no setState-in-effect cascade.
   const effectiveSceneId = sceneId ?? sequence[0]?.scene.id ?? null;
 
@@ -163,7 +174,7 @@ export default function ScriptView() {
             key={sc.id}
             className={`tln-script__item${sc.id === effectiveSceneId ? " tln-script__item--on" : ""}`}
             onClick={() => setSceneId(sc.id)}
-            title={slugFor(sc, locationTitleFor(sc.id, nodeMap, edgeMap))}
+            title={slugFor(sc, locationBySceneId.get(sc.id) ?? null)}
           >
             <span className="tln-script__ep">{container ? container.title : "—"}</span>
             <span className="tln-script__ttl">

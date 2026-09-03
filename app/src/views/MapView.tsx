@@ -66,12 +66,15 @@ function episodes(nodes: GraphNode[]): GraphNode[] {
 
 function layout(nodes: GraphNode[], orderFor: (id: string) => string[]): CardFlowNode[] {
   const out: CardFlowNode[] = [];
-  const scenesOf = new Map<string, GraphNode[]>();
+  const scenesOf = new Map<string, Map<string, GraphNode>>();
   for (const n of nodes) {
     if (n.type !== "scene" || !n.parentId) continue;
-    const arr = scenesOf.get(n.parentId) ?? [];
-    arr.push(n);
-    scenesOf.set(n.parentId, arr);
+    let m = scenesOf.get(n.parentId);
+    if (!m) {
+      m = new Map<string, GraphNode>();
+      scenesOf.set(n.parentId, m);
+    }
+    m.set(n.id, n);
   }
 
   episodes(nodes).forEach((ep, ei) => {
@@ -83,9 +86,12 @@ function layout(nodes: GraphNode[], orderFor: (id: string) => string[]): CardFlo
       draggable: false,
       selectable: false,
     });
-    const ordered = orderFor(ep.id)
-      .map((id) => scenesOf.get(ep.id)?.find((s) => s.id === id))
-      .filter((s): s is GraphNode => Boolean(s));
+    const epScenes = scenesOf.get(ep.id);
+    const ordered = epScenes
+      ? orderFor(ep.id)
+          .map((id) => epScenes.get(id))
+          .filter((s): s is GraphNode => Boolean(s))
+      : [];
     for (const [si, sc] of ordered.entries()) {
       const day = sc.storyTime?.storyDay ?? null;
       out.push({

@@ -107,6 +107,7 @@ function readNode(v: unknown, where: string): GraphNode | string {
     "role",
     "backstory",
     "url",
+    "sparkType",
   ]) {
     str(k);
   }

@@ -16,11 +16,16 @@ bun run dev        # http://localhost:4517
 
 ## Gates
 
+Run from the repo root or inside `app/`:
+
 ```bash
-cd app
-bun run check      # fmt + lint + typecheck + tests
-bun run build      # next build → app/.next  (route `/` prerenders static)
-bun run verify:ui  # 39 headless assertions; dev server must be running
+bun run check          # fmt + lint + typecheck + tests
+bun run build          # next build → app/.next  (prerenders static shell)
+bun run test:coverage  # test suite with Bun's native coverage reporting
+bun run test:bail      # fail-fast on first test failure
+bun run profile:cpu    # Bun 1.4 native CPU profiling in markdown format
+bun run profile:heap   # Bun 1.4 native heap profiling in markdown format
+bun run verify:ui      # 39 headless assertions; dev server must be running
 ```
 
 The editor is loaded with `ssr: false` (`src/app/ClientApp.tsx`) because it is a

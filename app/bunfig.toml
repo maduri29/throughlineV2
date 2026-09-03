@@ -1,0 +1,9 @@
+# bunfig.toml - Bun configuration for Throughline
+
+[test]
+root = "."
+pathIgnorePatterns = [".next/**", "node_modules/**"]
+
+[install]
+lockfile = true
+

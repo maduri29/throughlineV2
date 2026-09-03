@@ -1,13 +1,15 @@
 // Throughline state: normalized in-memory maps over IndexedDB (ADR-0001) with a
 // full persisted undo/redo op-log (ADR-0003) and hybrid autosave (ADR-0004).
 import { create } from "zustand";
-import { demoGraph, uuidv7 } from "./demo";
+import { demoGraph } from "./demo";
+import { uuidv7 } from "./data/uuid";
 import { splitSceneChunks } from "./data/fountain";
 import { requestDurableStorage, type Durability } from "./data/durability";
 import { deleteFile } from "./data/files";
 import { buildEnvelope, downloadEnvelope, parseEnvelope } from "./data/envelope";
-import { dbDelete, dbGetAll, dbPut, metaGet, metaSet } from "./data/idb";
+import { dbDelete, dbGet, dbGetAll, dbPut, metaGet, metaSet } from "./data/idb";
 import { scopeToProject } from "./data/scopes";
+import { executeSync } from "./data/sync";
 import {
   applyBatch,
   invertBatch,
@@ -79,6 +81,9 @@ type Actions = {
   undo: () => void;
   redo: () => void;
   forceSave: () => Promise<void>;
+  syncStatus: "idle" | "syncing" | "synced" | "error";
+  syncMessage: string | null;
+  syncNow: () => Promise<void>;
 };
 
 let undoStack: HistoryEntry[] = [];
@@ -174,12 +179,11 @@ async function loadHistory(projectId: string): Promise<void> {
   undoStack = [];
   redoStack = [];
   try {
-    const recs = await dbGetAll<{
+    const mine = await dbGet<{
       projectId: string;
       entries: HistoryEntry[];
       redo: HistoryEntry[];
-    }>("history");
-    const mine = recs.find((r) => r.projectId === projectId);
+    }>("history", projectId);
     if (mine) {
       undoStack = mine.entries.slice(-HISTORY_CAP);
       redoStack = mine.redo.slice(-HISTORY_CAP);
@@ -197,18 +201,34 @@ function commit(
   forward: Op[],
 ): void {
   const inverse = invertBatch(forward);
-  const m = cloneMaps(get());
+  const current = get();
+  const m = cloneMaps(current);
   applyBatch(m, forward);
   undoStack.push({ at: Date.now(), label, forward, inverse });
   if (undoStack.length > HISTORY_CAP) undoStack.shift();
   redoStack = [];
   markDirty(forward);
-  persistHistory(get().projectId);
+  persistHistory(current.projectId);
   scheduleFlush();
+
+  // Only re-filter projects if an op actually touched a project node.
+  // Preserving current.projects array identity prevents spurious re-renders
+  // and cascade background sync/scoping calls in Library, Boneyard, Research & Palette.
+  const touchesProject = forward.some((op) => {
+    if (op.t === "addNode") return op.node.type === "project";
+    if (op.t === "patchNode") return current.nodes[op.id]?.type === "project";
+    if (op.t === "deleteNodes") return op.nodes.some((n) => n.type === "project");
+    return false;
+  });
+
+  const nextProjects = touchesProject
+    ? Object.values(m.nodes).filter((n) => n.type === "project")
+    : current.projects;
+
   set({
     nodes: m.nodes,
     edges: m.edges,
-    projects: Object.values(m.nodes).filter((n) => n.type === "project"),
+    projects: nextProjects,
     canUndo: true,
     canRedo: false,
   });
@@ -227,6 +247,8 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   bootError: null,
   seeds: [],
   references: [],
+  syncStatus: "idle",
+  syncMessage: null,
 
   boot: async () => {
     set({ status: "booting" });
@@ -707,5 +729,39 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
       flushTimer = null;
     }
     await flush();
+  },
+
+  syncNow: async () => {
+    set({ syncStatus: "syncing", syncMessage: null });
+    const res = await executeSync();
+    if (res.pulledNodes.length > 0 || res.pulledEdges.length > 0) {
+      const [nodesArr, edgesArr] = await Promise.all([
+        dbGetAll<GraphNode>("nodes"),
+        dbGetAll<GraphEdge>("edges"),
+      ]);
+      const allNodes: Record<string, GraphNode> = {};
+      for (const n of nodesArr) allNodes[n.id] = n;
+      const allEdges: Record<string, GraphEdge> = {};
+      for (const e of edgesArr) allEdges[e.id] = e;
+      const projects = Object.values(allNodes).filter((n) => n.type === "project");
+      const seeds = Object.values(allNodes).filter((n) => n.type === "seed" && !n.parentId);
+      const curProjectId = get().projectId;
+      const scoped = curProjectId
+        ? scopeToProject(allNodes, allEdges, curProjectId)
+        : { nodes: {}, edges: {} };
+      set({
+        nodes: scoped.nodes,
+        edges: scoped.edges,
+        projects,
+        seeds,
+        syncStatus: res.ok ? "synced" : "error",
+        syncMessage: res.message,
+      });
+    } else {
+      set({
+        syncStatus: res.ok ? "synced" : "error",
+        syncMessage: res.message,
+      });
+    }
   },
 }));

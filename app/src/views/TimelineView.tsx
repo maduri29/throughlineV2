@@ -40,8 +40,6 @@ function TimelineInner() {
   );
 
   const rfNodes = useMemo<CardFlowNode[]>(() => {
-    const scenes = Object.values(nodes).filter((n) => n.type === "scene");
-    const buckets = groupByDay(scenes);
     const out: CardFlowNode[] = [];
     for (const [bi, b] of buckets.entries()) {
       const isFlashLane = b.day !== null && b.day < 0;
@@ -73,7 +71,7 @@ function TimelineInner() {
       }
     }
     return out;
-  }, [nodes]);
+  }, [buckets]);
 
   const rfEdges = useMemo<Edge[]>(
     () =>

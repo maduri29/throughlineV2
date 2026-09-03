@@ -1,17 +1,25 @@
 // Inspector dock (T5 §1): Enter focuses it; edits commit on blur via patchNode
 // so each field blur is one undo entry (ADR-0003).
 import { useEffect, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { CHAR_ROLE_SUGGESTIONS, TODS } from "../types";
 import type { GraphNode, Tod } from "../types";
 import { useGraphStore } from "../store";
 
 export default function Inspector() {
-  const nodeId = useGraphStore((s) => s.selection.find((id) => Boolean(s.nodes[id])) ?? null);
-  const node = useGraphStore((s) => (nodeId ? s.nodes[nodeId] : undefined));
-  const edges = useGraphStore((s) => s.edges);
-  const nodes = useGraphStore((s) => s.nodes);
-  const patchNode = useGraphStore((s) => s.patchNode);
-  const deleteEdge = useGraphStore((s) => s.deleteEdge);
+  const { nodeId, node, edges, nodes, patchNode, deleteEdge } = useGraphStore(
+    useShallow((s) => {
+      const id = s.selection.find((selId) => Boolean(s.nodes[selId])) ?? null;
+      return {
+        nodeId: id,
+        node: id ? s.nodes[id] : undefined,
+        edges: s.edges,
+        nodes: s.nodes,
+        patchNode: s.patchNode,
+        deleteEdge: s.deleteEdge,
+      };
+    }),
+  );
 
   const [draft, setDraft] = useState<Partial<GraphNode>>({});
   const titleRef = useRef<HTMLInputElement | null>(null);

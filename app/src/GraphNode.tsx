@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
 import type { Node, NodeProps } from "@xyflow/react";
 
@@ -14,7 +15,7 @@ export type CardFlowNode = Node<CardData, "card">;
 
 /** Beat-board card (locked Map direction): rich light card; pills for non-scene nodes.
  *  Handles are live — drag-connect opens the legality picker (T5 contract). */
-export default function GraphCard({ data }: NodeProps<CardFlowNode>) {
+function GraphCardComponent({ data }: NodeProps<CardFlowNode>) {
   return (
     <div
       className={`tln-card tln-card--${data.kind}${
@@ -31,3 +32,5 @@ export default function GraphCard({ data }: NodeProps<CardFlowNode>) {
     </div>
   );
 }
+
+export default memo(GraphCardComponent);
