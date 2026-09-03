@@ -81,6 +81,12 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 12px 28px -4px rgba(0, 0, 0, 0.14);
+  /* Typography */
+  --font-sans:
+    "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-script: "Courier Prime", "Courier New", Courier, monospace;
 }
 
 html,
@@ -88,11 +94,14 @@ body,
 #root {
   height: 100%;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: -0.01em;
 }
 
 .tln-app {
@@ -234,8 +243,9 @@ body,
    so they inherit colour and weight instead of trusting font glyphs. */
 .tln-tools {
   display: inline-flex;
+  align-items: center;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 8px;
   overflow: hidden;
   background: var(--card);
   box-shadow: var(--shadow-sm);
@@ -245,14 +255,21 @@ body,
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 32px;
+  height: 30px;
+  padding: 0;
   border: 0;
   background: none;
   color: var(--ink-2);
-  padding: 6px 10px;
   cursor: pointer;
   transition:
     color 0.12s ease,
-    background 0.12s ease;
+    background 0.12s ease,
+    transform 0.1s ease;
+}
+
+.tln-tool:active:not(:disabled) {
+  transform: scale(0.94);
 }
 
 .tln-tool__icon {
@@ -265,18 +282,21 @@ body,
 
 .tln-tool--lone {
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--card);
   box-shadow: var(--shadow-sm);
+  width: 32px;
+  height: 30px;
 }
 
 .tln-tool--theme {
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--card);
   color: var(--accent);
   box-shadow: var(--shadow-sm);
-  padding: 6px 9px;
+  width: 32px;
+  height: 30px;
 }
 
 .tln-tool:hover:not(:disabled) {
@@ -288,6 +308,7 @@ body,
   background: var(--tint);
   color: var(--accent-hover, var(--accent));
   border-color: var(--line-strong);
+  box-shadow: 0 0 10px var(--glow);
 }
 
 .tln-tool:disabled {
@@ -314,19 +335,106 @@ body,
   color: var(--dim);
 }
 
+/* ---------------------------------------------------------------- buttons -- */
 .tln-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border: 1px solid var(--line);
   background: var(--card);
-  border-radius: 6px;
-  padding: 1px 9px;
-  font-size: 13px;
+  border-radius: 7px;
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
   color: var(--ink);
+  box-shadow: var(--shadow-sm);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease,
+    box-shadow 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tln-btn:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--panel);
+  color: var(--ink);
+  transform: translateY(-0.5px);
+  box-shadow: var(--shadow-md);
+}
+
+.tln-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.tln-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .tln-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------- dropdowns -- */
+select,
+.tln-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--card);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ba3b5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 6px 28px 6px 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+[data-theme="light"] select,
+[data-theme="light"] .tln-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2342495b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+select:hover,
+.tln-select:hover {
+  border-color: var(--line-strong);
+  background-color: var(--panel);
+}
+
+select:focus,
+.tln-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 2px var(--tint),
+    var(--shadow-sm);
+}
+
+select option {
+  background: var(--card);
+  color: var(--ink);
+  padding: 8px;
 }
 
 /* Map lens chrome (T5 contract) */
@@ -395,11 +503,13 @@ body,
   left: 0;
   z-index: 32;
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 10px;
   box-shadow: var(--shadow-lg);
-  padding: 4px;
-  min-width: 130px;
+  padding: 5px;
+  min-width: 140px;
+  backdrop-filter: blur(12px);
+  animation: tln-pop 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tln-addmenu__opt {
@@ -408,7 +518,9 @@ body,
   width: 100%;
   box-sizing: border-box;
   cursor: pointer;
+  font-family: inherit;
   font-size: 12px;
+  font-weight: 500;
   padding: 6px 10px;
   border-radius: 6px;
   color: var(--ink);
@@ -436,6 +548,19 @@ body,
   padding: 6px;
   min-width: 180px;
   transform: translateY(8px);
+  backdrop-filter: blur(12px);
+  animation: tln-pop 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tln-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .tln-picker__title {
@@ -593,32 +718,51 @@ body,
   color: var(--accent);
 }
 
-/* Lens tabs */
+/* Lens tabs (Map, Timeline, Characters, Script) */
 .tln-lens-tabs {
-  display: flex;
-  gap: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 2px;
+  border-radius: 9px;
+  padding: 3px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .tln-lens-tab {
   all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   cursor: pointer;
+  font-family: inherit;
   font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  padding: 4px 12px;
+  padding: 5px 12px;
   border-radius: 6px;
   color: var(--dim);
-  transition: all 0.15s ease;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
+}
+
+.tln-lens-tab__icon {
+  display: block;
+  flex: none;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
 }
 
 .tln-lens-tab:hover {
   color: var(--ink);
   background: var(--tint);
+  border-color: var(--line);
+}
+
+.tln-lens-tab:hover .tln-lens-tab__icon {
+  opacity: 1;
 }
 
 .tln-lens-tab--on {
@@ -626,7 +770,12 @@ body,
   box-shadow: var(--shadow-sm);
   font-weight: 700;
   color: var(--accent);
-  border: 1px solid var(--line);
+  border-color: var(--line-strong);
+}
+
+.tln-lens-tab--on .tln-lens-tab__icon {
+  opacity: 1;
+  stroke: var(--accent);
 }
 
 /* Script lens */
@@ -1874,44 +2023,62 @@ body,
    and inside it the header already carries that story's own controls. */
 .tln-nav {
   display: inline-flex;
-  gap: 2px;
-  margin-left: 8px;
+  align-items: center;
+  gap: 3px;
+  margin-left: 10px;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 2px;
+  border-radius: 9px;
+  padding: 3px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .tln-nav__tab {
-  border: 0;
-  background: transparent;
-  font: 600 11.5px/1 inherit;
-  letter-spacing: 0.04em;
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--dim);
   padding: 5px 12px;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
+}
+
+.tln-nav__icon {
+  display: block;
+  flex: none;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
 }
 
 .tln-nav__tab:hover {
   color: var(--ink);
   background: var(--tint);
+  border-color: var(--line);
+}
+
+.tln-nav__tab:hover .tln-nav__icon {
+  opacity: 1;
 }
 
 .tln-nav__tab--on {
   color: var(--accent);
   font-weight: 700;
   background: var(--card);
-  border: 1px solid var(--line);
+  border-color: var(--line-strong);
   box-shadow: var(--shadow-sm);
 }
 
-.tln-nav__tab--on {
-  color: var(--ink);
-  font-weight: 650;
-  background: var(--bg);
+.tln-nav__tab--on .tln-nav__icon {
+  opacity: 1;
+  stroke: var(--accent);
 }
 
 /* -------------------------------------------------------------- boneyard --
@@ -2202,6 +2369,8 @@ body,
   margin-top: 6px;
   margin-bottom: 6px;
   z-index: 10;
+  backdrop-filter: blur(10px);
+  animation: tln-pop 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tln-spark-popover__opt {
