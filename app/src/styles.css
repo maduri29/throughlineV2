@@ -82,9 +82,8 @@
   --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 12px 28px -4px rgba(0, 0, 0, 0.14);
   /* Typography */
-  --font-sans:
-    "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-    sans-serif;
+  --font-sans: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-script: "Courier Prime", "Courier New", Courier, monospace;
 }
@@ -101,7 +100,7 @@ body,
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .tln-app {
@@ -172,9 +171,12 @@ body,
 }
 
 .tln-header__title {
-  font-size: 13.5px;
+  font-family: var(--font-display);
+  font-size: 16.5px;
+  font-style: italic;
+  letter-spacing: 0.01em;
   color: var(--ink);
-  font-weight: 600;
+  font-weight: 400;
   max-width: 32ch;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1602,10 +1604,13 @@ select option {
 }
 
 .tln-library__title {
-  font-size: 25px;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
   color: var(--ink);
   margin: 0;
+  line-height: 1.15;
 }
 
 .tln-library__count {
@@ -1716,10 +1721,12 @@ select option {
 }
 
 .tln-storycard__title {
-  font-size: 15.5px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 400;
   color: var(--ink);
-  line-height: 1.35;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
@@ -1822,6 +1829,34 @@ select option {
 .tln-flow .react-flow__edge.selected .react-flow__edge-path {
   stroke: var(--accent);
   stroke-width: 2.5;
+}
+
+.tln-flow .react-flow__controls {
+  background: var(--card) !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--shadow-md) !important;
+  overflow: hidden;
+}
+
+.tln-flow .react-flow__controls-button {
+  background: var(--card) !important;
+  border-bottom: 1px solid var(--line) !important;
+  color: var(--ink-2) !important;
+  fill: var(--ink-2) !important;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.tln-flow .react-flow__controls-button:hover {
+  background: var(--tint) !important;
+  color: var(--accent) !important;
+  fill: var(--accent) !important;
+}
+
+.tln-flow .react-flow__controls-button svg {
+  fill: currentColor !important;
 }
 
 .tln-card {

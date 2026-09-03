@@ -366,7 +366,7 @@ function MapInner() {
           onPaneClick={() => select([])}
           onConnectEnd={onConnectEnd}
         >
-          <Background color="#dfe4f4" gap={18} />
+          <Background color="var(--line)" gap={20} size={1} />
           <Controls />
         </ReactFlow>
       </div>
