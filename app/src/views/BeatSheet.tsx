@@ -31,7 +31,7 @@ export default function BeatSheet({
         <span className="tln-beats__progress">
           <span
             className="tln-beats__fill"
-            style={{ width: total === 0 ? "0%" : `${Math.round((done / total) * 100)}%` }}
+            style={{ transform: `scaleX(${total === 0 ? 0 : done / total})` }}
           />
         </span>
         <span className="tln-beats__count">

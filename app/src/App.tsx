@@ -1,5 +1,5 @@
 import { usePathname, useRouter } from "next/navigation";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useGraphStore } from "./store";
 import BoneyardView from "./views/BoneyardView";
@@ -63,7 +63,24 @@ export default function App() {
   );
   const [syncOpen, setSyncOpen] = useState(false);
   const [lens, setLens] = useState<Lens>("map");
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window === "undefined") return "dark";
+    const saved = localStorage.getItem("throughline:theme") as "dark" | "light" | null;
+    return saved ?? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  });
   const router = useRouter();
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((curr) => {
+      const next = curr === "dark" ? "light" : "dark";
+      localStorage.setItem("throughline:theme", next);
+      return next;
+    });
+  }, []);
   const pathname = usePathname();
 
   /**
@@ -141,7 +158,7 @@ export default function App() {
   const project = projectId ? useGraphStore.getState().nodes[projectId] : undefined;
 
   return (
-    <div className="tln-app">
+    <div className="tln-app" data-theme={theme}>
       <header className="tln-header">
         {/* Brand doubles as the way back to the shelf. Everything after it is
             story-specific and rendered only inside a story: undo, lenses, backup
@@ -198,6 +215,50 @@ export default function App() {
           <span className="tln-sync-label">
             {syncStatus === "syncing" ? "Syncing…" : syncStatus === "synced" ? "Synced" : "Sync"}
           </span>
+        </button>
+
+        <button
+          className="tln-tool tln-tool--theme"
+          onClick={toggleTheme}
+          title={
+            theme === "dark"
+              ? "Switch to Archival Print (Light)"
+              : "Switch to Director's Studio (Dark)"
+          }
+          aria-label="Toggle theme"
+        >
+          {theme === "dark" ? (
+            <svg
+              className="tln-tool__icon"
+              viewBox="0 0 16 16"
+              width="15"
+              height="15"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="8" cy="8" r="3.2" />
+              <path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" />
+            </svg>
+          ) : (
+            <svg
+              className="tln-tool__icon"
+              viewBox="0 0 16 16"
+              width="15"
+              height="15"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M13.5 9.5a5.5 5.5 0 1 1-7-7 4.5 4.5 0 0 0 7 7z" />
+            </svg>
+          )}
         </button>
 
         {level === "workspace" && (
