@@ -1,3 +1,5 @@
+> Background material from earlier development; ideas, stack choices, and scope are proposals to revisit, not refactor requirements. Research claims have not been reverified for this cleanup.
+
 # Throughline — Research Brief
 
 *Compiled from vendor pages and product documentation; volatile pricing verified live where noted. Treat prices as approximate.*

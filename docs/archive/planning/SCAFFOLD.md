@@ -1,3 +1,5 @@
+> Historical record, archived September 4, 2026. Instructions, scope limits, paths, and decisions below are superseded and do not govern the refactor. Links describe the original checkout and may no longer resolve.
+
 # SCAFFOLD.md — T7 execution log (2026-08-22)
 
 Executed directly by agent/ox-alpha after two delegated runners died without producing

@@ -1,3 +1,5 @@
+> Historical record, archived September 4, 2026. Instructions, scope limits, paths, and decisions below are superseded and do not govern the refactor. Links describe the original checkout and may no longer resolve.
+
 ---
 id: T3
 title: Lock the story-graph data model

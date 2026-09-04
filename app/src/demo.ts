@@ -1,6 +1,4 @@
-// THROWAWAY SEED — scaffold placeholder so first run shows the full concept.
-// ADR-0001 is the normative model; the real normalized IndexedDB adapter and
-// library seeding land during the build phase.
+// Example story graph used to demonstrate the app.
 import { uuidv7 } from "./data/uuid";
 import type { EdgeType, GraphEdge, GraphNode, NodeType, StoryTime, Tod } from "./types";
 

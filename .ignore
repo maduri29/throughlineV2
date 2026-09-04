@@ -1,0 +1,2 @@
+# Historical documents remain tracked by Git but are excluded from normal searches.
+/docs/archive/

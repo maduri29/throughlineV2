@@ -1,3 +1,5 @@
+> Background material from earlier development; ideas, stack choices, and scope are proposals to revisit, not refactor requirements. Research claims have not been reverified for this cleanup.
+
 # Throughline — Product Ideas
 
 > From spark to screenplay. A thinking tool where raw ideas grow into movies and TV series,

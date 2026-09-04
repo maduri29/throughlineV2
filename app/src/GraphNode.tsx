@@ -13,8 +13,8 @@ export type CardData = {
 
 export type CardFlowNode = Node<CardData, "card">;
 
-/** Beat-board card (locked Map direction): rich light card; pills for non-scene nodes.
- *  Handles are live — drag-connect opens the legality picker (T5 contract). */
+/** Beat-board card: rich light card; pills for non-scene nodes.
+ *  Handles are live — drag-connect opens the legality picker. */
 function GraphCardComponent({ data }: NodeProps<CardFlowNode>) {
   return (
     <div

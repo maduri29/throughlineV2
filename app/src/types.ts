@@ -21,14 +21,14 @@ export const TODS = [
 ] as const;
 export type Tod = (typeof TODS)[number];
 
-/** Structured story time per ADR-0001. Flashbacks are negative storyDays + edges, never flags. */
+/** Current structured story-time fields; flashback relationships are represented by edges. */
 export type StoryTime = {
   storyDay: number | null;
   tod: Tod | null;
   eraLabel: string | null;
 };
 
-/** The locked twelve-edge vocabulary (ADR-0001). */
+/** Connection types supported by the current graph model. */
 export const EDGE_TYPES = [
   "contains",
   "appears_in",

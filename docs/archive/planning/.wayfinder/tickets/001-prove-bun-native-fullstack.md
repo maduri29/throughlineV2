@@ -1,3 +1,5 @@
+> Historical record, archived September 4, 2026. Instructions, scope limits, paths, and decisions below are superseded and do not govern the refactor. Links describe the original checkout and may no longer resolve.
+
 ---
 id: T1
 title: Prove Bun-native fullstack with React Flow

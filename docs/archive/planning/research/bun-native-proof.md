@@ -1,3 +1,5 @@
+> Historical record, archived September 4, 2026. Instructions, scope limits, paths, and decisions below are superseded and do not govern the refactor. Links describe the original checkout and may no longer resolve.
+
 # TLN-PROBE — Pure-Bun React Toolchain Proof (Windows 11)
 
 **Goal:** Prove a React app can run on a Pure-Bun toolchain — no Vite, Node never used as runtime — with React 19, @xyflow/react v12, zustand (+idb-keyval), TypeScript 7 strict, oxfmt, oxlint.
