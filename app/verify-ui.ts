@@ -92,11 +92,11 @@ async function main(): Promise<void> {
     // toolbar look broken rather than full.
     const shelfChrome = await page.evaluate(() => ({
       lenses: document.querySelectorAll(".tln-lens-tab").length,
-      tools: document.querySelectorAll(".tln-tool").length,
+      tools: document.querySelectorAll(".tln-tool:not(.tln-tool--theme)").length,
       status: document.querySelectorAll(".tln-status").length,
       brand: document.querySelectorAll(".tln-brand").length,
       logo: document.querySelectorAll(".tln-header .tln-logo").length,
-      emptyMark: document.querySelectorAll(".tln-empty__mark .tln-logo").length,
+      emptyMark: document.querySelectorAll(".tln-library__welcome").length,
     }));
     check(
       "the Library header carries no story controls",
@@ -156,7 +156,7 @@ async function main(): Promise<void> {
     /* ---- one indicator, and it claims only this device ---- */
     const inStory = await page.evaluate(() => ({
       lenses: document.querySelectorAll(".tln-lens-tab").length,
-      tools: document.querySelectorAll(".tln-tool").length,
+      tools: document.querySelectorAll(".tln-tool:not(.tln-tool--theme)").length,
       local: document.querySelector(".tln-status__part")?.textContent ?? "",
     }));
     check(
@@ -173,7 +173,7 @@ async function main(): Promise<void> {
     );
 
     /* ---- script lens: the editor is CodeMirror, not the old textarea ---- */
-    await page.getByRole("button", { name: "Script", exact: true }).click();
+    await page.getByRole("tab", { name: "Script", exact: true }).click();
     await page.waitForSelector(".tln-script__ta .cm-editor", { timeout: 20_000 });
 
     const editors = await page.locator(".tln-script__ta .cm-editor").count();
@@ -226,7 +226,7 @@ async function main(): Promise<void> {
     );
 
     /* ---- Map lens: node types are colour-coded, not identical pills ---- */
-    await page.getByRole("button", { name: "Map", exact: true }).click();
+    await page.getByRole("tab", { name: "Map", exact: true }).click();
     await page.waitForSelector(".tln-card--pill", { timeout: 20_000 });
 
     const pills = await page.evaluate(() =>
@@ -253,8 +253,8 @@ async function main(): Promise<void> {
       ),
     }));
     check(
-      "the header survives a narrow window",
-      overflow.body <= 0 && overflow.headerH < 90,
+      "the header wraps into at most two rows without horizontal overflow",
+      overflow.body <= 0 && overflow.headerH < 132,
       `overflow=${overflow.body}px height=${overflow.headerH}px`,
     );
     await page.setViewportSize({ width: 1440, height: 900 });

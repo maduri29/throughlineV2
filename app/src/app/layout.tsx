@@ -9,6 +9,9 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "@xyflow/react/dist/style.css";
 import "../styles.css";
+import "../views/library/library.css";
+import "../shell/shell.css";
+import "../shell/mobile.css";
 
 export const metadata: Metadata = {
   title: "Throughline",
@@ -23,14 +26,6 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body>
         <div id="root">{children}</div>
       </body>

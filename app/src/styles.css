@@ -2,23 +2,23 @@
 [data-theme="dark"] {
   color-scheme: dark;
   /* Shadcn / Zinc Dark Theme */
-  --bg: #09090b;
-  --panel: #121215;
-  --card: #18181b;
-  --card-elevated: #27272a;
+  --bg: #101214;
+  --panel: #15181b;
+  --card: #1c2024;
+  --card-elevated: #2b3035;
   --ink: #fafafa;
   --ink-2: #a1a1aa;
   --dim: #71717a;
-  --line: #27272a;
+  --line: #2b3035;
   --line-strong: #3f3f46;
-  --line-focus: #f59e0b;
+  --line-focus: #c6a573;
 
   /* Brand: Amber Accent */
-  --accent: #f59e0b;
-  --accent-hover: #fbbf24;
-  --accent-fg: #09090b;
-  --tint: rgba(245, 158, 11, 0.12);
-  --glow: rgba(245, 158, 11, 0.2);
+  --accent: #c6a573;
+  --accent-hover: #e1bf8b;
+  --accent-fg: #101214;
+  --tint: rgba(198, 165, 115, 0.12);
+  --glow: rgba(198, 165, 115, 0.2);
 
   /* Graph Hues */
   --scene: #38bdf8;
@@ -30,7 +30,7 @@
 
   /* Status */
   --ok: #10b981;
-  --warn: #f59e0b;
+  --warn: #c6a573;
   --danger: #ef4444;
 
   --fb: #f97316;
@@ -49,7 +49,7 @@
   --panel: #f4f4f5;
   --card: #ffffff;
   --card-elevated: #fafafa;
-  --ink: #09090b;
+  --ink: #101214;
   --ink-2: #52525b;
   --dim: #71717a;
   --line: #e4e4e7;
@@ -86,10 +86,10 @@
 }
 
 :root {
-  /* Typography: Geist & Geist Mono */
-  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-script: "Courier Prime", "Courier New", Courier, monospace;
+  /* System fonts keep the workspace available without a font service. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-script: "Courier New", Courier, monospace;
 }
 
 html,
@@ -120,7 +120,8 @@ body,
   border-bottom: 1px solid var(--line);
   background: var(--panel);
   color: var(--ink);
-  height: 52px;
+  min-height: 64px;
+  flex-shrink: 0;
   box-sizing: border-box;
   z-index: 100;
 }
@@ -385,7 +386,7 @@ body,
 .tln-btn--accent {
   background: var(--accent);
   border-color: var(--accent);
-  color: #09090b;
+  color: #101214;
   font-weight: 600;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.15);
 }
@@ -393,7 +394,7 @@ body,
 .tln-btn--accent:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  color: #09090b;
+  color: #101214;
 }
 
 .tln-btn--quiet {
@@ -886,7 +887,7 @@ select option {
 
 .tln-slug {
   flex: 1;
-  font-family: "Courier Prime", "Courier New", Courier, monospace;
+  font-family: "Courier New", Courier, monospace;
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.04em;
@@ -903,7 +904,7 @@ select option {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  font-family: "Courier Prime", "Courier New", Courier, monospace;
+  font-family: "Courier New", Courier, monospace;
   font-size: 14px;
   line-height: 1.5;
   color: var(--ink);
@@ -1046,7 +1047,7 @@ select option {
 }
 
 .tln-script__ta .cm-scroller {
-  font-family: "Courier Prime", "Courier New", Courier, monospace;
+  font-family: "Courier New", Courier, monospace;
   font-size: 14px;
   line-height: 1.5;
   color: var(--ink);
@@ -1595,146 +1596,6 @@ select option {
 }
 
 /* Library */
-.tln-library {
-  flex: 1;
-  padding: 34px 40px 60px;
-  overflow-y: auto;
-}
-
-.tln-library__head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
-  flex-wrap: wrap;
-  max-width: 980px;
-  margin: 0 0 22px;
-}
-
-.tln-library__title {
-  font-family: var(--font-sans);
-  font-size: 24px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--ink);
-  margin: 0;
-  line-height: 1.2;
-}
-
-.tln-library__count {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--dim);
-}
-
-.tln-library__actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.tln-library__new {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  max-width: 980px;
-  margin: 0 0 20px;
-  flex-wrap: wrap;
-}
-
-.tln-library__new-input {
-  flex: 1;
-  min-width: 240px;
-  height: 36px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 0 12px;
-  font-family: var(--font-sans);
-  font-size: 13px;
-  color: var(--ink);
-  background: var(--bg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.tln-library__new-input:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
-}
-
-.tln-library__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-  max-width: 980px;
-}
-
-/* Enough on a card to choose without opening: how big it is, and whether it
-   exists anywhere other than this browser. */
-.tln-storycard {
-  all: unset;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 18px 20px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  transition: all 0.15s ease;
-  box-sizing: border-box;
-}
-
-.tln-storycard:hover {
-  border-color: var(--line-strong);
-  background: var(--card-elevated);
-  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
-}
-
-.tln-storycard:active {
-  transform: scale(0.99);
-}
-
-.tln-storycard:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.tln-storycard__title {
-  font-family: var(--font-sans);
-  font-size: 15.5px;
-  font-weight: 600;
-  color: var(--ink);
-  line-height: 1.35;
-  letter-spacing: -0.015em;
-  overflow-wrap: anywhere;
-}
-
-.tln-storycard__by {
-  font-size: 12px;
-  color: var(--dim);
-}
-
-.tln-storycard__stats {
-  font-size: 12px;
-  font-family: var(--font-mono);
-  color: var(--ink-2);
-  margin-top: 6px;
-}
-
-.tln-storycard__cloud {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  margin-top: 6px;
-}
-
 /* --------------------------------------------------------------- empty --- */
 .tln-empty {
   max-width: 460px;
@@ -1766,13 +1627,6 @@ select option {
   gap: 8px;
   justify-content: center;
   flex-wrap: wrap;
-}
-
-.tln-library__storage {
-  max-width: 980px;
-  margin: 18px 0 0;
-  font-size: 11.5px;
-  color: var(--dim);
 }
 
 .tln-header__sub {

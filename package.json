@@ -17,6 +17,8 @@
     "typecheck": "bun --cwd app typecheck",
     "dedupe": "bun --cwd app dedupe",
     "audit": "bun --cwd app audit",
+    "verify:mobile": "bun --cwd app verify:mobile",
+    "verify:library": "bun --cwd app verify:library",
     "verify:ui": "bun --cwd app verify:ui"
   }
 }

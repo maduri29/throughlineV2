@@ -1,0 +1,228 @@
+.tln-mobile-details-bar {
+  display: none;
+}
+.tln-app {
+  height: 100dvh;
+}
+
+@media (max-width: 700px) {
+  .tln-header {
+    gap: 6px 10px;
+    padding: 8px 12px;
+  }
+  .tln-header__title {
+    max-width: 48vw;
+    min-width: 0;
+  }
+  .tln-header__crumb {
+    display: none;
+  }
+  .tln-header .tln-brand__name {
+    font-size: 14px;
+  }
+  .tln-header .tln-brand,
+  .tln-header .tln-tool,
+  .tln-sync-btn {
+    min-height: 44px;
+  }
+  .tln-header .tln-tool {
+    min-width: 44px;
+  }
+  .tln-header .tln-status {
+    margin-left: auto;
+    font-size: 10px;
+  }
+  .tln-lens-tabs {
+    order: 12;
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  .tln-lens-tab {
+    flex: 1;
+    min-height: 44px;
+    padding: 6px 8px;
+  }
+  .tln-nav {
+    gap: 4px;
+  }
+  .tln-nav__tab {
+    min-height: 44px;
+    flex: 1;
+    justify-content: center;
+  }
+  .tln-workspace {
+    position: relative;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .tln-workspace__lens {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .tln-mobile-details-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 12px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  .tln-mobile-details-bar .tln-btn {
+    min-height: 40px;
+  }
+  .tln-dock {
+    display: none;
+  }
+  .tln-dock--open {
+    display: flex;
+    position: absolute;
+    z-index: 30;
+    inset: 49px 0 0;
+    width: auto;
+    overflow-y: auto;
+    border-left: 0;
+  }
+  .tln-dock .tln-inspector {
+    width: auto;
+    flex-shrink: 0;
+    overflow: visible;
+  }
+  .tln-script {
+    flex-direction: column;
+    min-width: 0;
+  }
+  .tln-script__rail {
+    width: auto;
+    max-height: 100px;
+    min-height: 76px;
+    flex-shrink: 0;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .tln-script__railhead {
+    display: none;
+  }
+  .tln-script__item {
+    flex: 0 0 180px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .tln-script__ttl {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .tln-script__main {
+    flex-direction: column;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .tln-script__edit {
+    flex: 0 0 auto !important;
+    min-width: 0;
+    min-height: 360px;
+  }
+  .tln-script__toolbar {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .tln-slug {
+    flex-basis: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    box-sizing: border-box;
+  }
+  .tln-script__ta {
+    padding: 12px 8px;
+    min-height: 240px;
+  }
+  .tln-script__divider {
+    display: none;
+  }
+  .tln-script__preview {
+    flex: 0 0 auto;
+    min-height: 250px;
+    border-top: 1px solid var(--line);
+    overflow-wrap: anywhere;
+    padding: 20px 16px;
+  }
+  .tln-script__collapse {
+    position: sticky;
+    bottom: 8px;
+    align-self: flex-end;
+    min-height: 44px;
+    flex-shrink: 0;
+    margin: 8px;
+  }
+  .tln-chars {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px;
+  }
+  .tln-jot,
+  .tln-seed__row,
+  .tln-ref__row,
+  .tln-boneyard__toolbar {
+    flex-wrap: wrap;
+  }
+  .tln-jot__input {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .tln-seed__title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .tln-boneyard__filters {
+    flex-wrap: wrap;
+  }
+  .tln-library__head {
+    max-width: 100%;
+  }
+  .tln-library .tln-btn,
+  .tln-workspace .tln-btn,
+  .tln-charcard__toggle {
+    min-height: 44px;
+  }
+  .tln-library__filters select,
+  .tln-library__search input {
+    min-height: 44px;
+  }
+  .tln-app input,
+  .tln-app textarea,
+  .tln-app select,
+  .tln-script__ta .cm-content {
+    font-size: 16px;
+  }
+  .tln-sync-input-row {
+    flex-wrap: wrap;
+  }
+  .tln-sync-input-row input {
+    min-width: 0;
+  }
+}
+@media (max-width: 700px) {
+  .tln-chips {
+    width: max-content;
+    max-width: calc(100% - 24px);
+    box-sizing: border-box;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .tln-dialog {
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
+  .tln-palette {
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 32px);
+  }
+}

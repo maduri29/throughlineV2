@@ -18,6 +18,8 @@
     "profile:heap": "bun --heap-prof --heap-prof-md test",
     "dedupe": "bun dedupe",
     "audit": "bun audit",
+    "verify:mobile": "bun verify-mobile.ts",
+    "verify:library": "bun verify-library.ts",
     "verify:ui": "bun verify-ui.ts",
     "check": "bun run fmt:check && bun run lint && bun run typecheck && bun test",
     "start": "next start -p 4517"

@@ -1,0 +1,41 @@
+.tln-header {
+  padding: 12px 28px;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.tln-brand {
+  gap: 10px;
+}
+.tln-brand__name {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+.tln-nav {
+  margin-left: 24px;
+}
+.tln-nav__tab {
+  min-height: 34px;
+}
+.tln-header :is(button, a):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .tln-header {
+    padding: 10px 16px;
+    gap: 10px;
+  }
+  .tln-nav {
+    order: 10;
+    width: 100%;
+    margin-left: 0;
+    justify-content: center;
+  }
+  .tln-header__title {
+    max-width: 45vw;
+  }
+  .tln-header__gap {
+    min-width: 0;
+  }
+}
