@@ -2704,7 +2704,7 @@ select option {
 .tln-select {
   border: 1px solid var(--line-strong);
   border-radius: 7px;
-  padding: 5px 9px;
+  padding: 5px 28px 5px 9px;
   font: 13px/1.2 inherit;
   color: var(--ink);
   background: var(--card);
