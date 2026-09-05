@@ -266,18 +266,19 @@ async function main(): Promise<void> {
     await page.waitForURL(/\/stories$/, { timeout: 20_000 });
     await page.getByRole("button", { name: "Boneyard", exact: true }).click();
     await page.waitForURL(/\/boneyard/, { timeout: 20_000 });
-    await page.waitForSelector(".tln-jot__input", { timeout: 20_000 });
+    await page.waitForSelector(".by-capture textarea", { timeout: 20_000 });
     check("the boneyard has its own URL", new URL(page.url()).pathname === "/boneyard", page.url());
 
     await page.getByLabel("New idea").fill("A lighthouse keeper who never sleeps");
-    await page.getByRole("button", { name: "Keep it" }).click();
-    await page.waitForSelector(".tln-seed", { timeout: 20_000 });
-    const kept = await page.locator(".tln-seed").count();
+    await page.getByRole("button", { name: "Keep idea" }).click();
+    await page.waitForSelector(".by-card", { timeout: 20_000 });
+    const kept = await page.locator(".by-card").count();
     check("an idea can be kept in one gesture", kept === 1, `${kept} seeds`);
 
-    // Growing must not consume the idea: where a story came from is worth being
-    // able to look up, and deleting it would make growing a destructive act.
-    await page.getByRole("button", { name: /Grow into a story/ }).click();
+    await page.getByRole("button", { name: "Explore idea" }).click();
+    await page.getByRole("button", { name: "Evolve idea" }).click();
+    await page.getByRole("button", { name: "Confirm evolution" }).click();
+    await page.locator(".by-evolve").getByRole("button", { name: "Open story" }).click();
     await page.waitForURL(/\/stories\//, { timeout: 20_000 });
     check(
       "growing an idea opens the new story",
@@ -288,8 +289,8 @@ async function main(): Promise<void> {
     await page.locator(".tln-brand").click();
     await page.waitForURL(/\/stories$/, { timeout: 20_000 });
     await page.getByRole("button", { name: "Boneyard", exact: true }).click();
-    await page.waitForSelector(".tln-seed", { timeout: 20_000 });
-    const survived = await page.locator(".tln-seed").count();
+    await page.waitForSelector(".by-card", { timeout: 20_000 });
+    const survived = await page.locator(".by-card").count();
     check("the idea survives being grown", survived === 1, `${survived} seeds`);
 
     /* ---- the storage layer survives losing its connection ---- */
@@ -308,11 +309,11 @@ async function main(): Promise<void> {
       });
     });
     await page.waitForTimeout(1200);
-    const seedsBefore = await page.locator(".tln-seed").count();
+    const seedsBefore = await page.locator(".by-card").count();
     await page.getByLabel("New idea").fill("written after the connection died");
-    await page.getByRole("button", { name: "Keep it" }).click();
+    await page.getByRole("button", { name: "Keep idea" }).click();
     await page.waitForTimeout(2000);
-    const seedsAfter = await page.locator(".tln-seed").count();
+    const seedsAfter = await page.locator(".by-card").count();
     check(
       "writes survive the connection closing underneath",
       seedsAfter === seedsBefore + 1,

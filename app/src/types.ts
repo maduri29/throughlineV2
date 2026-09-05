@@ -96,6 +96,8 @@ export type GraphNode = {
   attachments?: Attachment[];
   /** Reference-node beat sheet. Structured is the source of truth (data/beats.ts). */
   beats?: Beat[];
+  /** Source snapshots intentionally carried into this story or reference. */
+  ideaSources?: { id: string; title: string; body: string }[];
 };
 
 export type Beat = {

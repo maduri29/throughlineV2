@@ -159,6 +159,25 @@ function readNode(v: unknown, where: string): GraphNode | string {
     }
     if (kept.length > 0) node.attachments = kept;
   }
+  const sources = v["ideaSources"];
+  if (sources !== undefined) {
+    if (
+      !Array.isArray(sources) ||
+      sources.some(
+        (source) =>
+          !isRecord(source) ||
+          typeof source.id !== "string" ||
+          typeof source.title !== "string" ||
+          typeof source.body !== "string",
+      )
+    )
+      return `${where}: invalid idea sources`;
+    node.ideaSources = sources.map((source) => ({
+      id: source.id,
+      title: source.title,
+      body: source.body,
+    }));
+  }
   return node;
 }
 

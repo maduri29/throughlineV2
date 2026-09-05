@@ -1,4 +1,5 @@
 import { LENSES, SECTIONS, type Lens } from "./shell/navigation";
+import { StoryOrigins } from "./views/boneyard/StoryOrigins";
 import { useWorkspaceTheme } from "./shell/useWorkspaceTheme";
 import { usePathname, useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -362,6 +363,7 @@ export default function App() {
         <LibraryView onOpen={(id) => router.push(`/stories/${id}`)} />
       ) : (
         <div className="tln-workspace">
+          <StoryOrigins onOpen={(id) => router.push(`/boneyard?idea=${encodeURIComponent(id)}`)} />
           {lens !== "script" && lens !== "characters" && (
             <div className="tln-mobile-details-bar">
               <button

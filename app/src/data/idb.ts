@@ -1,9 +1,9 @@
 // Normalized IndexedDB access for ADR-0001 (build-phase adapter that replaces the
 // scaffold's idb-keyval blob). Five object stores, one database.
 const DB_NAME = "throughline.v1";
-const VERSION = 2;
+const VERSION = 3;
 
-export type StoreName = "nodes" | "edges" | "meta" | "history" | "files";
+export type StoreName = "nodes" | "edges" | "meta" | "history" | "files" | "boneyard";
 
 let dbp: Promise<IDBDatabase> | null = null;
 
@@ -21,6 +21,11 @@ function forget(): void {
 }
 
 function createStores(db: IDBDatabase): void {
+  if (!db.objectStoreNames.contains("boneyard")) {
+    const ideas = db.createObjectStore("boneyard", { keyPath: "id" });
+    ideas.createIndex("entityId", "entityId");
+    ideas.createIndex("kind", "kind");
+  }
   if (!db.objectStoreNames.contains("nodes")) db.createObjectStore("nodes", { keyPath: "id" });
   if (!db.objectStoreNames.contains("edges")) db.createObjectStore("edges", { keyPath: "id" });
   if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" });
@@ -150,6 +155,26 @@ export async function dbDelete(store: StoreName, keys: string[]): Promise<void> 
   if (keys.length === 0) return;
   await run(store, "readwrite", (os) => {
     for (const k of keys) os.delete(k);
+  });
+}
+
+/** Commit related records together; callers enqueue requests synchronously. */
+export async function dbTransaction(
+  stores: StoreName[],
+  enqueue: (tx: IDBTransaction) => void,
+): Promise<void> {
+  const db = await open();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(stores, "readwrite");
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error("Could not save changes."));
+    tx.onabort = () => reject(tx.error ?? new Error("Save was interrupted."));
+    try {
+      enqueue(tx);
+    } catch (error) {
+      tx.abort();
+      reject(error);
+    }
   });
 }
 

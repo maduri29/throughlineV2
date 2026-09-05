@@ -12,6 +12,7 @@ import "../styles.css";
 import "../views/library/library.css";
 import "../shell/shell.css";
 import "../shell/mobile.css";
+import "../views/boneyard/boneyard.css";
 
 export const metadata: Metadata = {
   title: "Throughline",

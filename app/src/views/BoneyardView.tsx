@@ -1,327 +1,402 @@
-// The boneyard: raw ideas kept before they belong to any project.
-//
-// This finishes a concept the domain model already had. CONTEXT.md defines a
-// Seed as "a raw idea kept before it belongs to any project" and Grew Into as
-// "a seed becoming a project or a scene"; the node type, the edge type and its
-// legality rules were all in the code, and nothing ever surfaced them.
-//
-// The design constraint that matters: capture has to cost nothing. An idea you
-// have to title, categorise and file is an idea you write down somewhere else.
-// So one box, Enter, done — everything else is optional and comes later.
-import { useEffect, useState } from "react";
-import { dbGetAll } from "../data/idb";
-import { useGraphStore } from "../store";
-import type { GraphEdge, SparkType } from "../types";
+import { useMemo, useRef, useState } from "react";
+import type { Thought } from "../data/boneyard/types";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Plus, ArrowLeft, Search, Pin, Lightbulb, Download, Upload } from "lucide-react";
+import { ideaLabel } from "../data/boneyard/repository";
+import { useBoneyard } from "./boneyard/useBoneyard";
+import { useDraft, DraftWarning, date } from "./boneyard/Draft";
+import { CollectionEditor } from "./boneyard/CollectionEditor";
+import { IdeaDetail } from "./boneyard/IdeaDetail";
+import { EvolutionPreview } from "./boneyard/EvolutionPreview";
+import { ConflictReview } from "./boneyard/ConflictReview";
 
-type SparkMeta = {
-  type: SparkType;
-  label: string;
-  icon: string;
-  shortLabel: string;
-};
-
-const SPARK_METAS: readonly SparkMeta[] = [
-  { type: "premise", label: "Premise / Logline", icon: "🎬", shortLabel: "Premise" },
-  { type: "character", label: "Character Concept", icon: "👤", shortLabel: "Character" },
-  { type: "location", label: "World / Location", icon: "📍", shortLabel: "World" },
-  { type: "scene", label: "Set Piece / Scene", icon: "⚡", shortLabel: "Scene" },
-  { type: "dialogue", label: "Overheard Dialogue", icon: "💬", shortLabel: "Dialogue" },
-  { type: "twist", label: "What If / Twist", icon: "🔮", shortLabel: "Twist" },
-] as const;
-
-export default function BoneyardView({ onGrown }: { onGrown: (projectId: string) => void }) {
-  const seeds = useGraphStore((s) => s.seeds);
-  const projects = useGraphStore((s) => s.projects);
-  const addSeed = useGraphStore((s) => s.addSeed);
-  const patchSeed = useGraphStore((s) => s.patchSeed);
-  const deleteSeed = useGraphStore((s) => s.deleteSeed);
-  const growSeed = useGraphStore((s) => s.growSeed);
-
-  const [draft, setDraft] = useState("");
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [tagPickerId, setTagPickerId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | SparkType | "untagged">("all");
-  const [grewIntoMap, setGrewIntoMap] = useState<Record<string, { id: string; title: string }>>({});
-
-  // Detect which seeds have already grown into stories via grew_into edges
-  useEffect(() => {
-    let live = true;
-    void (async () => {
-      try {
-        const edges = await dbGetAll<GraphEdge>("edges");
-        const grewEdges = edges.filter((e) => e.type === "grew_into");
-        const map: Record<string, { id: string; title: string }> = {};
-        for (const ge of grewEdges) {
-          const proj = projects.find((p) => p.id === ge.to);
-          if (proj) {
-            map[ge.from] = { id: proj.id, title: proj.title };
-          }
-        }
-        if (live) setGrewIntoMap(map);
-      } catch {
-        // IDB errors shouldn't crash the view
+export default function BoneyardView({ onGrown }: { onGrown: (id: string) => void }) {
+  const by = useBoneyard();
+  const router = useRouter();
+  const params = useSearchParams();
+  const selectedId = params.get("idea");
+  const selected = by.snapshot.ideas.find((i) => i.id === selectedId);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("active");
+  const [collectionId, setCollectionId] = useState("");
+  const [collectionTitle, setCollectionTitle] = useState("");
+  const [chosen, setChosen] = useState<string[]>([]);
+  const [evolving, setEvolving] = useState<string[] | null>(null);
+  const [notice, setNotice] = useState("");
+  const input = useRef<HTMLInputElement>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
+  const draft = useDraft("throughline:boneyard:draft");
+  const activeCollections = by.snapshot.collections.filter((c) => !c.deleted);
+  const open = (id: string) => router.push(`/boneyard?idea=${encodeURIComponent(id)}`);
+  const close = () => router.push("/boneyard");
+  const term = query.trim().toLocaleLowerCase();
+  const [visibleLimit, setVisibleLimit] = useState(100);
+  const thoughtsByIdea = useMemo(() => {
+    const grouped = new Map<string, Thought[]>();
+    for (const thought of by.snapshot.thoughts)
+      if (!thought.deleted) {
+        const list = grouped.get(thought.ideaId) ?? [];
+        list.push(thought);
+        grouped.set(thought.ideaId, list);
       }
-    })();
-    return () => {
-      live = false;
-    };
-  }, [seeds, projects]);
-
-  const jot = (): void => {
-    const t = draft.trim();
-    if (!t) return;
-    void addSeed(t);
-    setDraft("");
-  };
-
-  // Spark tag counts
-  const tagCounts = {
-    all: seeds.length,
-    premise: seeds.filter((s) => s.sparkType === "premise").length,
-    character: seeds.filter((s) => s.sparkType === "character").length,
-    location: seeds.filter((s) => s.sparkType === "location").length,
-    scene: seeds.filter((s) => s.sparkType === "scene").length,
-    dialogue: seeds.filter((s) => s.sparkType === "dialogue").length,
-    twist: seeds.filter((s) => s.sparkType === "twist").length,
-    untagged: seeds.filter((s) => !s.sparkType).length,
-  };
-
-  // Filtered & searched seeds
-  const filteredSeeds = seeds.filter((s) => {
-    if (filter !== "all") {
-      if (filter === "untagged") {
-        if (s.sparkType) return false;
-      } else if (s.sparkType !== filter) {
-        return false;
-      }
-    }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      const titleMatch = s.title.toLowerCase().includes(q);
-      const synopsisMatch = (s.synopsis ?? "").toLowerCase().includes(q);
-      if (!titleMatch && !synopsisMatch) return false;
-    }
-    return true;
+    return grouped;
+  }, [by.snapshot.thoughts]);
+  const searchIndex = useMemo(
+    () =>
+      new Map(
+        by.snapshot.ideas.map((idea) => [
+          idea.id,
+          [
+            idea.title,
+            idea.body,
+            ...idea.tags,
+            ...(thoughtsByIdea.get(idea.id) ?? []).map((t) => t.body),
+          ]
+            .join("\n")
+            .toLocaleLowerCase(),
+        ]),
+      ),
+    [by.snapshot.ideas, thoughtsByIdea],
+  );
+  const matches = by.snapshot.ideas.filter((idea) => {
+    if (
+      filter === "pinned"
+        ? !idea.pinned || idea.disposition !== "active"
+        : idea.disposition !== filter
+    )
+      return false;
+    if (
+      collectionId &&
+      !by.snapshot.memberships.some(
+        (m) => !m.deleted && m.ideaId === idea.id && m.collectionId === collectionId,
+      )
+    )
+      return false;
+    return !term || !!searchIndex.get(idea.id)?.includes(term);
   });
-
+  async function capture() {
+    if (await by.run(() => by.capture(draft.text))) {
+      draft.setText("");
+      setNotice("Idea kept. Leave another whenever it arrives.");
+      composer.current?.focus();
+    }
+  }
   return (
-    <div className="tln-library">
-      <header className="tln-library__head">
+    <main className={`tln-library by-page${selectedId ? " by-page--selected" : ""}`}>
+      <header className="by-header">
         <div>
-          <h1 className="tln-library__title">Boneyard</h1>
-          <p className="tln-library__count">
-            {seeds.length === 0
-              ? "Nothing here yet"
-              : `${seeds.length} idea${seeds.length === 1 ? "" : "s"} waiting`}
+          <p className="by-eyebrow">ROOM TO WANDER</p>
+          <h1 className="by-title">Boneyard</h1>
+          <p className="by-subtitle">
+            Loose thoughts. Unexpected connections. Stories still becoming.
           </p>
         </div>
+        <div className="by-actions">
+          <button
+            className="tln-btn"
+            disabled={by.pending}
+            onClick={() => void by.run(by.exportBackup)}
+          >
+            <Download size={15} /> Back up ideas
+          </button>
+          <button className="tln-btn" disabled={by.pending} onClick={() => input.current?.click()}>
+            <Upload size={15} /> Import ideas
+          </button>
+          <input
+            ref={input}
+            hidden
+            type="file"
+            accept=".json"
+            aria-label="Import ideas backup"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void by.run(() => by.importBackup(file));
+            }}
+          />
+        </div>
       </header>
-
-      {/* Capture first, always visible, never behind a button. */}
-      <div className="tln-jot">
-        <input
-          className="tln-jot__input"
-          placeholder="A line about something that might be a story…"
+      <ConflictReview by={by} onOpen={open} />
+      {by.error && (
+        <p className="by-error" role="alert">
+          {by.error}
+        </p>
+      )}
+      {notice && (
+        <p role="status" className="by-notice">
+          {notice}
+        </p>
+      )}
+      <section className="by-capture" aria-label="Capture an idea">
+        <textarea
+          ref={composer}
           aria-label="New idea"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Leave a thought here. A line, a question, a whole possibility…"
+          value={draft.text}
+          onChange={(e) => draft.setText(e.target.value)}
+          rows={3}
+          disabled={by.pending}
           onKeyDown={(e) => {
-            if (e.key === "Enter") jot();
+            if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              if (draft.text.trim()) void capture();
+            }
           }}
         />
-        <button className="tln-btn tln-btn--accent" disabled={!draft.trim()} onClick={jot}>
-          Keep it
-        </button>
-      </div>
-
-      {seeds.length > 0 && (
-        <div className="tln-boneyard__toolbar">
-          {/* Instant search across titles and notes */}
-          <div className="tln-boneyard__search-wrap">
-            <input
-              className="tln-boneyard__search-input"
-              type="text"
-              placeholder="Search sparks by keyword, dialogue, note…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Search sparks"
-            />
-            {search && (
-              <button
-                className="tln-boneyard__clear-btn"
-                onClick={() => setSearch("")}
-                title="Clear search"
-                aria-label="Clear search"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Prism spark classification filter chips */}
-          <div className="tln-boneyard__filters" role="tablist" aria-label="Filter sparks by tag">
-            <button
-              className={`tln-filter-chip${filter === "all" ? " tln-filter-chip--active" : ""}`}
-              onClick={() => setFilter("all")}
-            >
-              <span>All</span>
-              <span className="tln-filter-chip__count">{tagCounts.all}</span>
-            </button>
-            {SPARK_METAS.map((m) => (
-              <button
-                key={m.type}
-                className={`tln-filter-chip${filter === m.type ? " tln-filter-chip--active" : ""}`}
-                onClick={() => setFilter(filter === m.type ? "all" : m.type)}
-                title={`Filter by ${m.label}`}
-              >
-                <span>{m.icon}</span>
-                <span>{m.shortLabel}</span>
-                <span className="tln-filter-chip__count">{tagCounts[m.type]}</span>
-              </button>
-            ))}
-            {tagCounts.untagged > 0 && (
-              <button
-                className={`tln-filter-chip${filter === "untagged" ? " tln-filter-chip--active" : ""}`}
-                onClick={() => setFilter(filter === "untagged" ? "all" : "untagged")}
-                title="Filter untagged sparks"
-              >
-                <span>Untagged</span>
-                <span className="tln-filter-chip__count">{tagCounts.untagged}</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {seeds.length === 0 ? (
-        <p className="tln-boneyard__empty">
-          Ideas live here until they are worth building. Nothing kept here belongs to a story yet,
-          and nothing here is lost when you decide it is not the one.
-        </p>
-      ) : filteredSeeds.length === 0 ? (
-        <div className="tln-boneyard__no-match">
-          <p>No sparks match your current search or filter.</p>
+        <div className="by-capture__actions">
+          <span>No title or category needed. Ctrl / ⌘ + Enter to keep.</span>
           <button
-            className="tln-btn tln-btn--quiet"
-            onClick={() => {
-              setSearch("");
-              setFilter("all");
-            }}
+            className="tln-btn tln-btn--accent"
+            disabled={!draft.text.trim() || by.pending}
+            onClick={() => void capture()}
           >
-            Clear filters
+            <Plus size={16} /> {by.pending ? "Saving…" : "Keep idea"}
           </button>
         </div>
-      ) : (
-        <ul className="tln-seeds">
-          {filteredSeeds.map((s) => {
-            const open = openId === s.id;
-            const picking = tagPickerId === s.id;
-            const meta = SPARK_METAS.find((m) => m.type === s.sparkType);
-            const grew = grewIntoMap[s.id];
-
-            return (
-              <li
-                key={s.id}
-                className={`tln-seed${s.sparkType ? ` tln-seed--${s.sparkType}` : ""}${open ? " tln-seed--open" : ""}`}
+        <DraftWarning show={draft.draftError} />
+      </section>
+      <div className="by-controls">
+        <div className="by-search">
+          <Search size={16} />
+          <input
+            aria-label="Search ideas"
+            placeholder="Find a thought, phrase, or tag…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <div className="by-filters">
+          {[
+            ["active", "All ideas"],
+            ["pinned", "Pinned"],
+            ["aside", "Set aside"],
+            ["trash", "Trash"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              className={`by-filter${filter === value ? " by-filter--on" : ""}`}
+              aria-pressed={filter === value}
+              onClick={() => setFilter(value!)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <select
+          aria-label="Filter by collection"
+          value={collectionId}
+          onChange={(e) => setCollectionId(e.target.value)}
+        >
+          <option value="">Every collection</option>
+          {activeCollections.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.title}
+            </option>
+          ))}
+        </select>
+        <button
+          className="tln-btn"
+          disabled={by.pending}
+          onClick={() =>
+            void by.run(async () => {
+              const id = await by.revisit();
+              if (id) {
+                open(id);
+                setNotice("An idea to revisit. Skip it freely; it won’t be suggested again today.");
+              } else
+                setNotice(
+                  "Nothing to revisit right now. Recently shown and snoozed ideas are resting.",
+                );
+            })
+          }
+        >
+          Revisit an idea
+        </button>
+      </div>
+      <details className="by-collections">
+        <summary>
+          Collections <span>{activeCollections.length}</span>
+        </summary>
+        <form
+          className="by-actions"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void by
+              .run(() => by.createCollection(collectionTitle))
+              .then((ok) => {
+                if (ok) setCollectionTitle("");
+              });
+          }}
+        >
+          <input
+            aria-label="New collection name"
+            placeholder="A loose collection…"
+            value={collectionTitle}
+            onChange={(e) => setCollectionTitle(e.target.value)}
+          />
+          <button className="tln-btn" disabled={!collectionTitle.trim() || by.pending}>
+            Create collection
+          </button>
+        </form>
+        {activeCollections.map((c) => (
+          <CollectionEditor
+            key={c.id}
+            collection={c}
+            by={by}
+            onRemoved={() => {
+              if (collectionId === c.id) setCollectionId("");
+            }}
+          />
+        ))}
+        {by.snapshot.collections
+          .filter((c) => c.deleted)
+          .map((c) => (
+            <p key={c.id}>
+              {c.title}{" "}
+              <button
+                className="tln-btn"
+                disabled={by.pending}
+                onClick={() => void by.run(() => by.editCollection(c.id, { deleted: false }))}
               >
-                <div className="tln-seed__row">
-                  {/* 1-Click Spark Type Badge */}
-                  <button
-                    className={`tln-spark-chip${s.sparkType ? ` tln-spark-chip--${s.sparkType}` : " tln-spark-chip--empty"}`}
-                    onClick={() => setTagPickerId(picking ? null : s.id)}
-                    title={meta ? `Tag: ${meta.label} (click to change)` : "Add spark tag"}
-                  >
-                    <span>{meta ? meta.icon : "+"}</span>
-                    <span>{meta ? meta.shortLabel : "Tag"}</span>
+                Restore collection
+              </button>
+            </p>
+          ))}
+      </details>
+      {chosen.length > 0 && (
+        <div className="by-selection">
+          <span>{chosen.length} selected</span>
+          <button className="tln-btn tln-btn--accent" onClick={() => setEvolving(chosen)}>
+            Evolve selected ideas
+          </button>
+          <button className="tln-btn" onClick={() => setChosen([])}>
+            Clear selection
+          </button>
+        </div>
+      )}
+      <div className={`by-workspace${selectedId ? " by-workspace--detail" : ""}`}>
+        <section className="by-list" aria-label="Ideas">
+          <p className="by-meta" role="status">
+            {by.loading
+              ? "Opening your ideas…"
+              : `${matches.length} idea${matches.length === 1 ? "" : "s"}`}
+          </p>
+          {!by.loading && !matches.length && (
+            <div className="by-empty">
+              <Lightbulb size={28} />
+              <h2>
+                {by.snapshot.ideas.length
+                  ? "No ideas here yet"
+                  : "It doesn’t have to be a story yet."}
+              </h2>
+              <p>
+                {term
+                  ? "Try another phrase. Search includes your follow-up thoughts."
+                  : "Keep the fragment. You can figure out what it means later."}
+              </p>
+            </div>
+          )}
+          {matches.slice(0, visibleLimit).map((idea) => {
+            const thoughts = thoughtsByIdea.get(idea.id) ?? [];
+            const matchedThought = term
+              ? thoughts.find((t) => t.body.toLocaleLowerCase().includes(term))
+              : undefined;
+            return (
+              <article
+                key={idea.id}
+                className={`by-card${selectedId === idea.id ? " by-card--on" : ""}`}
+              >
+                <div className="by-card__head">
+                  <button className="by-card__title" onClick={() => open(idea.id)}>
+                    {ideaLabel(idea)}
                   </button>
-
                   <button
-                    className="tln-seed__title"
-                    onClick={() => setOpenId(open ? null : s.id)}
-                    title={open ? "Collapse" : "Add a note"}
+                    className="by-icon-button"
+                    aria-label={idea.pinned ? "Unpin idea" : "Pin idea"}
+                    aria-pressed={idea.pinned}
+                    disabled={by.pending}
+                    onClick={() =>
+                      void by.run(() => by.editIdea(idea.id, { pinned: !idea.pinned }))
+                    }
                   >
-                    {s.title}
-                  </button>
-
-                  {/* Lineage badge: links back to grown project */}
-                  {grew && (
-                    <button
-                      className="tln-seed__grew"
-                      onClick={() => onGrown(grew.id)}
-                      title={`Open story: ${grew.title}`}
-                    >
-                      🌱 {grew.title} →
-                    </button>
-                  )}
-
-                  <button
-                    className="tln-btn"
-                    onClick={() => void growSeed(s.id).then((id) => id && onGrown(id))}
-                    title="Start a story from this idea, keeping the link back to it"
-                  >
-                    Grow into a story
-                  </button>
-
-                  <button
-                    className="tln-btn tln-btn--quiet"
-                    onClick={() => void deleteSeed(s.id)}
-                    title="Throw this idea away"
-                  >
-                    ✕
+                    <Pin size={16} />
                   </button>
                 </div>
-
-                {/* 1-Click Tag Selector Popover */}
-                {picking && (
-                  <div className="tln-spark-popover">
-                    {SPARK_METAS.map((m) => (
-                      <button
-                        key={m.type}
-                        className={`tln-spark-popover__opt${s.sparkType === m.type ? " tln-spark-popover__opt--active" : ""}`}
-                        onClick={() => {
-                          void patchSeed(s.id, {
-                            sparkType: s.sparkType === m.type ? undefined : m.type,
-                          });
-                          setTagPickerId(null);
-                        }}
-                        title={m.label}
-                      >
-                        <span>{m.icon}</span>
-                        <span>{m.label}</span>
-                      </button>
-                    ))}
-                    {s.sparkType && (
-                      <button
-                        className="tln-spark-popover__clear"
-                        onClick={() => {
-                          void patchSeed(s.id, { sparkType: undefined });
-                          setTagPickerId(null);
-                        }}
-                        title="Remove tag"
-                      >
-                        ✕ Remove tag
-                      </button>
-                    )}
-                  </div>
+                <p className="by-card__summary">{idea.body}</p>
+                {matchedThought && (
+                  <p className="by-match">In a thought: {matchedThought.body.slice(0, 180)}</p>
                 )}
-
-                {open && (
-                  <textarea
-                    className="tln-seed__note"
-                    rows={4}
-                    autoFocus
-                    placeholder="What is it? Why might it matter? Anything you would forget by Thursday."
-                    value={s.synopsis ?? ""}
-                    onChange={(e) => void patchSeed(s.id, { synopsis: e.target.value })}
-                  />
-                )}
-                {!open && s.synopsis ? <p className="tln-seed__preview">{s.synopsis}</p> : null}
-              </li>
+                <div className="by-meta">
+                  <span>{date(idea.createdAt)}</span>
+                  <span>{thoughts.length} thoughts</span>
+                  {idea.tags.map((tag) => (
+                    <span key={tag} className="by-tag">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <div className="by-actions">
+                  <button className="tln-btn" onClick={() => open(idea.id)}>
+                    Explore idea
+                  </button>
+                  {idea.disposition !== "trash" && (
+                    <label className="by-select">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${ideaLabel(idea)} for evolution`}
+                        checked={chosen.includes(idea.id)}
+                        onChange={(e) =>
+                          setChosen((ids) =>
+                            e.target.checked
+                              ? [...ids, idea.id]
+                              : ids.filter((id) => id !== idea.id),
+                          )
+                        }
+                      />{" "}
+                      Select
+                    </label>
+                  )}
+                </div>
+              </article>
             );
           })}
-        </ul>
+          {matches.length > visibleLimit && (
+            <button className="tln-btn" onClick={() => setVisibleLimit((limit) => limit + 100)}>
+              Show more ideas ({matches.length - visibleLimit} remaining)
+            </button>
+          )}
+        </section>
+        {selected && (
+          <IdeaDetail
+            key={selected.id}
+            idea={selected}
+            by={by}
+            onClose={close}
+            onOpen={open}
+            onEvolve={() => setEvolving([selected.id])}
+            onGrown={onGrown}
+          />
+        )}
+        {selectedId && !selected && !by.loading && (
+          <section className="by-detail">
+            <button className="tln-btn" onClick={close}>
+              <ArrowLeft size={15} /> Back to ideas
+            </button>
+            <p>
+              This idea isn’t available on this device. Import its Boneyard backup or sync to
+              recover it.
+            </p>
+          </section>
+        )}
+      </div>
+      {evolving && (
+        <EvolutionPreview
+          sourceIds={evolving}
+          by={by}
+          onClose={() => setEvolving(null)}
+          onGrown={onGrown}
+        />
       )}
-    </div>
+    </main>
   );
 }

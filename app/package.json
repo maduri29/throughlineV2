@@ -18,6 +18,8 @@
     "profile:heap": "bun --heap-prof --heap-prof-md test",
     "dedupe": "bun dedupe",
     "audit": "bun audit",
+    "verify:boneyard": "bun verify-boneyard.ts",
+    "verify:boneyard-sync": "bun verify-boneyard-sync.ts",
     "verify:mobile": "bun verify-mobile.ts",
     "verify:library": "bun verify-library.ts",
     "verify:ui": "bun verify-ui.ts",

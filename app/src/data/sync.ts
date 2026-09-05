@@ -1,5 +1,7 @@
 import { dbGetAll, dbPut } from "./idb";
 import type { GraphEdge, GraphNode } from "../types";
+import type { Revision } from "./boneyard/types";
+import { parseRevisions } from "./boneyard/validation";
 
 const SYNC_KEY_STORAGE = "throughline.sync_key";
 const LAST_SYNCED_STORAGE = "throughline.last_synced_at";
@@ -101,6 +103,26 @@ export async function executeSync(): Promise<SyncResult> {
     if (pulledEdges.length > 0) {
       await dbPut("edges", pulledEdges);
     }
+
+    // Independent, immutable Boneyard history cannot use graph replacement semantics.
+    const revisions = await dbGetAll<Revision>("boneyard");
+    const ideaResponse = await fetch("/api/boneyard-sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ syncKey, revisions }),
+    });
+    const ideaData = (await ideaResponse.json()) as {
+      ok?: boolean;
+      boneyardProtocol?: number;
+      revisions?: unknown;
+      error?: string;
+    };
+    if (!ideaResponse.ok || !ideaData.ok || ideaData.boneyardProtocol !== 1)
+      throw new Error(
+        ideaData.error ?? "Update the server to sync Boneyard history. Local ideas are safe.",
+      );
+    const { mergeRevisions } = await import("./boneyard/repository");
+    await mergeRevisions(parseRevisions(ideaData.revisions));
 
     if (data.syncedAt) {
       localStorage.setItem(LAST_SYNCED_STORAGE, String(data.syncedAt));
