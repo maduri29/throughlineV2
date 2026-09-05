@@ -3,6 +3,7 @@ import { StoryOrigins } from "./views/boneyard/StoryOrigins";
 import { useWorkspaceTheme } from "./shell/useWorkspaceTheme";
 import { usePathname, useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { Cloud, CloudCheck, Laptop, RefreshCw } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { useGraphStore } from "./store";
 import BoneyardView from "./views/BoneyardView";
@@ -148,15 +149,6 @@ export default function App() {
           <span className="tln-brand__name">Throughline</span>
         </button>
 
-        {level === "workspace" && (
-          <>
-            <span className="tln-header__crumb" aria-hidden="true">
-              /
-            </span>
-            <span className="tln-header__title">{project?.title ?? ""}</span>
-          </>
-        )}
-
         {/* Top-level tabs, only outside a story — inside one, the header is
             already carrying that story's controls and a second row of
             navigation would compete with them. */}
@@ -178,19 +170,24 @@ export default function App() {
 
         <span className="tln-header__gap" />
 
-        <button
-          className="tln-sync-btn"
-          onClick={() => setSyncOpen(true)}
-          title={syncMessage ?? "Cross-device cloud sync (Turso)"}
-          aria-label="Cloud sync"
-        >
-          <span className={`tln-sync-icon tln-sync-icon--${syncStatus}`}>
-            {syncStatus === "syncing" ? "⟳" : "☁"}
-          </span>
-          <span className="tln-sync-label">
-            {syncStatus === "syncing" ? "Syncing…" : syncStatus === "synced" ? "Synced" : "Sync"}
-          </span>
-        </button>
+        {level !== "workspace" && (
+          <button
+            className="tln-sync-btn"
+            onClick={() => setSyncOpen(true)}
+            title={syncMessage ?? "Cross-device cloud sync (Turso)"}
+            aria-label="Cloud sync"
+          >
+            <span className={`tln-sync-icon tln-sync-icon--${syncStatus}`}>
+              {syncStatus === "syncing" ? (
+                <RefreshCw size={13} className="tln-spin" />
+              ) : syncStatus === "synced" ? (
+                <CloudCheck size={14} />
+              ) : (
+                <Cloud size={14} />
+              )}
+            </span>
+          </button>
+        )}
 
         <button
           className="tln-tool tln-tool--theme"
@@ -235,109 +232,6 @@ export default function App() {
             </svg>
           )}
         </button>
-
-        {level === "workspace" && (
-          <>
-            {/* History first, then the two save indicators (ADR-0007 decision 10)
-                as one quiet line, then backup alone. Undo/redo lead because they
-                act on the story; the indicators report; download is a rare,
-                deliberate act and sits apart for it. */}
-            <span className="tln-tools">
-              <button className="tln-tool" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-                <svg
-                  className="tln-tool__icon"
-                  viewBox="0 0 16 16"
-                  width="15"
-                  height="15"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M3.5 6.5h6a3.5 3.5 0 0 1 0 7H7" />
-                  <path d="M6.5 3.5 3.5 6.5l3 3" />
-                </svg>
-              </button>
-              <button
-                className="tln-tool"
-                onClick={redo}
-                disabled={!canRedo}
-                title="Redo (Ctrl+Shift+Z)"
-              >
-                <svg
-                  className="tln-tool__icon"
-                  viewBox="0 0 16 16"
-                  width="15"
-                  height="15"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M12.5 6.5h-6a3.5 3.5 0 0 0 0 7H9" />
-                  <path d="m9.5 3.5 3 3-3 3" />
-                </svg>
-              </button>
-            </span>
-
-            {/* One indicator again. It reported two guarantees while there was a
-                cloud to report on; there is only this device now, and saying so
-                twice would be theatre. */}
-            <span className="tln-status">
-              <span className={`tln-status__part tln-status__local--${status}`}>
-                <i className="tln-status__dot" aria-hidden="true" />
-                {status === "error"
-                  ? (useGraphStore.getState().bootError ?? "Save failed")
-                  : SAVE_LABEL[status]}
-              </span>
-            </span>
-
-            <button
-              className="tln-tool tln-tool--lone"
-              onClick={exportProject}
-              title="Download a lossless backup of this story"
-            >
-              <svg
-                className="tln-tool__icon"
-                viewBox="0 0 16 16"
-                width="15"
-                height="15"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M8 2.5V10" />
-                <path d="m4.75 7 3.25 3 3.25-3" />
-                <path d="M2.75 11.25v.75a1.5 1.5 0 0 0 1.5 1.5h7.5a1.5 1.5 0 0 0 1.5-1.5v-.75" />
-              </svg>
-            </button>
-
-            <span className="tln-lens-tabs" role="tablist" aria-label="Story lenses">
-              {LENSES.map((l) => (
-                <button
-                  key={l.id}
-                  role="tab"
-                  aria-selected={lens === l.id}
-                  className={`tln-lens-tab${lens === l.id ? " tln-lens-tab--on" : ""}`}
-                  onClick={() => {
-                    setLens(l.id);
-                    setDetailsOpen(false);
-                  }}
-                >
-                  {l.icon}
-                  <span className="tln-lens-tab__label">{l.label}</span>
-                </button>
-              ))}
-            </span>
-          </>
-        )}
       </header>
 
       {/* Boot failures used to be visible only inside a story, because that is
@@ -362,43 +256,193 @@ export default function App() {
       ) : level === "library" ? (
         <LibraryView onOpen={(id) => router.push(`/stories/${id}`)} />
       ) : (
-        <div className="tln-workspace">
-          <StoryOrigins onOpen={(id) => router.push(`/boneyard?idea=${encodeURIComponent(id)}`)} />
-          {lens !== "script" && lens !== "characters" && (
-            <div className="tln-mobile-details-bar">
-              <button
-                className="tln-btn"
-                aria-expanded={detailsOpen}
-                aria-controls="story-details"
-                onClick={() => setDetailsOpen((open) => !open)}
-              >
-                {detailsOpen ? "Close details" : "Scene & connection details"}
-              </button>
+        <>
+          <div className="tln-story-bar">
+            <div className="tln-story-bar__left">
+              <nav className="tln-story-bar__crumbs" aria-label="Story navigation">
+                <button className="tln-story-bar__crumb" onClick={() => router.push("/stories")}>
+                  Stories
+                </button>
+                <span className="tln-story-bar__crumb-separator" aria-hidden="true">
+                  /
+                </span>
+                <span className="tln-story-bar__title" title={project?.title ?? ""}>
+                  {project?.title ?? ""}
+                </span>
+              </nav>
+
+              <span className="tln-story-bar__divider" aria-hidden="true" />
+
+              <div className="tln-story-bar__actions">
+                <span className="tln-tools">
+                  <button
+                    className="tln-tool"
+                    onClick={undo}
+                    disabled={!canUndo}
+                    title="Undo (Ctrl+Z)"
+                    aria-label="Undo"
+                  >
+                    <svg
+                      className="tln-tool__icon"
+                      viewBox="0 0 16 16"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M3.5 6.5h6a3.5 3.5 0 0 1 0 7H7" />
+                      <path d="M6.5 3.5 3.5 6.5l3 3" />
+                    </svg>
+                  </button>
+                  <button
+                    className="tln-tool"
+                    onClick={redo}
+                    disabled={!canRedo}
+                    title="Redo (Ctrl+Shift+Z)"
+                    aria-label="Redo"
+                  >
+                    <svg
+                      className="tln-tool__icon"
+                      viewBox="0 0 16 16"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12.5 6.5h-6a3.5 3.5 0 0 0 0 7H9" />
+                      <path d="m9.5 3.5 3 3-3 3" />
+                    </svg>
+                  </button>
+                </span>
+
+                <button
+                  className="tln-tool tln-tool--lone"
+                  onClick={exportProject}
+                  title="Download a lossless backup of this story"
+                  aria-label="Download backup"
+                >
+                  <svg
+                    className="tln-tool__icon"
+                    viewBox="0 0 16 16"
+                    width="15"
+                    height="15"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M8 2.5V10" />
+                    <path d="m4.75 7 3.25 3 3.25-3" />
+                    <path d="M2.75 11.25v.75a1.5 1.5 0 0 0 1.5 1.5h7.5a1.5 1.5 0 0 0 1.5-1.5v-.75" />
+                  </svg>
+                </button>
+
+                <button
+                  className="tln-status"
+                  onClick={() => setSyncOpen(true)}
+                  title={
+                    syncMessage ??
+                    `${SAVE_LABEL[status] ?? "Saved"} • Cloud: ${syncStatus}. Click to configure cloud sync.`
+                  }
+                  aria-label={
+                    syncMessage ??
+                    `${SAVE_LABEL[status] ?? "Saved on this device"}, cloud ${syncStatus}`
+                  }
+                >
+                  <span className={`tln-status__part tln-status__local--${status}`}>
+                    <i className="tln-status__dot" aria-hidden="true" />
+                    <Laptop size={13} className="tln-status__device-icon" aria-hidden="true" />
+                    <span className="sr-only">
+                      {status === "error"
+                        ? (useGraphStore.getState().bootError ?? "Save failed")
+                        : SAVE_LABEL[status]}
+                    </span>
+                  </span>
+                  <span
+                    className={`tln-status__cloud tln-status__cloud--${syncStatus}`}
+                    aria-hidden="true"
+                  >
+                    {syncStatus === "syncing" ? (
+                      <RefreshCw size={12} className="tln-spin" />
+                    ) : syncStatus === "synced" ? (
+                      <CloudCheck size={13} />
+                    ) : (
+                      <Cloud size={13} />
+                    )}
+                  </span>
+                </button>
+              </div>
             </div>
-          )}
-          <div className="tln-workspace__lens">
-            {lens === "map" ? <MapView /> : null}
-            {lens === "timeline" ? <TimelineView /> : null}
-            {lens === "characters" ? <CharactersView /> : null}
-            {lens === "script" ? (
-              <Suspense
-                fallback={
-                  <div className="tln-script">
-                    <div className="tln-boot">Loading editor…</div>
-                  </div>
-                }
-              >
-                <ScriptView />
-              </Suspense>
+            <div className="tln-story-bar__right">
+              <span className="tln-lens-tabs" role="tablist" aria-label="Story lenses">
+                {LENSES.map((l) => (
+                  <button
+                    key={l.id}
+                    role="tab"
+                    aria-selected={lens === l.id}
+                    className={`tln-lens-tab${lens === l.id ? " tln-lens-tab--on" : ""}`}
+                    onClick={() => {
+                      setLens(l.id);
+                      setDetailsOpen(false);
+                    }}
+                  >
+                    {l.icon}
+                    <span className="tln-lens-tab__label">{l.label}</span>
+                  </button>
+                ))}
+              </span>
+            </div>
+          </div>
+          <div className="tln-workspace">
+            <StoryOrigins
+              onOpen={(id) => router.push(`/boneyard?idea=${encodeURIComponent(id)}`)}
+            />
+            {lens !== "script" && lens !== "characters" && (
+              <div className="tln-mobile-details-bar">
+                <button
+                  className="tln-btn"
+                  aria-expanded={detailsOpen}
+                  aria-controls="story-details"
+                  onClick={() => setDetailsOpen((open) => !open)}
+                >
+                  {detailsOpen ? "Close details" : "Scene & connection details"}
+                </button>
+              </div>
+            )}
+            <div className="tln-workspace__lens">
+              {lens === "map" ? <MapView /> : null}
+              {lens === "timeline" ? <TimelineView /> : null}
+              {lens === "characters" ? <CharactersView /> : null}
+              {lens === "script" ? (
+                <Suspense
+                  fallback={
+                    <div className="tln-script">
+                      <div className="tln-boot">Loading editor…</div>
+                    </div>
+                  }
+                >
+                  <ScriptView />
+                </Suspense>
+              ) : null}
+            </div>
+            {lens !== "script" && lens !== "characters" ? (
+              <div id="story-details" className={`tln-dock${detailsOpen ? " tln-dock--open" : ""}`}>
+                <Inspector />
+                <ConnectionAdd />
+              </div>
             ) : null}
           </div>
-          {lens !== "script" && lens !== "characters" ? (
-            <div id="story-details" className={`tln-dock${detailsOpen ? " tln-dock--open" : ""}`}>
-              <Inspector />
-              <ConnectionAdd />
-            </div>
-          ) : null}
-        </div>
+        </>
       )}
       {paletteOpen && (
         <Suspense fallback={null}>

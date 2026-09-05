@@ -26,15 +26,15 @@ export default function BeatSheet({
   };
 
   return (
-    <div className="tln-beats">
-      <div className="tln-beats__bar">
-        <span className="tln-beats__progress">
+    <div className="tln-beats rs-beats">
+      <div className="tln-beats__bar rs-beats__bar">
+        <span className="tln-beats__progress rs-beats__track">
           <span
-            className="tln-beats__fill"
+            className="tln-beats__fill rs-beats__fill"
             style={{ transform: `scaleX(${total === 0 ? 0 : done / total})` }}
           />
         </span>
-        <span className="tln-beats__count">
+        <span className="tln-beats__count rs-beats__pill">
           {done} of {total}
         </span>
         <button
@@ -56,7 +56,7 @@ export default function BeatSheet({
       {raw !== null ? (
         <>
           <textarea
-            className="tln-beats__raw"
+            className="tln-beats__raw rs-field-textarea"
             rows={Math.max(8, beats.length + 2)}
             value={raw}
             onChange={(e) => setRaw(e.target.value)}
@@ -71,7 +71,10 @@ export default function BeatSheet({
       ) : (
         <ul className="tln-beatlist">
           {beats.map((b) => (
-            <li key={b.id} className={`tln-beat${b.done ? " tln-beat--done" : ""}`}>
+            <li
+              key={b.id}
+              className={`tln-beat rs-beat-row${b.done ? " tln-beat--done rs-beat-row--done" : ""}`}
+            >
               <label className="tln-beat__check">
                 <input
                   type="checkbox"
@@ -80,15 +83,15 @@ export default function BeatSheet({
                   aria-label={b.name}
                 />
               </label>
-              <div className="tln-beat__body">
+              <div className="tln-beat__body rs-beat-row__body">
                 <input
-                  className="tln-beat__name"
+                  className="tln-beat__name rs-beat-row__name"
                   value={b.name}
                   onChange={(e) => set(b.id, { name: e.target.value })}
                   aria-label="Beat name"
                 />
                 <input
-                  className="tln-beat__note"
+                  className="tln-beat__note rs-beat-row__note"
                   placeholder="What happens here?"
                   value={b.note ?? ""}
                   onChange={(e) => set(b.id, { note: e.target.value })}
@@ -99,7 +102,7 @@ export default function BeatSheet({
                   A sheet that invents scenes puts structure in the story before
                   anything is written. */}
               <select
-                className="tln-beat__scene"
+                className="tln-beat__scene rs-beat-row__scene"
                 value={b.sceneId ?? ""}
                 onChange={(e) => set(b.id, { sceneId: e.target.value || undefined })}
                 aria-label={`Scene for ${b.name}`}
@@ -118,7 +121,7 @@ export default function BeatSheet({
                 ))}
               </select>
               <button
-                className="tln-btn tln-btn--quiet"
+                className="tln-btn tln-btn--quiet rs-delete-btn"
                 onClick={() => onChange(beats.filter((x) => x.id !== b.id))}
                 title="Remove this beat"
               >

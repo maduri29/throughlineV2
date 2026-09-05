@@ -32,9 +32,7 @@
     margin-left: 0;
     justify-content: center;
   }
-  .tln-header__title {
-    max-width: 45vw;
-  }
+
   .tln-header__gap {
     min-width: 0;
   }

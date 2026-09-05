@@ -13,6 +13,7 @@ import "../views/library/library.css";
 import "../shell/shell.css";
 import "../shell/mobile.css";
 import "../views/boneyard/boneyard.css";
+import "../views/research/research.css";
 
 export const metadata: Metadata = {
   title: "Throughline",

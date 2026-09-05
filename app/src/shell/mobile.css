@@ -10,12 +10,47 @@
     gap: 6px 10px;
     padding: 8px 12px;
   }
-  .tln-header__title {
-    max-width: 48vw;
-    min-width: 0;
+  .tln-story-bar {
+    padding: 8px 12px;
+    gap: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    min-height: auto;
   }
-  .tln-header__crumb {
+  .tln-story-bar__left {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .tln-story-bar__meta {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    gap: 6px;
+    flex: 1;
+  }
+  .tln-story-bar__title {
+    font-size: 14px;
+    max-width: calc(100vw - 200px);
+  }
+  .tln-story-bar__divider {
     display: none;
+  }
+  .tln-story-bar__actions {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 6px;
+  }
+  .tln-story-bar .tln-tools,
+  .tln-story-bar .tln-status,
+  .tln-story-bar .tln-tool--lone {
+    flex-shrink: 0;
+  }
+  .tln-story-bar__right {
+    width: 100%;
   }
   .tln-header .tln-brand__name {
     font-size: 14px;
@@ -27,10 +62,6 @@
   }
   .tln-header .tln-tool {
     min-width: 44px;
-  }
-  .tln-header .tln-status {
-    margin-left: auto;
-    font-size: 10px;
   }
   .tln-lens-tabs {
     order: 12;

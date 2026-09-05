@@ -141,19 +141,37 @@
 .by-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 6px;
 }
 .by-filter {
+  min-height: 36px;
+  padding: 0 13px;
   border: 1px solid var(--line);
   color: var(--ink-2);
-  border-radius: 6px;
-  padding: 10px;
+  border-radius: 7px;
   background: var(--panel);
   cursor: pointer;
+  font: 600 11px/1 var(--font-sans);
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+.by-filter:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--card);
 }
 .by-filter--on {
   color: var(--accent);
   border-color: var(--accent);
+  background: var(--tint);
+}
+.by-filter:active {
+  transform: translateY(1px);
 }
 .by-collections {
   border-bottom: 1px solid var(--line);

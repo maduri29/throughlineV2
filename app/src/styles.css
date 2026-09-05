@@ -171,16 +171,106 @@ body,
   margin: 0 -2px;
 }
 
-.tln-header__title {
-  font-family: var(--font-sans);
-  font-size: 13.5px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+.tln-story-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  box-sizing: border-box;
+  min-height: 48px;
+  z-index: 90;
+}
+
+.tln-story-bar__left {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.tln-story-bar__crumbs {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.tln-story-bar__crumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.tln-story-bar__crumb {
+  all: unset;
+  flex-shrink: 0;
+  cursor: pointer;
   color: var(--ink-2);
-  max-width: 32ch;
+  font-size: 12px;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.tln-story-bar__crumb:hover {
+  color: var(--accent);
+}
+
+.tln-story-bar__crumb:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.tln-story-bar__crumb-separator {
+  flex-shrink: 0;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.tln-story-bar__title {
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  max-width: 36ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tln-story-bar__divider {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+  flex-shrink: 0;
+}
+
+.tln-story-bar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tln-story-bar .tln-status,
+.tln-story-bar .tln-tools,
+.tln-story-bar .tln-tool--lone {
+  flex-shrink: 0;
+}
+
+.tln-story-bar__right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 /* ------------------------------------------------------------- status pair --
@@ -188,18 +278,51 @@ body,
    carry the meaning, so the pair reads at a glance without competing with the
    story title beside it. They answer the same question — is my work safe — at
    different distances. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 .tln-status {
+  all: unset;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 14px;
-  font-size: 11.5px;
-  white-space: nowrap;
+  gap: 6px;
+  padding: 0 8px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink-2);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s ease;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.tln-status:hover {
+  background: var(--tint);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.tln-status:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .tln-status__part {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .tln-status__dot {
@@ -208,6 +331,31 @@ body,
   border-radius: 999px;
   background: currentColor;
   flex: none;
+}
+
+.tln-status__device-icon {
+  display: block;
+  flex: none;
+  opacity: 0.85;
+}
+
+.tln-status__cloud {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dim);
+  border-left: 1px solid var(--line);
+  padding-left: 6px;
+  margin-left: 2px;
+  transition: color 0.15s ease;
+}
+
+.tln-status:hover .tln-status__cloud {
+  color: var(--ink);
+}
+
+.tln-spin {
+  animation: tln-spin 1s linear infinite;
 }
 
 .tln-status__local--saved {
@@ -229,6 +377,8 @@ body,
 }
 .tln-status__cloud--syncing {
   color: var(--accent);
+  display: inline-block;
+  animation: tln-spin 1s linear infinite;
 }
 .tln-status__cloud--pending,
 .tln-status__cloud--offline {
@@ -236,9 +386,6 @@ body,
 }
 .tln-status__cloud--local-only {
   color: var(--dim);
-}
-.tln-status__cloud--off {
-  display: none;
 }
 
 /* ------------------------------------------------------------------ tools --
@@ -488,6 +635,12 @@ select option {
 .tln-chip {
   all: unset;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 32px;
+  white-space: nowrap;
   font-family: var(--font-sans);
   font-size: 11.5px;
   font-weight: 500;
@@ -515,6 +668,7 @@ select option {
 
 .tln-addmenu {
   position: relative;
+  flex: 0 0 auto;
 }
 
 .tln-addmenu__btn {
@@ -1636,6 +1790,9 @@ select option {
 
 .tln-flow {
   flex: 1;
+  min-height: 0;
+  box-sizing: border-box;
+  padding-top: 54px;
 }
 
 .tln-flow .react-flow__pane {
@@ -2382,16 +2539,18 @@ select option {
   all: unset;
   cursor: pointer;
   display: inline-flex;
+  box-sizing: border-box;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-radius: 7px;
+  justify-content: center;
+  width: 32px;
+  height: 30px;
+  border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--ink-2);
-  font-size: 12px;
-  font-weight: 500;
+  box-shadow: var(--shadow-sm);
   transition: all 0.15s ease;
+  user-select: none;
 }
 
 .tln-sync-btn:hover {
@@ -2400,14 +2559,19 @@ select option {
   color: var(--ink);
 }
 
+.tln-sync-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .tln-sync-icon {
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
 }
 
 .tln-sync-icon--syncing {
-  display: inline-block;
-  animation: tln-spin 1s linear infinite;
   color: var(--accent);
 }
 
