@@ -7,6 +7,7 @@
 // the association that makes a reference worth keeping at all.
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  BookOpen,
   ChevronDown,
   Compass,
   ExternalLink,
@@ -24,6 +25,7 @@ import {
 import { beatProgress } from "../data/beats";
 import { BEAT_SHEETS, beatSheetRows } from "../data/beatsheets";
 import { describeSize, hasBytes, MAX_FILE_BYTES, openAttachment, putFile } from "../data/files";
+import { GUIDES } from "../data/guides";
 import { dbGetAll } from "../data/idb";
 import { scopeToProject } from "../data/scopes";
 import { useGraphStore } from "../store";
@@ -65,6 +67,7 @@ export default function ResearchView() {
   }, [openProjectId, chosen]);
 
   const [openId, setOpenId] = useState<string | null>(null);
+  const [guideId, setGuideId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [draftNote, setDraftNote] = useState("");
   const [captureActive, setCaptureActive] = useState(false);
@@ -164,6 +167,8 @@ export default function ResearchView() {
   const titleOf = (id: string | undefined): string =>
     projects.find((p) => p.id === id)?.title ?? "Shared";
 
+  const activeGuide = GUIDES.find((g) => g.id === guideId) ?? null;
+
   const add = (): void => {
     const t = draft.trim();
     if (!t) {
@@ -204,6 +209,22 @@ export default function ResearchView() {
     }
   };
 
+  // A guide is bundled content, not the writer's work — saving it makes an
+  // ordinary note they own and can annotate, filed wherever they are.
+  const saveGuide = (id: string): void => {
+    const guide = GUIDES.find((g) => g.id === id);
+    if (!guide) return;
+    setProblem(null);
+    addReference(guide.name, scope === "all" || scope === "shared" ? null : scope, {
+      synopsis: guide.body,
+    })
+      .then((refId) => {
+        setGuideId(null);
+        setOpenId(refId);
+      })
+      .catch((err: unknown) => setProblem(String(err)));
+  };
+
   const attach = async (ref: GraphNode, file: File): Promise<void> => {
     if (file.size > MAX_FILE_BYTES) {
       setProblem(
@@ -234,7 +255,7 @@ export default function ResearchView() {
             </p>
             <h1 className="tln-library__title">Research</h1>
             <p className="tln-library__count">
-              Material that informs the work: beat sheets, character references, and field notes.
+              Material that informs the work: beat sheets, field guides, and field notes.
             </p>
           </div>
           <div className="tln-library__actions rs-head__actions">
@@ -290,6 +311,62 @@ export default function ResearchView() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Bundled references for the writing itself. Static content, never
+            seeded as records — saving one makes an ordinary note to annotate. */}
+        <div className="tln-sheets rs-guides">
+          <div className="rs-blueprints__head">
+            <span className="tln-sheets__label rs-blueprints__label">
+              <BookOpen size={14} aria-hidden="true" /> Field guides
+            </span>
+            <span className="rs-blueprints__hint">
+              Open one to read, or save it as a note to keep beside the draft.
+            </span>
+          </div>
+          <div className="rs-blueprints__cards">
+            {GUIDES.map((g) => (
+              <button
+                key={g.id}
+                className={`tln-btn rs-blueprint-card${guideId === g.id ? " rs-blueprint-card--active" : ""}`}
+                title={g.blurb}
+                aria-expanded={guideId === g.id}
+                onClick={() => setGuideId(guideId === g.id ? null : g.id)}
+              >
+                <BookOpen size={14} className="rs-blueprint-card__icon" aria-hidden="true" />
+                <span className="rs-blueprint-card__name">{g.name}</span>
+              </button>
+            ))}
+          </div>
+          {activeGuide && (
+            <div className="rs-guide-panel">
+              <p className="rs-guide-panel__blurb">{activeGuide.blurb}</p>
+              <div className="rs-guide-panel__body">{activeGuide.body}</div>
+              <div className="rs-guide-panel__actions">
+                <button
+                  className="tln-btn tln-btn--accent"
+                  onClick={() => saveGuide(activeGuide.id)}
+                  title={`Save “${activeGuide.name}” as a note you can annotate`}
+                >
+                  <Plus size={14} aria-hidden="true" /> Save as note
+                </button>
+                {(activeGuide.links ?? []).map((l) => (
+                  <a
+                    key={l.url}
+                    className="tln-btn"
+                    href={l.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    <ExternalLink size={13} aria-hidden="true" /> {l.label}
+                  </a>
+                ))}
+                <span className="rs-guide-panel__file-hint">
+                  Filing to: <strong>{titleOf(scope === "all" ? undefined : scope)}</strong>
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div
