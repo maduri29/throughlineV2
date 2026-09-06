@@ -1070,9 +1070,6 @@
 }
 
 /* --- Screenplay study shelf (sub-tab of Research; same card language) --- */
-.rs-telugu .rs-blueprint-card__name {
-  overflow-wrap: anywhere;
-}
 
 .rs-telugu__filtersbar {
   display: flex;
@@ -1080,6 +1077,8 @@
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 18px;
+  width: 100%;
+  min-width: 0;
 }
 
 .rs-telugu__filter {
@@ -1122,13 +1121,6 @@
 
 .rs-telugu__sechead {
   margin-top: 18px;
-}
-
-.rs-telugu__filterrows {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 18px;
 }
 
 /* --- Shelf tickets: 3D flip, details + links on the back --- */
@@ -1185,6 +1177,7 @@
 
 .rs-telugu .rs-ticket:hover .rs-ticket__face {
   border-color: var(--line-strong);
+  box-shadow: var(--shadow-md);
 }
 
 .rs-telugu .rs-ticket--flip .rs-ticket__face {
@@ -1336,9 +1329,28 @@
   color: var(--ink);
 }
 
-.rs-telugu .rs-blueprint-card__count {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.rs-telugu .rs-ticket:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-telugu .rs-ticket,
+  .rs-ticket__face {
+    transition: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .rs-telugu__filtersbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rs-telugu__filtersbar .rs-scope-filter {
+    width: 100%;
+  }
+  .rs-telugu__count {
+    margin-left: 0;
+    align-self: flex-start;
+  }
 }
