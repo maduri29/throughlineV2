@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, ArrowLeft, Search, Pin, Lightbulb, Download, Upload } from "lucide-react";
 import { ideaLabel } from "../data/boneyard/repository";
 import { useBoneyard } from "./boneyard/useBoneyard";
+import Loader from "./Loader";
 import { useDraft, DraftWarning, date } from "./boneyard/Draft";
 import { CollectionEditor } from "./boneyard/CollectionEditor";
 import { IdeaDetail } from "./boneyard/IdeaDetail";
@@ -276,11 +277,15 @@ export default function BoneyardView({ onGrown }: { onGrown: (id: string) => voi
       )}
       <div className={`by-workspace${selectedId ? " by-workspace--detail" : ""}`}>
         <section className="by-list" aria-label="Ideas">
-          <p className="by-meta" role="status">
-            {by.loading
-              ? "Opening your ideas…"
-              : `${matches.length} idea${matches.length === 1 ? "" : "s"}`}
-          </p>
+          {by.loading ? (
+            <div className="by-meta">
+              <Loader inline label="Opening ideas" />
+            </div>
+          ) : (
+            <p className="by-meta" role="status">
+              {`${matches.length} idea${matches.length === 1 ? "" : "s"}`}
+            </p>
+          )}
           {!by.loading && !matches.length && (
             <div className="by-empty">
               <Lightbulb size={28} />

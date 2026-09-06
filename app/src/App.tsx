@@ -7,6 +7,7 @@ import { Cloud, CloudCheck, Laptop, RefreshCw } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { useGraphStore } from "./store";
 import BoneyardView from "./views/BoneyardView";
+import Loader from "./views/Loader";
 import Logo from "./views/Logo";
 import ResearchView from "./views/ResearchView";
 import MapView from "./views/MapView";
@@ -427,7 +428,7 @@ export default function App() {
                 <Suspense
                   fallback={
                     <div className="tln-script">
-                      <div className="tln-boot">Loading editor…</div>
+                      <Loader kind="slug" />
                     </div>
                   }
                 >

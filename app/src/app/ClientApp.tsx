@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Loader from "../views/Loader";
 
 // Loaded with ssr:false on purpose, and this is the crux of the migration.
 //
@@ -14,7 +15,7 @@ import dynamic from "next/dynamic";
 // exists as a thin boundary rather than living in page.tsx.
 const App = dynamic(() => import("../App"), {
   ssr: false,
-  loading: () => <div className="tln-boot">Loading Throughline…</div>,
+  loading: () => <Loader kind="countdown" label="Throughline" />,
 });
 
 export default function ClientApp() {

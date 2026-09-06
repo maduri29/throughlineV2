@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FountainEditor from "../editor/FountainEditor";
 import { useGraphStore } from "../store";
+import Loader from "./Loader";
 import {
   downloadFountain,
   locationTitleFor,
@@ -163,7 +164,12 @@ export default function ScriptView() {
     setTimeout(() => setImportNote(null), 5000);
   }, []);
 
-  if (!project) return <div className="tln-script">Loading…</div>;
+  if (!project)
+    return (
+      <div className="tln-script">
+        <Loader label="Opening script" />
+      </div>
+    );
 
   return (
     <div className="tln-script">
