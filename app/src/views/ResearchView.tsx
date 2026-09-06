@@ -398,9 +398,10 @@ export default function ResearchView() {
           <p className="rs-ticket__kicker">
             {b.lang} · Books · {b.source}
           </p>
-          <p className="rs-ticket__log">
-            By {b.author}. {b.blurb}
+          <p className="rs-ticket__meta">
+            {b.author} · {b.year} · {b.detail}
           </p>
+          <p className="rs-ticket__log">{b.blurb}</p>
           <p className="rs-ticket__why">
             <b>Why read it:</b> {b.why}
           </p>
@@ -416,6 +417,7 @@ export default function ResearchView() {
             </a>
             <button
               className="tln-btn"
+              title={`Save as note to ${titleOf(scope === "all" ? undefined : scope)}`}
               onClick={(e) => {
                 e.stopPropagation();
                 saveBook(b.id);
@@ -424,7 +426,6 @@ export default function ResearchView() {
               + Save
             </button>
           </div>
-          <p className="rs-ticket__file">Saves to {titleOf(scope === "all" ? undefined : scope)}</p>
         </div>
       </div>
     );
@@ -478,6 +479,7 @@ export default function ResearchView() {
           <p className="rs-ticket__kicker">
             {cat} · {t.source}
           </p>
+          <p className="rs-ticket__meta">Directed by {t.director}</p>
           <p className="rs-ticket__log">{t.logline}</p>
           <p className="rs-ticket__why">
             <b>Why study it:</b> {t.studyNote}
@@ -505,6 +507,7 @@ export default function ResearchView() {
             )}
             <button
               className="tln-btn"
+              title={`Save as note to ${titleOf(scope === "all" ? undefined : scope)}`}
               onClick={(e) => {
                 e.stopPropagation();
                 void saveTelugu(t.id);
@@ -513,7 +516,6 @@ export default function ResearchView() {
               + Save
             </button>
           </div>
-          <p className="rs-ticket__file">Saves to {titleOf(scope === "all" ? undefined : scope)}</p>
         </div>
       </div>
     );
