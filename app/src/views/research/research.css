@@ -85,8 +85,8 @@
 }
 
 .rs-scope-filter__select option {
-  background: #18191b;
-  color: #fafafa;
+  background: var(--card);
+  color: var(--ink);
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 400;
@@ -1053,4 +1053,176 @@
     margin-left: 0;
     width: 100%;
   }
+}
+
+/* --- Research sub-tabs (collection vs shelf) --- */
+.rs-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.rs-tabs .rs-filter-btn {
+  min-height: 36px;
+  font-size: 12px;
+}
+
+/* --- Screenplay study shelf (sub-tab of Research; same card language) --- */
+.rs-telugu .rs-blueprint-card__name {
+  overflow-wrap: anywhere;
+}
+
+.rs-telugu__filtersbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.rs-telugu__filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rs-telugu__filter > label {
+  font: 600 11px/1 var(--font-sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.rs-telugu__count {
+  margin-left: auto;
+  align-self: center;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.rs-telugu__count strong {
+  color: var(--ink);
+}
+
+.rs-telugu .rs-blueprints__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+}
+
+.rs-telugu .rs-ticket {
+  flex: none;
+  max-width: none;
+  height: 138px;
+}
+
+.rs-telugu__sechead {
+  margin-top: 18px;
+}
+
+.rs-telugu__filterrows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+/* --- Shelf tickets: poster, details, perforated stub --- */
+.rs-telugu .rs-ticket {
+  flex: 1 1 300px;
+  max-width: 430px;
+  padding: 0;
+  gap: 0;
+  align-items: stretch;
+  overflow: hidden;
+  text-align: left;
+}
+
+.rs-ticket__poster {
+  position: relative;
+  flex: 0 0 64px;
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font:
+    700 22px/1 Georgia,
+    serif;
+  color: var(--ink-2);
+}
+
+.rs-ticket__poster img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rs-ticket__main {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+
+.rs-ticket__title {
+  font: 600 14px/1.3 var(--font-sans);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.rs-ticket__title span {
+  color: var(--dim);
+  font-weight: 400;
+}
+
+.rs-ticket__by {
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rs-ticket__chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.rs-ticket__stub {
+  flex: 0 0 52px;
+  border-left: 1px dashed var(--line-strong);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--dim);
+}
+
+.rs-ticket__stub small {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+}
+
+.rs-ticket__stub b {
+  writing-mode: vertical-rl;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  color: var(--ink);
+}
+
+.rs-telugu .rs-blueprint-card__count {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

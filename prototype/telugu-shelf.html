@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Throughline — Telugu screenplay shelf (PROTOTYPE)</title>
+<!--
+  PROTOTYPE (throwaway). Question: how should the Telugu screenplay study shelf
+  be organised — flat grid, genre rows, or era lanes? Filter with the chips,
+  sort with ?sort=year|title, click a card to open its study note.
+  Content mirrors app/src/data/teluguScripts.ts (verified Sep 2026). If this
+  layout wins, port the grouping into ResearchView; do not treat this file
+  as a second source of truth.
+-->
+<style>
+  :root{
+    --bg:#f4f1ea; --card:#fff; --ink:#2a2d33; --dim:#7a7f87; --line:#ddd6c8;
+    --accent:#3d7fb5; --tint:#e8f0f7; --ok:#3d8f5f; --warn:#a08c28;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font:13px/1.5 "Segoe UI",system-ui,sans-serif;
+    max-width:1060px;margin:0 auto;padding:28px 24px 80px}
+  #watermark{position:fixed;top:12px;right:-34px;transform:rotate(35deg);background:#b3452f;color:#fff;
+    font-size:10px;font-weight:700;letter-spacing:.2em;padding:4px 40px;z-index:60}
+  .eyebrow{font-size:11px;letter-spacing:.14em;color:var(--accent);font-weight:700}
+  h1{font:400 30px/1.2 Georgia,serif;margin:4px 0 6px}
+  .sub{color:var(--dim);max-width:70ch;margin-bottom:18px}
+  #chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  #chips button{all:unset;cursor:pointer;font-size:12px;font-weight:600;padding:6px 14px;border-radius:999px;
+    border:1px solid var(--line);background:var(--card);color:var(--dim)}
+  #chips button.on{color:var(--accent);border-color:var(--accent);background:var(--tint)}
+  #count{font-size:12px;color:var(--dim);margin:8px 0 16px}
+  h2.lane{font-size:11px;letter-spacing:.14em;color:var(--dim);margin:22px 0 10px;text-transform:uppercase}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+    cursor:pointer;transition:border-color .15s,transform .15s}
+  .card:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .card.open{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .card h3{font-size:15px}
+  .card h3 span{color:var(--dim);font-weight:400}
+  .meta{font-size:11.5px;color:var(--dim);margin:2px 0 8px}
+  .badge{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;margin-right:6px}
+  .b-script{background:#e3efe7;color:var(--ok)}
+  .b-trans{background:#faf3df;color:var(--warn)}
+  .b-book{background:var(--tint);color:var(--accent)}
+  .log{font-size:12.5px;color:var(--ink);margin:8px 0}
+  .study{display:none;font-size:12.5px;background:var(--bg);border:1px solid var(--line);
+    border-radius:8px;padding:10px 12px;margin:8px 0}
+  .card.open .study{display:block}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .row a{font-size:12px;font-weight:600;text-decoration:none;padding:6px 12px;border-radius:7px;
+    border:1px solid var(--line);color:var(--ink);background:var(--card)}
+  .row a:hover{border-color:var(--accent);color:var(--accent)}
+  .row a.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  #hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--dim);
+    background:#2b2620ee;color:#f0e9de;padding:5px 16px;border-radius:999px}
+</style>
+</head>
+<body>
+<div id="watermark">PROTOTYPE</div>
+<p class="eyebrow">THE STUDY · TELUGU SCREENPLAYS</p>
+<h1>Study shelf</h1>
+<p class="sub">Shooting scripts shared by their makers, free to read for education.
+Transcripts are labelled as transcripts — they teach voice and structure, not scene craft.
+The PDFs stay with their hosts; this shelf is only pointers.</p>
+<div id="chips"></div>
+<p id="count"></p>
+<div id="lanes"></div>
+<div id="hint">click a card for its study note · ?sort=year|title</div>
+
+<script>
+const SCRIPTS = [
+  {t:"Pelli Choopulu",y:2016,w:"Tharun Bhascker",d:"Tharun Bhascker",g:"Rom-com",f:"script",fl:"Shooting script PDF",s:"Film Companion",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-pelli-choopulu",
+   pdf:"https://images.assettype.com/filmcompanion/2022-10/b24f474f-0080-4efa-959f-06877f3687b7/Pellichoopulu_1.pdf",
+   log:"A boy and a girl meet at a matchmaking gone wrong and get locked in a room together; their food-truck dreams do the rest.",
+   why:"The locked-room second act: one location, two wants, no villains. National Award, tiny budget."},
+  {t:"Agent Sai Srinivasa Athreya",y:2019,w:"Swaroop RSJ, Naveen Polishetty",d:"Swaroop RSJ",g:"Detective comedy-thriller",f:"script",fl:"Scene-divided shooting script",s:"Film Companion",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-agent-sai-srinivas-athreya-starring-naveen-polishetty",
+   pdf:"https://images.assettype.com/filmcompanion/2022-10/b1346406-2ffc-428b-9a59-3ef8e095c403/Agent_Sai_Srinivasa_Athreya_Script.pdf",
+   log:"Nellore's self-styled detective runs the Fathima Bureau of Investigation — then a real case lands.",
+   why:"Clue-planting masterclass: every act-one gag pays off as act-three evidence. Deduction stays visual."},
+  {t:"Brochevarevarura",y:2019,w:"Vivek Athreya",d:"Vivek Athreya",g:"Crime caper / comedy",f:"script",fl:"Screenplay PDF",s:"Film Companion",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-brochevarevarura",
+   pdf:"https://images.assettype.com/filmcompanion/2022-10/e2b38461-9a3b-4ca7-8ff8-c16f042d3665/BROCHEVAREVARURA_Screenplay__FILM_COMPANION.pdf",
+   log:"Three failing students fake a kidnapping while an aspiring director courts a star — the plots collide.",
+   why:"Braided two-track structure: parallel stories touch at the midpoint, then fuse."},
+  {t:"Jathi Ratnalu",y:2021,w:"Anudeep KV",d:"Anudeep KV",g:"Comedy",f:"script",fl:"Censor script PDF (signed)",s:"Film Companion via Scrite",
+   p:"https://www.scrite.io/download-jathi-ratnalu-telugu-movie-script-pdf/",
+   pdf:"https://images.assettype.com/filmcompanion/2022-10/f7601921-9c3e-4842-a7ef-fb027b0b6694/Jathi_rathanalu_censor_script_with_sign_pdf_after_censor_cuts.pdf",
+   log:"Three small-town friends move to Hyderabad and walk straight into a minister's downfall.",
+   why:"Joke density without losing plot: each set piece also moves the courtroom frame story."},
+  {t:"C/o Kancharapalem",y:2018,w:"Venkatesh Maha",d:"Venkatesh Maha",g:"Anthology / slice-of-life",f:"script",fl:"Full script PDF (English)",s:"Scriptick library",
+   p:"https://scriptick.in/en/popular.html",
+   pdf:"https://scriptick.in/pop_scripts/en/Care%20of%20Kancharapalem.pdf",
+   log:"Four love stories across ages in one Visakhapatnam neighbourhood, shot in sync sound with non-actors.",
+   why:"Writing for real locations and non-actors: short scenes, plain speech, behaviour over dialogue."},
+  {t:"Republic",y:2021,w:"Deva Katta",d:"Deva Katta",g:"Political drama",f:"script",fl:"152-page screenplay (Telugu)",s:"Director via Idlebrain",
+   p:"https://www.idlebrain.com/news/today/republic-screenplay.html",
+   pdf:"https://idlebrain.com/images5/republic-telugu.pdf",
+   log:"An idealist collector takes on an entrenched political machine.",
+   why:"Exposition as confrontation: almost every information scene is also a power negotiation."},
+  {t:"Prasthanam",y:2010,w:"Deva Katta",d:"Deva Katta",g:"Political family drama",f:"script",fl:"Shooting draft, Mar 2009 (Telugu)",s:"Director via Idlebrain",
+   p:"https://www.idlebrain.com/news/2000march20/prasthanam-screenplay.html",
+   pdf:"https://www.idlebrain.com/images4/screenplay-prasthanam.pdf",
+   log:"A political patriarch's legitimate and illegitimate sons inherit his empire — and his sins.",
+   why:"Compare this 2009 draft against the 2010 film: what was cut, merged, or moved off-screen."},
+  {t:"Mental Madhilo",y:2017,w:"Vivek Athreya",d:"Vivek Athreya",g:"Romantic drama",f:"book",fl:"Published screenplay book",s:"Kinige / Bommalaata",
+   p:"https://pdfcoffee.com/mentalmadilocinemascreenplay-free-kinigedotcom-pdf-free.html",pdf:"",
+   log:"A chronically indecisive man keeps losing the decisive woman he is supposed to marry.",
+   why:"Confusion-as-engine: the flaw IS the plot. Official ebook lives on Kinige (Bommalaata series)."},
+  {t:"Arjun Reddy",y:2017,w:"Sandeep Reddy Vanga",d:"Sandeep Reddy Vanga",g:"Romantic drama",f:"transcript",fl:"Full dialogue transcript",s:"Scripts.com",
+   p:"https://www.scripts.com/script/arjun_reddy_3089",pdf:"",
+   log:"A brilliant, self-destructive surgeon spirals after losing the woman he loves.",
+   why:"Voice and scene-length study. Compare any scene against Kabir Singh to see what survives translation."},
+  {t:"Baahubali: The Beginning",y:2015,w:"K. V. Vijayendra Prasad",d:"S. S. Rajamouli",g:"Epic action",f:"transcript",fl:"Full dialogue transcript",s:"Scripts.com",
+   p:"https://www.scripts.com/script/baahubali:_the_beginning_3365",pdf:"",
+   log:"A mountain boy discovers he is the heir of Mahishmati.",
+   why:"Interval-point architecture: a reveal every 10 minutes, a set piece every 30, emotion underneath."},
+];
+const FILTERS = [["all","All"],["script","Shooting scripts"],["transcript","Transcripts"],
+  ["Comedy","Comedy"],["Drama","Drama"],["Crime","Crime"]];
+let active = "all";
+const sort = new URLSearchParams(location.search).get("sort") === "title" ? "title" : "year";
+
+function badge(s){
+  const cls = s.f === "script" ? "b-script" : s.f === "transcript" ? "b-trans" : "b-book";
+  return `<span class="badge ${cls}">${s.fl}</span>`;
+}
+function card(s){
+  return `<article class="card" tabindex="0">
+    <h3>${s.t} <span>· ${s.y}</span></h3>
+    <p class="meta">${s.g} · ${s.s}</p>
+    <p>${badge(s)}</p>
+    <p class="log">${s.log}</p>
+    <div class="study"><b>Why study it:</b> ${s.why}<br>
+      <span style="color:var(--dim)">Written by ${s.w} · Directed by ${s.d}</span></div>
+    <div class="row">
+      <a class="primary" href="${s.p}" target="_blank" rel="noopener">Open script page</a>
+      ${s.pdf ? `<a href="${s.pdf}" target="_blank" rel="noopener">Open PDF</a>` : ""}
+    </div></article>`;
+}
+function render(){
+  document.querySelector("#chips").innerHTML = FILTERS.map(([v,l]) =>
+    `<button data-f="${v}" class="${v===active?"on":""}">${l}</button>`).join("");
+  let list = SCRIPTS.filter(s => active==="all" || s.f===active || s.g.includes(active));
+  list.sort((a,b) => sort==="title" ? a.t.localeCompare(b.t) : a.y - b.y);
+  document.querySelector("#count").textContent =
+    `${list.length} of ${SCRIPTS.length} scripts · sorted by ${sort} · all links verified Sep 2026`;
+  const lanes = active === "all"
+    ? [["Shooting scripts (7)", list.filter(s=>s.f!=="transcript")],
+       ["Transcripts (3) — voice & structure study", list.filter(s=>s.f==="transcript")]]
+    : [[`${document.querySelector("#chips .on").textContent} (${list.length})`, list]];
+  document.querySelector("#lanes").innerHTML = lanes.map(([name, items]) =>
+    `<h2 class="lane">${name}</h2><div class="grid">${items.map(card).join("")}</div>`).join("");
+  document.querySelectorAll("#chips button").forEach(b =>
+    b.onclick = () => { active = b.dataset.f; render(); });
+  document.querySelectorAll(".card").forEach(c =>
+    c.onclick = (e) => { if (e.target.tagName !== "A") c.classList.toggle("open"); });
+}
+render();
+</script>
+</body>
+</html>

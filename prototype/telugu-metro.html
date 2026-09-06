@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Throughline — Telugu metro map (PROTOTYPE)</title>
+<!--
+  PROTOTYPE (throwaway). Question: should the shelf be a metro map — one
+  chronological spine 2010→2021 with branch lines joining films by the same
+  writer, so influence and evolution read at a glance? Click a station for the
+  dossier + open links. Station art is procedural SVG, not real posters.
+-->
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#f6f2e9;color:#2a2d33;font:13px/1.5 "Segoe UI",system-ui,sans-serif;
+    padding:30px 26px 90px;max-width:1180px;margin:0 auto}
+  #watermark{position:fixed;top:12px;right:-34px;transform:rotate(35deg);background:#b3452f;color:#fff;
+    font-size:10px;font-weight:700;letter-spacing:.2em;padding:4px 40px;z-index:60}
+  .eyebrow{font-size:11px;letter-spacing:.24em;color:#b3452f;font-weight:700}
+  h1{font:400 36px/1.15 Georgia,serif;margin:4px 0}
+  .sub{color:#6b6f77;max-width:72ch;margin-bottom:8px}
+  #legend{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0 6px;font-size:12px}
+  #legend span{display:inline-flex;align-items:center;gap:6px}
+  #legend i{width:26px;height:5px;border-radius:3px;display:inline-block}
+  #map{width:100%;height:auto;background:#fffdf7;border:1px solid #ddd6c8;border-radius:14px;
+    box-shadow:0 4px 18px #0001;margin-top:10px}
+  .station{cursor:pointer}
+  .station circle.dot{stroke:#fffdf7;stroke-width:3;transition:r .15s}
+  .station:hover circle.dot,.station.on circle.dot{r:11}
+  .station text{font-size:11px;font-weight:600;fill:#2a2d33}
+  .station .yr{font-size:10px;fill:#8a8f98;font-weight:400}
+  #dossier{margin-top:16px;background:#fffdf7;border:1px solid #ddd6c8;border-radius:14px;
+    padding:20px 24px;display:none;box-shadow:0 4px 18px #0001}
+  #dossier.on{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+  #badge{flex:0 0 92px;height:110px;border-radius:10px;display:flex;align-items:center;
+    justify-content:center;font:700 38px/1 Georgia,serif;color:#fff}
+  #dossier h2{font-size:20px}
+  #dossier h2 span{color:#6b6f77;font-weight:400;font-size:14px}
+  #dossier p{font-size:13px;color:#4a4e55;max-width:62ch;margin:4px 0}
+  #dossier .row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  #dossier a{font-size:12.5px;font-weight:700;text-decoration:none;padding:8px 18px;border-radius:999px;
+    background:#2a2d33;color:#fff}
+  #dossier a.ghost{background:transparent;color:#2a2d33;border:1px solid #2a2d33}
+  #hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;color:#6b6f77;
+    background:#2b2620ee;color:#f0e9de;padding:5px 16px;border-radius:999px;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="watermark">PROTOTYPE</div>
+<p class="eyebrow">◉ TOLLYWOOD STUDY LINE</p>
+<h1>Eleven years, four lines</h1>
+<p class="sub">Every station is a screenplay you can actually read, parked on the year it
+released. Coloured branch lines join films by the same writer — ride the
+<span style="color:#7a3fd1;font-weight:700">Vivek line</span> to watch a rom-com brain
+grow into a crime caper, or the <span style="color:#c22;font-weight:700">Deva line</span>
+across a decade of political fire.</p>
+<div id="legend"></div>
+<svg id="map" viewBox="0 0 1100 420" role="img" aria-label="Telugu screenplay metro map"></svg>
+<div id="dossier"></div>
+<div id="hint">click any station for its dossier · interchange rings = same writer, two eras</div>
+
+<script>
+const ST = [
+  {t:"Prasthanam",y:2010,x:90,w:"Deva Katta",g:"Political family drama",hue:8,mono:"Pr",line:"deva",
+   p:"https://www.idlebrain.com/news/2000march20/prasthanam-screenplay.html",
+   d:"The 2009 draft that started it all. Read it, then watch the film and spot every cut."},
+  {t:"Baahubali: The Beginning",y:2015,x:250,w:"Vijayendra Prasad",g:"Epic action",hue:48,mono:"Ba",line:"epic",tr:1,
+   p:"https://www.scripts.com/script/baahubali:_the_beginning_3365",
+   d:"Transcript of the epic. Interval architecture: a reveal every 10 minutes."},
+  {t:"Pelli Choopulu",y:2016,x:360,w:"Tharun Bhascker",g:"Rom-com",hue:320,mono:"Pe",line:"new",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-pelli-choopulu",
+   d:"The indie big-bang: National Award on a food-truck budget."},
+  {t:"Mental Madhilo",y:2017,x:470,w:"Vivek Athreya",g:"Romantic drama",hue:205,mono:"Me",line:"vivek",
+   p:"https://pdfcoffee.com/mentalmadilocinemascreenplay-free-kinigedotcom-pdf-free.html",
+   d:"Stop one on the Vivek line: confusion-as-engine romance."},
+  {t:"Arjun Reddy",y:2017,x:580,w:"Sandeep Reddy Vanga",g:"Romantic drama",hue:38,mono:"Ar",line:"new",tr:1,
+   p:"https://www.scripts.com/script/arjun_reddy_3089",
+   d:"Transcript for voice study. Same year as Mental Madhilo, opposite end of love."},
+  {t:"C/o Kancharapalem",y:2018,x:690,w:"Venkatesh Maha",g:"Anthology",hue:20,mono:"C/",line:"new",
+   p:"https://scriptick.in/en/popular.html",
+   d:"Crowdfunded sync-sound slice of Vizag life with non-actors."},
+  {t:"Agent Sai Srinivasa Athreya",y:2019,x:800,w:"Swaroop RSJ",g:"Detective caper",hue:165,mono:"Ag",line:"new",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-agent-sai-srinivas-athreya-starring-naveen-polishetty",
+   d:"Nellore noir: every gag becomes evidence."},
+  {t:"Brochevarevarura",y:2019,x:900,w:"Vivek Athreya",g:"Crime caper",hue:265,mono:"Br",line:"vivek",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-brochevarevarura",
+   d:"Stop two on the Vivek line: the rom-com brain does crime."},
+  {t:"Jathi Ratnalu",y:2021,x:990,w:"Anudeep KV",g:"Comedy",hue:45,mono:"Ja",line:"new",
+   p:"https://www.scrite.io/download-jathi-ratnalu-telugu-movie-script-pdf/",
+   d:"Terminus of the new wave: small film, giant run."},
+  {t:"Republic",y:2021,x:1010,w:"Deva Katta",g:"Political drama",hue:0,mono:"Re",line:"deva",
+   p:"https://www.idlebrain.com/news/today/republic-screenplay.html",
+   d:"Eleven years after Prasthanam: the same fire, a new republic."},
+];
+const LINES = {
+  spine:{c:"#2a2d33",n:"Chronology 2010 → 2021"},
+  vivek:{c:"#7a3fd1",n:"Vivek Athreya line"},
+  deva:{c:"#c22",n:"Deva Katta line"},
+  new:{c:"#2e8f5b",n:"New-wave line"},
+  epic:{c:"#c90",n:"Epic line"},
+};
+const Y = 200, NS = "#2a2d33";
+let svg = `<line x1="40" y1="${Y}" x2="1060" y2="${Y}" stroke="${NS}" stroke-width="6" stroke-linecap="round"/>`;
+function curve(x1,x2,up,c){
+  const y2 = up ? 90 : 310;
+  return `<path d="M${x1},${Y} C${x1},${(Y+y2)/2} ${x2},${(Y+y2)/2} ${x2},${y2}" fill="none" stroke="${c}" stroke-width="5"/>`;
+}
+// branch lines between same-writer stations
+const vivek = ST.filter(s=>s.line==="vivek"), deva = ST.filter(s=>s.line==="deva");
+svg += curve(vivek[0].x, vivek[1].x, true, LINES.vivek.c);
+svg += `<text x="${(vivek[0].x+vivek[1].x)/2}" y="72" text-anchor="middle" font-size="11" font-weight="700" fill="${LINES.vivek.c}">VIVEK ATHREYA LINE</text>`;
+svg += curve(deva[0].x, deva[1].x, false, LINES.deva.c);
+svg += `<text x="${(deva[0].x+deva[1].x)/2}" y="332" text-anchor="middle" font-size="11" font-weight="700" fill="${LINES.deva.c}">DEVA KATTA LINE</text>`;
+ST.forEach((s,i)=>{
+  const above = i % 2 === 0;
+  const ty = above ? Y - 34 : Y + 40;
+  svg += `<g class="station" data-i="${i}">
+    <circle cx="${s.x}" cy="${Y}" r="13" fill="hsl(${s.hue},60%,42%)" class="ring" opacity="0.35"/>
+    <circle cx="${s.x}" cy="${Y}" r="8" fill="hsl(${s.hue},60%,42%)" class="dot"/>
+    <text x="${s.x}" y="${ty}" text-anchor="middle">${s.t}</text>
+    <text x="${s.x}" y="${ty+(above?-13:14)}" text-anchor="middle" class="yr">${s.y}${s.tr?" · transcript":""}</text>
+  </g>`;
+});
+document.querySelector("#map").innerHTML = svg;
+document.querySelector("#legend").innerHTML =
+  `<span><i style="background:${NS}"></i>Chronology</span>` +
+  ["vivek","deva","new","epic"].map(k=>`<span><i style="background:${LINES[k].c}"></i>${LINES[k].n}</span>`).join("");
+let on = -1;
+document.querySelectorAll(".station").forEach(g=>g.onclick=()=>{
+  document.querySelectorAll(".station").forEach(x=>x.classList.remove("on"));
+  const s = ST[+g.dataset.i];
+  if (on === +g.dataset.i) { on = -1; document.querySelector("#dossier").classList.remove("on"); return; }
+  on = +g.dataset.i; g.classList.add("on");
+  const d = document.querySelector("#dossier");
+  d.innerHTML = `<div id="badge" style="background:linear-gradient(150deg,hsl(${s.hue},60%,38%),hsl(${s.hue},65%,20%))">${s.mono}</div>
+    <div><h2>${s.t} <span>· ${s.y} · ${s.w}</span></h2>
+    <p>${s.g}. ${s.d}</p>
+    <div class="row"><a href="${s.p}" target="_blank" rel="noopener">Open script ↗</a>
+    <a class="ghost" href="${s.p}" target="_blank" rel="noopener">${s.tr?"Read transcript":"Read screenplay"}</a></div></div>`;
+  d.classList.add("on");
+});
+</script>
+</body>
+</html>

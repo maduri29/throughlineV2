@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Throughline — Telugu study queue (PROTOTYPE)</title>
+<!--
+  PROTOTYPE (throwaway). Question: should the shelf grow a "study queue" —
+  to-read / reading / studied lanes with progress, like a watchlist for
+  scripts? Click ◀ ▶ on a card to move it, ★ to pin it to the marquee.
+  Queue survives reloads via localStorage. Content mirrors
+  app/src/data/teluguScripts.ts. If the queue wins, port lanes + progress
+  into ResearchView; do not treat this file as a second source of truth.
+-->
+<style>
+  :root{
+    --bg:#141311; --panel:#1e1c19; --card:#242220; --ink:#f0e9de; --dim:#a09a8e;
+    --line:#38342f; --accent:#e0a32e; --tint:#3a2f18; --ok:#7fc98f; --blue:#7fb5d9;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font:13px/1.5 "Segoe UI",system-ui,sans-serif;
+    max-width:1180px;margin:0 auto;padding:28px 24px 90px}
+  #watermark{position:fixed;top:12px;right:-34px;transform:rotate(35deg);background:#b3452f;color:#fff;
+    font-size:10px;font-weight:700;letter-spacing:.2em;padding:4px 40px;z-index:60}
+  .eyebrow{font-size:11px;letter-spacing:.2em;color:var(--accent);font-weight:700}
+  h1{font:400 32px/1.2 Georgia,serif;margin:4px 0 4px}
+  .sub{color:var(--dim);max-width:72ch;margin-bottom:16px}
+  #marquee{background:linear-gradient(120deg,#2b2113,#1e1c19);border:1px solid var(--accent);
+    border-radius:12px;padding:16px 20px;margin-bottom:18px;display:flex;gap:16px;align-items:center}
+  #marquee .now{font-size:10px;letter-spacing:.2em;color:var(--accent);font-weight:700}
+  #marquee h2{font:400 22px/1.25 Georgia,serif}
+  #marquee p{color:var(--dim);font-size:12.5px;max-width:64ch}
+  #marquee .row{margin-top:10px}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .row a{font-size:12px;font-weight:600;text-decoration:none;padding:6px 14px;border-radius:999px;
+    border:1px solid var(--line);color:var(--ink);background:var(--card)}
+  .row a:hover{border-color:var(--accent);color:var(--accent)}
+  .row a.primary{background:var(--accent);border-color:var(--accent);color:#141311}
+  #progress{height:8px;border-radius:999px;background:var(--panel);border:1px solid var(--line);
+    overflow:hidden;margin:4px 0 4px}
+  #progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+  #pcount{font-size:12px;color:var(--dim);margin-bottom:18px}
+  #search{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);
+    border-radius:8px;color:var(--ink);font-size:13px;padding:9px 14px;margin-bottom:18px;outline:none}
+  #search:focus{border-color:var(--accent)}
+  #lanes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:900px){#lanes{grid-template-columns:1fr}}
+  .lane h2{font-size:11px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase;margin-bottom:10px}
+  .lane h2 b{color:var(--ink)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+  .card h3{font-size:14px}
+  .card h3 span{color:var(--dim);font-weight:400}
+  .meta{font-size:11.5px;color:var(--dim);margin:2px 0 6px}
+  .tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-right:6px}
+  .t-script{background:#1d3325;color:var(--ok)}
+  .t-trans{background:#3a2f18;color:var(--accent)}
+  .t-book{background:#1d2c3a;color:var(--blue)}
+  .why{font-size:12px;color:var(--dim);margin:6px 0 10px}
+  .move{display:flex;gap:6px;align-items:center}
+  .move button{all:unset;cursor:pointer;font-size:12px;padding:5px 12px;border-radius:999px;
+    border:1px solid var(--line);color:var(--dim)}
+  .move button:hover{color:var(--accent);border-color:var(--accent)}
+  .move .star{margin-left:auto;font-size:15px}
+  .move .star.on{color:var(--accent)}
+  .empty{border:1px dashed var(--line);border-radius:10px;padding:22px;text-align:center;color:var(--dim);font-size:12px}
+  #hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--dim);
+    background:#000c;border:1px solid var(--line);padding:5px 16px;border-radius:999px;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="watermark">PROTOTYPE</div>
+<p class="eyebrow">THE STUDY · NOW SHOWING</p>
+<h1>Study queue</h1>
+<p class="sub">Ten Telugu screenplays, queued like a season. Move cards down the lanes as you
+read them — the queue is saved on this machine. Star one and it takes the marquee.</p>
+<div id="marquee"></div>
+<div id="progress"><i></i></div>
+<p id="pcount"></p>
+<input id="search" placeholder="Filter by title, writer, genre…" aria-label="Filter scripts">
+<div id="lanes"></div>
+<div id="hint">◀ ▶ moves a card down the queue · ★ pins the marquee</div>
+
+<script>
+const SCRIPTS = [
+  {id:"pelli",t:"Pelli Choopulu",y:2016,w:"Tharun Bhascker",g:"Rom-com",f:"script",fl:"Shooting script",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-pelli-choopulu",
+   why:"Locked-room second act: one location, two wants, no villains."},
+  {id:"agent",t:"Agent Sai Srinivasa Athreya",y:2019,w:"Swaroop RSJ, Naveen Polishetty",g:"Detective comedy-thriller",f:"script",fl:"Scene-divided script",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-agent-sai-srinivas-athreya-starring-naveen-polishetty",
+   why:"Every act-one gag pays off as act-three evidence."},
+  {id:"broche",t:"Brochevarevarura",y:2019,w:"Vivek Athreya",g:"Crime caper / comedy",f:"script",fl:"Screenplay",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-brochevarevarura",
+   why:"Braided two-track structure that fuses at the midpoint."},
+  {id:"jathi",t:"Jathi Ratnalu",y:2021,w:"Anudeep KV",g:"Comedy",f:"script",fl:"Censor script",
+   p:"https://www.scrite.io/download-jathi-ratnalu-telugu-movie-script-pdf/",
+   why:"Joke density without losing the courtroom frame story."},
+  {id:"kancha",t:"C/o Kancharapalem",y:2018,w:"Venkatesh Maha",g:"Anthology / slice-of-life",f:"script",fl:"Full script",
+   p:"https://scriptick.in/en/popular.html",
+   why:"Writing for real locations and non-actors."},
+  {id:"republic",t:"Republic",y:2021,w:"Deva Katta",g:"Political drama",f:"script",fl:"152-page screenplay",
+   p:"https://www.idlebrain.com/news/today/republic-screenplay.html",
+   why:"Exposition as confrontation: every briefing is a power negotiation."},
+  {id:"prasthanam",t:"Prasthanam",y:2010,w:"Deva Katta",g:"Political family drama",f:"script",fl:"2009 shooting draft",
+   p:"https://www.idlebrain.com/news/2000march20/prasthanam-screenplay.html",
+   why:"Compare the draft against the film: what got cut or merged."},
+  {id:"mental",t:"Mental Madhilo",y:2017,w:"Vivek Athreya",g:"Romantic drama",f:"book",fl:"Screenplay book",
+   p:"https://pdfcoffee.com/mentalmadilocinemascreenplay-free-kinigedotcom-pdf-free.html",
+   why:"Confusion-as-engine: the flaw IS the plot."},
+  {id:"arjun",t:"Arjun Reddy",y:2017,w:"Sandeep Reddy Vanga",g:"Romantic drama",f:"transcript",fl:"Transcript",
+   p:"https://www.scripts.com/script/arjun_reddy_3089",
+   why:"Voice study — compare scenes against Kabir Singh."},
+  {id:"baha",t:"Baahubali: The Beginning",y:2015,w:"K. V. Vijayendra Prasad",g:"Epic action",f:"transcript",fl:"Transcript",
+   p:"https://www.scripts.com/script/baahubali:_the_beginning_3365",
+   why:"Interval architecture: a reveal every 10 min, a set piece every 30."},
+];
+const LANES = [["todo","To read"],["reading","Reading"],["done","Studied"]];
+const KEY = "telugu-queue-v1";
+let state = {lanes:{todo:SCRIPTS.map(s=>s.id),reading:[],done:[]},star:"pelli"};
+try {
+  const raw = localStorage.getItem(KEY);
+  if (raw) {
+    const s = JSON.parse(raw);
+    const known = new Set(SCRIPTS.map(x=>x.id));
+    const clean = {todo:[],reading:[],done:[]};
+    for (const l of LANES.map(x=>x[0])) for (const id of (s.lanes?.[l] ?? [])) if (known.has(id)) clean[l].push(id);
+    const placed = new Set([...clean.todo,...clean.reading,...clean.done]);
+    for (const x of SCRIPTS) if (!placed.has(x.id)) clean.todo.push(x.id);
+    state = {lanes:clean,star:known.has(s.star)?s.star:"pelli"};
+  }
+} catch { /* fresh queue on bad storage */ }
+const byId = Object.fromEntries(SCRIPTS.map(s=>[s.id,s]));
+const save = () => { try { localStorage.setItem(KEY,JSON.stringify(state)); } catch {} };
+let filter = "";
+
+function card(id,lane){
+  const s = byId[id];
+  const i = LANES.findIndex(l=>l[0]===lane);
+  return `<div class="card">
+    <h3>${s.t} <span>· ${s.y}</span></h3>
+    <p class="meta">${s.g} · ${s.w}</p>
+    <p><span class="tag t-${s.f}">${s.fl}</span></p>
+    <p class="why">${s.why}</p>
+    <div class="move">
+      ${i>0?`<button data-mv="${id}|${LANES[i-1][0]}">◀ back</button>`:""}
+      ${i<2?`<button data-mv="${id}|${LANES[i+1][0]}">read ▶</button>`:`<a class="row" href="${s.p}" target="_blank" rel="noopener" style="font-size:12px;color:var(--ok)">re-read ↗</a>`}
+      <button class="star ${state.star===id?"on":""}" data-star="${id}" title="Pin to marquee">★</button>
+    </div>
+    <div class="row" style="margin-top:8px"><a class="primary" href="${s.p}" target="_blank" rel="noopener">Open script ↗</a></div>
+  </div>`;
+}
+function render(){
+  const q = filter.trim().toLowerCase();
+  const match = id => !q || (byId[id].t+" "+byId[id].w+" "+byId[id].g).toLowerCase().includes(q);
+  const star = byId[state.star];
+  document.querySelector("#marquee").innerHTML =
+    `<div><p class="now">★ NOW SHOWING</p><h2>${star.t} (${star.y})</h2>
+     <p>${star.w} · ${star.g}</p>
+     <div class="row"><a class="primary" href="${star.p}" target="_blank" rel="noopener">Open script ↗</a></div></div>`;
+  const done = state.lanes.done.length;
+  document.querySelector("#progress i").style.width = (done/SCRIPTS.length*100)+"%";
+  document.querySelector("#pcount").textContent = `${done} of ${SCRIPTS.length} studied`;
+  document.querySelector("#lanes").innerHTML = LANES.map(([key,name])=>{
+    const ids = state.lanes[key].filter(match);
+    return `<div class="lane"><h2>${name} · <b>${state.lanes[key].length}</b></h2>` +
+      (ids.length ? ids.map(id=>card(id,key)).join("") : `<div class="empty">No scripts here</div>`) + `</div>`;
+  }).join("");
+  document.querySelectorAll("[data-mv]").forEach(b=>b.onclick=()=>{
+    const [id,lane] = b.dataset.mv.split("|");
+    for (const l of LANES.map(x=>x[0])) state.lanes[l]=state.lanes[l].filter(x=>x!==id);
+    state.lanes[lane].unshift(id); save(); render();
+  });
+  document.querySelectorAll("[data-star]").forEach(b=>b.onclick=()=>{state.star=b.dataset.star;save();render();});
+}
+document.querySelector("#search").oninput = e=>{filter=e.target.value;render();};
+render();
+</script>
+</body>
+</html>

@@ -9,10 +9,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   ChevronDown,
+  Clapperboard,
   Compass,
   ExternalLink,
   FileText,
   FolderOpen,
+  Globe,
   Layers,
   Link2,
   ListChecks,
@@ -26,6 +28,14 @@ import { beatProgress } from "../data/beats";
 import { BEAT_SHEETS, beatSheetRows } from "../data/beatsheets";
 import { describeSize, hasBytes, MAX_FILE_BYTES, openAttachment, putFile } from "../data/files";
 import { GUIDES } from "../data/guides";
+import {
+  SERIES_SPOTLIGHT,
+  SHELF_BOOKS,
+  TELUGU_SCRIPTS,
+  shelfCategoryLabel,
+  shelfCategoryOf,
+} from "../data/teluguScripts";
+import type { SeriesSpotlight, ShelfBook, ShelfKind, TeluguScript } from "../data/teluguScripts";
 import { dbGetAll } from "../data/idb";
 import { scopeToProject } from "../data/scopes";
 import { useGraphStore } from "../store";
@@ -68,6 +78,11 @@ export default function ResearchView() {
 
   const [openId, setOpenId] = useState<string | null>(null);
   const [guideId, setGuideId] = useState<string | null>(null);
+  const [teluguId, setTeluguId] = useState<string | null>(null);
+  const [bookId, setBookId] = useState<string | null>(null);
+  const [shelfWhat, setShelfWhat] = useState<"all" | ShelfKind>("all");
+  const [shelfLang, setShelfLang] = useState<string>("all");
+  const [section, setSection] = useState<"collection" | "telugu">("collection");
   const [draft, setDraft] = useState("");
   const [draftNote, setDraftNote] = useState("");
   const [captureActive, setCaptureActive] = useState(false);
@@ -168,6 +183,38 @@ export default function ResearchView() {
     projects.find((p) => p.id === id)?.title ?? "Shared";
 
   const activeGuide = GUIDES.find((g) => g.id === guideId) ?? null;
+  const activeTelugu =
+    TELUGU_SCRIPTS.find((t) => t.id === teluguId) ??
+    SERIES_SPOTLIGHT.find((t) => t.id === teluguId) ??
+    null;
+
+  const shelfItems: (TeluguScript | SeriesSpotlight | ShelfBook)[] = [
+    ...TELUGU_SCRIPTS,
+    ...SERIES_SPOTLIGHT,
+    ...SHELF_BOOKS,
+  ];
+  const shelfKindOptions = (["movie", "series", "book"] as const).map((kind) => ({
+    key: kind,
+    label: kind === "movie" ? "Movies" : kind === "series" ? "Web series" : "Books",
+    count: shelfItems.filter((t) => shelfCategoryOf(t).kind === kind).length,
+  }));
+  const shelfLangOptions = Array.from(new Set(shelfItems.map((t) => shelfCategoryOf(t).lang))).map(
+    (lang) => ({
+      key: lang,
+      label: lang,
+      count: shelfItems.filter((t) => shelfCategoryOf(t).lang === lang).length,
+    }),
+  );
+  const inShelf = (t: TeluguScript | SeriesSpotlight | ShelfBook): boolean => {
+    const c = shelfCategoryOf(t);
+    return (
+      (shelfWhat === "all" || c.kind === shelfWhat) && (shelfLang === "all" || c.lang === shelfLang)
+    );
+  };
+  const shelfMovies = TELUGU_SCRIPTS.filter(inShelf);
+  const shelfSeries = SERIES_SPOTLIGHT.filter(inShelf);
+  const shelfBooks = SHELF_BOOKS.filter(inShelf);
+  const shelfVisible = shelfMovies.length + shelfSeries.length + shelfBooks.length;
 
   const add = (): void => {
     const t = draft.trim();
@@ -225,6 +272,61 @@ export default function ResearchView() {
       .catch((err: unknown) => setProblem(String(err)));
   };
 
+  // A screenplay link is a pointer, not the script itself — saving it files
+  // the link plus study notes as an ordinary reference, so it is searchable
+  // under Links and travels with the story. The PDF stays with its host.
+  const activeBook = SHELF_BOOKS.find((b) => b.id === bookId) ?? null;
+
+  // A book link points at a bookshop, not the book — saving it files the
+  // link plus reading notes as an ordinary reference.
+  const saveBook = (id: string): void => {
+    const book = SHELF_BOOKS.find((b) => b.id === id);
+    if (!book) return;
+    setProblem(null);
+    const body = [
+      `${book.title} (${book.year}) — ${book.lang} · Books.`,
+      `By ${book.author}. ${book.detail}.`,
+      "",
+      book.blurb,
+      "",
+      `Why read it: ${book.why}`,
+    ].join("\n");
+    addReference(`${book.title} — book`, scope === "all" || scope === "shared" ? null : scope, {
+      synopsis: body,
+      url: book.pageUrl,
+    })
+      .then((refId) => {
+        setBookId(null);
+        setOpenId(refId);
+      })
+      .catch((err: unknown) => setProblem(String(err)));
+  };
+
+  const saveTelugu = (id: string): void => {
+    const script = TELUGU_SCRIPTS.find((t) => t.id === id);
+    if (!script) return;
+    setProblem(null);
+    const body = [
+      `${script.title} (${script.year}) — ${shelfCategoryLabel(script)}.`,
+      `Written by ${script.writer}; directed by ${script.director}.`,
+      `Format: ${script.format}. Source: ${script.source}.`,
+      "",
+      script.logline,
+      "",
+      `Why study it: ${script.studyNote}`,
+    ].join("\n");
+    addReference(
+      `${script.title} (${script.year}) — screenplay`,
+      scope === "all" || scope === "shared" ? null : scope,
+      { synopsis: body, url: script.pageUrl },
+    )
+      .then((refId) => {
+        setTeluguId(null);
+        setOpenId(refId);
+      })
+      .catch((err: unknown) => setProblem(String(err)));
+  };
+
   const attach = async (ref: GraphNode, file: File): Promise<void> => {
     if (file.size > MAX_FILE_BYTES) {
       setProblem(
@@ -245,6 +347,71 @@ export default function ResearchView() {
     setPresent((p) => ({ ...p, [meta.id]: true }));
   };
 
+  /** One book ticket: cover, title + author + chips, BOOK stub. */
+  const bookCard = (b: ShelfBook) => (
+    <button
+      key={b.id}
+      aria-expanded={bookId === b.id}
+      className={`tln-btn rs-blueprint-card rs-ticket${bookId === b.id ? " rs-blueprint-card--active" : ""}`}
+      title={`${b.title} — ${b.author}`}
+      onClick={() => setBookId(bookId === b.id ? null : b.id)}
+    >
+      <span className="rs-ticket__poster" aria-hidden="true">
+        {b.title.charAt(0)}
+        {b.posterUrl && (
+          <img src={b.posterUrl} alt="" loading="lazy" onError={(e) => e.currentTarget.remove()} />
+        )}
+      </span>
+      <span className="rs-ticket__main">
+        <span className="rs-ticket__title">
+          {b.title} <span>· {b.year}</span>
+        </span>
+        <span className="rs-ticket__by">{b.author}</span>
+        <span className="rs-ticket__chips">
+          <span className="rs-chip">{b.lang} · Books</span>
+          <span className="rs-chip">{b.detail}</span>
+        </span>
+      </span>
+      <span className="rs-ticket__stub" aria-hidden="true">
+        <small>READ</small>
+        <b>BOOK</b>
+      </span>
+    </button>
+  );
+
+  /** One ticket: poster, title + writer + chips, perforated stub. Keeps the
+      blueprint-card class so hover, active and filter selectors keep working. */
+  const shelfCard = (t: TeluguScript | SeriesSpotlight) => (
+    <button
+      key={t.id}
+      aria-expanded={teluguId === t.id}
+      className={`tln-btn rs-blueprint-card rs-ticket${teluguId === t.id ? " rs-blueprint-card--active" : ""}`}
+      title={`${t.title} (${t.year}) — ${t.format}`}
+      onClick={() => setTeluguId(teluguId === t.id ? null : t.id)}
+    >
+      <span className="rs-ticket__poster" aria-hidden="true">
+        {t.title.charAt(0)}
+        {t.posterUrl && (
+          <img src={t.posterUrl} alt="" loading="lazy" onError={(e) => e.currentTarget.remove()} />
+        )}
+      </span>
+      <span className="rs-ticket__main">
+        <span className="rs-ticket__title">
+          {t.title} <span>· {t.year}</span>
+        </span>
+        <span className="rs-ticket__by">{t.writer}</span>
+        <span className="rs-ticket__chips">
+          <span className="rs-chip">{shelfCategoryLabel(t)}</span>
+          <span className="rs-chip">{t.format}</span>
+        </span>
+      </span>
+      <span className="rs-ticket__stub" aria-hidden="true">
+        <small>{"episodes" in t ? "EPs" : "READ"}</small>
+        <b>{"episodes" in t ? t.episodes : t.year}</b>
+      </span>
+    </button>
+  );
+
   return (
     <main className="tln-library rs-page">
       <div className="tln-library__inner">
@@ -255,7 +422,8 @@ export default function ResearchView() {
             </p>
             <h1 className="tln-library__title">Research</h1>
             <p className="tln-library__count">
-              Material that informs the work: beat sheets, field guides, and field notes.
+              Material that informs the work: beat sheets, field guides, field notes — and a
+              screenplay shelf.
             </p>
           </div>
           <div className="tln-library__actions rs-head__actions">
@@ -283,458 +451,413 @@ export default function ResearchView() {
           </div>
         </header>
 
-        {/* Prompts, not doctrine. Applying one makes a note to fill in — it does
+        {/* Sub-tabs: the writer's own collection vs the Telugu study shelf. */}
+        <div className="rs-tabs" role="tablist" aria-label="Research sections">
+          <button
+            role="tab"
+            aria-selected={section === "collection"}
+            className={`rs-filter-btn${section === "collection" ? " rs-filter-btn--active" : ""}`}
+            onClick={() => setSection("collection")}
+          >
+            <span>My research</span>
+            <span className="rs-filter-count">{inScope.length}</span>
+          </button>
+          <button
+            role="tab"
+            aria-selected={section === "telugu"}
+            className={`rs-filter-btn${section === "telugu" ? " rs-filter-btn--active" : ""}`}
+            onClick={() => setSection("telugu")}
+          >
+            <Clapperboard size={13} aria-hidden="true" />
+            <span>Shelf</span>
+            <span className="rs-filter-count">
+              {TELUGU_SCRIPTS.length + SERIES_SPOTLIGHT.length + SHELF_BOOKS.length}
+            </span>
+          </button>
+        </div>
+
+        {section === "collection" && (
+          <>
+            {/* Prompts, not doctrine. Applying one makes a note to fill in — it does
             not create scenes, because that commits the story to a shape before
             anything is written. */}
-        <div className="tln-sheets rs-blueprints">
-          <div className="rs-blueprints__head">
-            <span className="tln-sheets__label rs-blueprints__label">
-              <Sparkles size={14} aria-hidden="true" /> Start from a beat sheet
-            </span>
-            <span className="rs-blueprints__hint">
-              Prompts, not doctrine. Choose a structure to start scaffolding.
-            </span>
-          </div>
-          <div className="rs-blueprints__cards">
-            {BEAT_SHEETS.map((b) => (
-              <button
-                key={b.id}
-                className="tln-btn rs-blueprint-card"
-                title={b.source}
-                onClick={() => applySheet(b.id)}
-              >
-                <Layers size={14} className="rs-blueprint-card__icon" aria-hidden="true" />
-                <span className="rs-blueprint-card__name">{b.name}</span>
-                <span className="rs-blueprint-card__count" aria-hidden="true">
-                  {b.beats.length} beats
+            <div className="tln-sheets rs-blueprints">
+              <div className="rs-blueprints__head">
+                <span className="tln-sheets__label rs-blueprints__label">
+                  <Sparkles size={14} aria-hidden="true" /> Start from a beat sheet
                 </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Bundled references for the writing itself. Static content, never
-            seeded as records — saving one makes an ordinary note to annotate. */}
-        <div className="tln-sheets rs-guides">
-          <div className="rs-blueprints__head">
-            <span className="tln-sheets__label rs-blueprints__label">
-              <BookOpen size={14} aria-hidden="true" /> Field guides
-            </span>
-            <span className="rs-blueprints__hint">
-              Open one to read, or save it as a note to keep beside the draft.
-            </span>
-          </div>
-          <div className="rs-blueprints__cards">
-            {GUIDES.map((g) => (
-              <button
-                key={g.id}
-                className={`tln-btn rs-blueprint-card${guideId === g.id ? " rs-blueprint-card--active" : ""}`}
-                title={g.blurb}
-                aria-expanded={guideId === g.id}
-                onClick={() => setGuideId(guideId === g.id ? null : g.id)}
-              >
-                <BookOpen size={14} className="rs-blueprint-card__icon" aria-hidden="true" />
-                <span className="rs-blueprint-card__name">{g.name}</span>
-              </button>
-            ))}
-          </div>
-          {activeGuide && (
-            <div className="rs-guide-panel">
-              <p className="rs-guide-panel__blurb">{activeGuide.blurb}</p>
-              <div className="rs-guide-panel__body">{activeGuide.body}</div>
-              <div className="rs-guide-panel__actions">
-                <button
-                  className="tln-btn tln-btn--accent"
-                  onClick={() => saveGuide(activeGuide.id)}
-                  title={`Save “${activeGuide.name}” as a note you can annotate`}
-                >
-                  <Plus size={14} aria-hidden="true" /> Save as note
-                </button>
-                {(activeGuide.links ?? []).map((l) => (
-                  <a
-                    key={l.url}
-                    className="tln-btn"
-                    href={l.url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                  >
-                    <ExternalLink size={13} aria-hidden="true" /> {l.label}
-                  </a>
-                ))}
-                <span className="rs-guide-panel__file-hint">
-                  Filing to: <strong>{titleOf(scope === "all" ? undefined : scope)}</strong>
+                <span className="rs-blueprints__hint">
+                  Prompts, not doctrine. Choose a structure to start scaffolding.
                 </span>
               </div>
-            </div>
-          )}
-        </div>
-
-        <div
-          className={`tln-jot rs-capture${captureActive || draft.trim() ? " rs-capture--active" : ""}`}
-        >
-          <div className="rs-capture__top">
-            <div className="rs-capture__input-wrap">
-              <span className="rs-capture__icon-wrap">
-                <Plus size={16} aria-hidden="true" />
-              </span>
-              <input
-                ref={composerInputRef}
-                className="tln-jot__input rs-capture__input"
-                placeholder={
-                  scope === "all" || scope === "shared"
-                    ? "Title or topic to research (e.g. 1970s dial telephones, Detective interview)…"
-                    : `Title or topic for “${titleOf(scope)}”…`
-                }
-                aria-label="New research item"
-                value={draft}
-                onChange={(e) => {
-                  setDraft(e.target.value);
-                  if (problem) setProblem(null);
-                }}
-                onFocus={() => setCaptureActive(true)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    add();
-                  }
-                }}
-              />
-            </div>
-            <button
-              className="tln-btn tln-btn--accent rs-capture__btn"
-              onClick={add}
-              title={draft.trim() ? "Add research note (Enter)" : "Click to type and add note"}
-            >
-              <Plus size={15} aria-hidden="true" /> Add note
-            </button>
-          </div>
-
-          {(captureActive || draft.trim().length > 0) && (
-            <div className="rs-capture__expanded">
-              <textarea
-                className="rs-capture__textarea"
-                placeholder="Initial notes, quotes, observations, or paste a link (optional)…"
-                rows={2}
-                value={draftNote}
-                onChange={(e) => setDraftNote(e.target.value)}
-                onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                    e.preventDefault();
-                    add();
-                  }
-                }}
-              />
-              <div className="rs-capture__meta-row">
-                <span className="rs-capture__scope-tag">
-                  Filing to: <strong>{titleOf(scope === "all" ? undefined : scope)}</strong>
-                </span>
-                <div className="rs-capture__hints">
-                  <span className="rs-capture__hint">Press Enter to add</span>
+              <div className="rs-blueprints__cards">
+                {BEAT_SHEETS.map((b) => (
                   <button
-                    type="button"
-                    className="tln-btn tln-btn--quiet rs-capture__cancel"
-                    onClick={() => {
-                      setDraft("");
-                      setDraftNote("");
-                      setCaptureActive(false);
-                    }}
+                    key={b.id}
+                    className="tln-btn rs-blueprint-card"
+                    title={b.source}
+                    onClick={() => applySheet(b.id)}
                   >
-                    Clear
+                    <Layers size={14} className="rs-blueprint-card__icon" aria-hidden="true" />
+                    <span className="rs-blueprint-card__name">{b.name}</span>
+                    <span className="rs-blueprint-card__count" aria-hidden="true">
+                      {b.beats.length} beats
+                    </span>
                   </button>
-                </div>
+                ))}
               </div>
             </div>
-          )}
-        </div>
 
-        {references.length > 0 && (
-          <div className="rs-toolbar">
-            <div className="rs-search">
-              <Search size={14} className="rs-search__icon" aria-hidden="true" />
-              <input
-                className="rs-search__input"
-                placeholder="Search research, beats, notes…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                aria-label="Search research"
-              />
-              {query && (
-                <button
-                  className="rs-search__clear"
-                  onClick={() => setQuery("")}
-                  aria-label="Clear search"
-                >
-                  <X size={13} />
-                </button>
+            {/* Bundled references for the writing itself. Static content, never
+            seeded as records — saving one makes an ordinary note to annotate. */}
+            <div className="tln-sheets rs-guides">
+              <div className="rs-blueprints__head">
+                <span className="tln-sheets__label rs-blueprints__label">
+                  <BookOpen size={14} aria-hidden="true" /> Field guides
+                </span>
+                <span className="rs-blueprints__hint">
+                  Open one to read, or save it as a note to keep beside the draft.
+                </span>
+              </div>
+              <div className="rs-blueprints__cards">
+                {GUIDES.map((g) => (
+                  <button
+                    key={g.id}
+                    className={`tln-btn rs-blueprint-card${guideId === g.id ? " rs-blueprint-card--active" : ""}`}
+                    title={g.blurb}
+                    aria-expanded={guideId === g.id}
+                    onClick={() => setGuideId(guideId === g.id ? null : g.id)}
+                  >
+                    <BookOpen size={14} className="rs-blueprint-card__icon" aria-hidden="true" />
+                    <span className="rs-blueprint-card__name">{g.name}</span>
+                  </button>
+                ))}
+              </div>
+              {activeGuide && (
+                <div className="rs-guide-panel">
+                  <p className="rs-guide-panel__blurb">{activeGuide.blurb}</p>
+                  <div className="rs-guide-panel__body">{activeGuide.body}</div>
+                  <div className="rs-guide-panel__actions">
+                    <button
+                      className="tln-btn tln-btn--accent"
+                      onClick={() => saveGuide(activeGuide.id)}
+                      title={`Save “${activeGuide.name}” as a note you can annotate`}
+                    >
+                      <Plus size={14} aria-hidden="true" /> Save as note
+                    </button>
+                    {(activeGuide.links ?? []).map((l) => (
+                      <a
+                        key={l.url}
+                        className="tln-btn"
+                        href={l.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
+                        <ExternalLink size={13} aria-hidden="true" /> {l.label}
+                      </a>
+                    ))}
+                    <span className="rs-guide-panel__file-hint">
+                      Filing to: <strong>{titleOf(scope === "all" ? undefined : scope)}</strong>
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
-            <div className="rs-filters">
-              {(
-                [
-                  { id: "all", label: "All", count: counts.all },
-                  { id: "beats", label: "Beat Sheets", count: counts.beats },
-                  { id: "notes", label: "Notes", count: counts.notes },
-                  { id: "links", label: "Links", count: counts.links },
-                  { id: "files", label: "Files", count: counts.files },
-                ] as const
-              ).map((f) => (
-                <button
-                  key={f.id}
-                  className={`rs-filter-btn${typeFilter === f.id ? " rs-filter-btn--active" : ""}`}
-                  onClick={() => setTypeFilter(f.id)}
-                >
-                  <span>{f.label}</span>
-                  <span className="rs-filter-count">{f.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {problem && (
-          <p className="tln-library__error" role="alert">
-            {problem}
-          </p>
-        )}
-
-        {references.length === 0 ? (
-          <section className="tln-library__welcome rs-welcome" aria-labelledby="rs-welcome-title">
-            <div className="tln-library__welcome-copy">
-              <Compass size={32} strokeWidth={1.25} aria-hidden="true" />
-              <h2 id="rs-welcome-title">
-                Every story is built
-                <br />
-                on research.
-              </h2>
-              <p>
-                Collect field notes, interview quotes, articles, and photographs—or scaffold your
-                structure from proven screenplay beat sheets.
-              </p>
-              <div className="rs-welcome__actions">
+            <div
+              className={`tln-jot rs-capture${captureActive || draft.trim() ? " rs-capture--active" : ""}`}
+            >
+              <div className="rs-capture__top">
+                <div className="rs-capture__input-wrap">
+                  <span className="rs-capture__icon-wrap">
+                    <Plus size={16} aria-hidden="true" />
+                  </span>
+                  <input
+                    ref={composerInputRef}
+                    className="tln-jot__input rs-capture__input"
+                    placeholder={
+                      scope === "all" || scope === "shared"
+                        ? "Title or topic to research (e.g. 1970s dial telephones, Detective interview)…"
+                        : `Title or topic for “${titleOf(scope)}”…`
+                    }
+                    aria-label="New research item"
+                    value={draft}
+                    onChange={(e) => {
+                      setDraft(e.target.value);
+                      if (problem) setProblem(null);
+                    }}
+                    onFocus={() => setCaptureActive(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        add();
+                      }
+                    }}
+                  />
+                </div>
                 <button
-                  className="tln-btn tln-btn--accent"
-                  onClick={() => applySheet("save-the-cat")}
+                  className="tln-btn tln-btn--accent rs-capture__btn"
+                  onClick={add}
+                  title={draft.trim() ? "Add research note (Enter)" : "Click to type and add note"}
                 >
-                  <Sparkles size={14} aria-hidden="true" /> Start with Save the Cat
+                  <Plus size={15} aria-hidden="true" /> Add note
                 </button>
               </div>
-            </div>
-          </section>
-        ) : shown.length === 0 ? (
-          <div className="rs-empty">
-            <h2>No research matching your filter</h2>
-            <p>
-              {query
-                ? `Nothing found matching “${query}”. Try adjusting your search or clearing the filter.`
-                : "No items match the currently selected story or type filter."}
-            </p>
-            <button
-              className="tln-btn"
-              onClick={() => {
-                setQuery("");
-                setTypeFilter("all");
-                setScope("all");
-              }}
-            >
-              Reset all filters
-            </button>
-          </div>
-        ) : (
-          <ul className="tln-seeds rs-list">
-            {shown.map((r) => {
-              const open = openId === r.id;
-              const isBeatSheet = !!r.beats;
-              const hasFiles = (r.attachments?.length ?? 0) > 0;
-              const isLink = !!r.url;
-              const { done, total } = isBeatSheet ? beatProgress(r.beats!) : { done: 0, total: 0 };
-              return (
-                <li
-                  key={r.id}
-                  className={`tln-seed rs-card${open ? " tln-seed--open rs-card--open" : ""}`}
-                >
-                  <div className="tln-seed__row rs-card__header">
-                    <span
-                      className="rs-card__type-badge"
-                      title={
-                        isBeatSheet
-                          ? "Beat Sheet"
-                          : hasFiles
-                            ? "Document with Files"
-                            : isLink
-                              ? "Web Reference"
-                              : "Research Note"
+
+              {(captureActive || draft.trim().length > 0) && (
+                <div className="rs-capture__expanded">
+                  <textarea
+                    className="rs-capture__textarea"
+                    placeholder="Initial notes, quotes, observations, or paste a link (optional)…"
+                    rows={2}
+                    value={draftNote}
+                    onChange={(e) => setDraftNote(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                        e.preventDefault();
+                        add();
                       }
-                    >
-                      {isBeatSheet ? (
-                        <ListChecks size={15} aria-hidden="true" />
-                      ) : isLink ? (
-                        <Link2 size={15} aria-hidden="true" />
-                      ) : hasFiles ? (
-                        <Paperclip size={15} aria-hidden="true" />
-                      ) : (
-                        <FileText size={15} aria-hidden="true" />
-                      )}
+                    }}
+                  />
+                  <div className="rs-capture__meta-row">
+                    <span className="rs-capture__scope-tag">
+                      Filing to: <strong>{titleOf(scope === "all" ? undefined : scope)}</strong>
                     </span>
-
-                    <div className="rs-card__title-wrap">
+                    <div className="rs-capture__hints">
+                      <span className="rs-capture__hint">Press Enter to add</span>
                       <button
-                        className="tln-seed__title rs-card__title"
-                        onClick={() => setOpenId(open ? null : r.id)}
+                        type="button"
+                        className="tln-btn tln-btn--quiet rs-capture__cancel"
+                        onClick={() => {
+                          setDraft("");
+                          setDraftNote("");
+                          setCaptureActive(false);
+                        }}
                       >
-                        {r.title}
+                        Clear
                       </button>
-
-                      <div className="rs-card__meta-chips">
-                        {isBeatSheet && (
-                          <span
-                            className={`rs-chip${done > 0 && done === total ? " rs-chip--done" : ""}`}
-                            title={`${done} of ${total} beats completed`}
-                          >
-                            {done}/{total} beats
-                          </span>
-                        )}
-                        {hasFiles && (
-                          <span
-                            className="rs-chip"
-                            title={`${r.attachments!.length} attachment(s)`}
-                          >
-                            <Paperclip size={11} aria-hidden="true" />
-                            {r.attachments!.length}
-                          </span>
-                        )}
-                        {isLink && (
-                          <span className="rs-chip" title={r.url!}>
-                            <Link2 size={11} aria-hidden="true" />
-                            {(() => {
-                              try {
-                                return new URL(r.url!).hostname.replace(/^www\./, "");
-                              } catch {
-                                return "link";
-                              }
-                            })()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="rs-card__controls">
-                      {/* Attachable after the fact. Without this a sheet created
-                          shared could never gain scenes, and one created under the
-                          wrong story could never be moved. */}
-                      <select
-                        className="tln-ref__scope rs-card__scope-select"
-                        aria-label={`Which story ${r.title} belongs to`}
-                        value={r.parentId ?? ""}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) =>
-                          void patchReference(r.id, { parentId: e.target.value || undefined })
-                        }
-                      >
-                        <option value="">Shared</option>
-                        {projects.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.title}
-                          </option>
-                        ))}
-                      </select>
-
-                      <button
-                        className="tln-btn tln-btn--quiet rs-delete-btn"
-                        onClick={() => void deleteReference(r.id)}
-                        title="Delete this and any files kept with it"
-                      >
-                        ✕
-                      </button>
-
-                      <span
-                        className="rs-card__toggle-icon"
-                        onClick={() => setOpenId(open ? null : r.id)}
-                        aria-hidden="true"
-                      >
-                        <ChevronDown size={16} />
-                      </span>
                     </div>
                   </div>
+                </div>
+              )}
+            </div>
 
-                  {/* Attachments preview on collapsed card if any */}
-                  {!open && (r.attachments?.length ?? 0) > 0 && (
-                    <div className="tln-ref__files">
-                      {(r.attachments ?? []).map((a) => (
-                        <button
-                          key={a.id}
-                          className={`tln-ref__file${present[a.id] ? "" : " tln-ref__file--absent"}`}
-                          disabled={!present[a.id]}
-                          onClick={() => void openAttachment(a)}
+            {references.length > 0 && (
+              <div className="rs-toolbar">
+                <div className="rs-search">
+                  <Search size={14} className="rs-search__icon" aria-hidden="true" />
+                  <input
+                    className="rs-search__input"
+                    placeholder="Search research, beats, notes…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    aria-label="Search research"
+                  />
+                  {query && (
+                    <button
+                      className="rs-search__clear"
+                      onClick={() => setQuery("")}
+                      aria-label="Clear search"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+                <div className="rs-filters">
+                  {(
+                    [
+                      { id: "all", label: "All", count: counts.all },
+                      { id: "beats", label: "Beat Sheets", count: counts.beats },
+                      { id: "notes", label: "Notes", count: counts.notes },
+                      { id: "links", label: "Links", count: counts.links },
+                      { id: "files", label: "Files", count: counts.files },
+                    ] as const
+                  ).map((f) => (
+                    <button
+                      key={f.id}
+                      className={`rs-filter-btn${typeFilter === f.id ? " rs-filter-btn--active" : ""}`}
+                      onClick={() => setTypeFilter(f.id)}
+                    >
+                      <span>{f.label}</span>
+                      <span className="rs-filter-count">{f.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {problem && (
+              <p className="tln-library__error" role="alert">
+                {problem}
+              </p>
+            )}
+
+            {references.length === 0 ? (
+              <section
+                className="tln-library__welcome rs-welcome"
+                aria-labelledby="rs-welcome-title"
+              >
+                <div className="tln-library__welcome-copy">
+                  <Compass size={32} strokeWidth={1.25} aria-hidden="true" />
+                  <h2 id="rs-welcome-title">
+                    Every story is built
+                    <br />
+                    on research.
+                  </h2>
+                  <p>
+                    Collect field notes, interview quotes, articles, and photographs—or scaffold
+                    your structure from proven screenplay beat sheets.
+                  </p>
+                  <div className="rs-welcome__actions">
+                    <button
+                      className="tln-btn tln-btn--accent"
+                      onClick={() => applySheet("save-the-cat")}
+                    >
+                      <Sparkles size={14} aria-hidden="true" /> Start with Save the Cat
+                    </button>
+                  </div>
+                </div>
+              </section>
+            ) : shown.length === 0 ? (
+              <div className="rs-empty">
+                <h2>No research matching your filter</h2>
+                <p>
+                  {query
+                    ? `Nothing found matching “${query}”. Try adjusting your search or clearing the filter.`
+                    : "No items match the currently selected story or type filter."}
+                </p>
+                <button
+                  className="tln-btn"
+                  onClick={() => {
+                    setQuery("");
+                    setTypeFilter("all");
+                    setScope("all");
+                  }}
+                >
+                  Reset all filters
+                </button>
+              </div>
+            ) : (
+              <ul className="tln-seeds rs-list">
+                {shown.map((r) => {
+                  const open = openId === r.id;
+                  const isBeatSheet = !!r.beats;
+                  const hasFiles = (r.attachments?.length ?? 0) > 0;
+                  const isLink = !!r.url;
+                  const { done, total } = isBeatSheet
+                    ? beatProgress(r.beats!)
+                    : { done: 0, total: 0 };
+                  return (
+                    <li
+                      key={r.id}
+                      className={`tln-seed rs-card${open ? " tln-seed--open rs-card--open" : ""}`}
+                    >
+                      <div className="tln-seed__row rs-card__header">
+                        <span
+                          className="rs-card__type-badge"
                           title={
-                            present[a.id]
-                              ? `Open ${a.name}`
-                              : "Recorded on another device — the file itself is not on this one"
+                            isBeatSheet
+                              ? "Beat Sheet"
+                              : hasFiles
+                                ? "Document with Files"
+                                : isLink
+                                  ? "Web Reference"
+                                  : "Research Note"
                           }
                         >
-                          {a.name} · {describeSize(a.size)}
-                          {present[a.id] ? "" : " · elsewhere"}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Expanded Body */}
-                  {open && (
-                    <div className="rs-card__body">
-                      {r.beats ? (
-                        <BeatSheet
-                          beats={r.beats}
-                          scenes={r.parentId ? (scenesByProject[r.parentId] ?? []) : []}
-                          onChange={(next: Beat[]) => void patchReference(r.id, { beats: next })}
-                        />
-                      ) : null}
-
-                      <div className="rs-field">
-                        <div className="rs-field__header">
-                          <span className="rs-field__label">
-                            <Link2 size={13} aria-hidden="true" /> Source Link
-                          </span>
-                          {r.url && (
-                            <a
-                              className="tln-btn rs-open-link-btn"
-                              href={r.url}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                            >
-                              <ExternalLink size={13} aria-hidden="true" /> Open link
-                            </a>
+                          {isBeatSheet ? (
+                            <ListChecks size={15} aria-hidden="true" />
+                          ) : isLink ? (
+                            <Link2 size={15} aria-hidden="true" />
+                          ) : hasFiles ? (
+                            <Paperclip size={15} aria-hidden="true" />
+                          ) : (
+                            <FileText size={15} aria-hidden="true" />
                           )}
-                        </div>
-                        <input
-                          className="tln-ref__url rs-field-input"
-                          placeholder="https://… (optional)"
-                          aria-label="Source link"
-                          value={r.url ?? ""}
-                          onChange={(e) => void patchReference(r.id, { url: e.target.value })}
-                        />
-                      </div>
+                        </span>
 
-                      <div className="rs-field">
-                        <div className="rs-field__header">
-                          <span className="rs-field__label">
-                            <FileText size={13} aria-hidden="true" />{" "}
-                            {r.beats ? "Overall Notes & Thoughts" : "Research Notes & Synthesis"}
+                        <div className="rs-card__title-wrap">
+                          <button
+                            className="tln-seed__title rs-card__title"
+                            onClick={() => setOpenId(open ? null : r.id)}
+                          >
+                            {r.title}
+                          </button>
+
+                          <div className="rs-card__meta-chips">
+                            {isBeatSheet && (
+                              <span
+                                className={`rs-chip${done > 0 && done === total ? " rs-chip--done" : ""}`}
+                                title={`${done} of ${total} beats completed`}
+                              >
+                                {done}/{total} beats
+                              </span>
+                            )}
+                            {hasFiles && (
+                              <span
+                                className="rs-chip"
+                                title={`${r.attachments!.length} attachment(s)`}
+                              >
+                                <Paperclip size={11} aria-hidden="true" />
+                                {r.attachments!.length}
+                              </span>
+                            )}
+                            {isLink && (
+                              <span className="rs-chip" title={r.url!}>
+                                <Link2 size={11} aria-hidden="true" />
+                                {(() => {
+                                  try {
+                                    return new URL(r.url!).hostname.replace(/^www\./, "");
+                                  } catch {
+                                    return "link";
+                                  }
+                                })()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="rs-card__controls">
+                          {/* Attachable after the fact. Without this a sheet created
+                          shared could never gain scenes, and one created under the
+                          wrong story could never be moved. */}
+                          <select
+                            className="tln-ref__scope rs-card__scope-select"
+                            aria-label={`Which story ${r.title} belongs to`}
+                            value={r.parentId ?? ""}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) =>
+                              void patchReference(r.id, { parentId: e.target.value || undefined })
+                            }
+                          >
+                            <option value="">Shared</option>
+                            {projects.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.title}
+                              </option>
+                            ))}
+                          </select>
+
+                          <button
+                            className="tln-btn tln-btn--quiet rs-delete-btn"
+                            onClick={() => void deleteReference(r.id)}
+                            title="Delete this and any files kept with it"
+                          >
+                            ✕
+                          </button>
+
+                          <span
+                            className="rs-card__toggle-icon"
+                            onClick={() => setOpenId(open ? null : r.id)}
+                            aria-hidden="true"
+                          >
+                            <ChevronDown size={16} />
                           </span>
                         </div>
-                        <textarea
-                          className="tln-seed__note rs-field-textarea"
-                          rows={r.beats ? 3 : 7}
-                          placeholder={
-                            r.beats
-                              ? "Anything about this sheet as a whole…"
-                              : "Notes, quotes, takeaways, observations…"
-                          }
-                          value={r.synopsis ?? ""}
-                          onChange={(e) => void patchReference(r.id, { synopsis: e.target.value })}
-                        />
                       </div>
 
-                      {(r.attachments?.length ?? 0) > 0 && (
+                      {/* Attachments preview on collapsed card if any */}
+                      {!open && (r.attachments?.length ?? 0) > 0 && (
                         <div className="tln-ref__files">
                           {(r.attachments ?? []).map((a) => (
                             <button
@@ -755,31 +878,302 @@ export default function ResearchView() {
                         </div>
                       )}
 
-                      <div className="tln-ref__row rs-card__footer">
-                        <div className="rs-card__footer-actions">
-                          <label className="tln-btn rs-attach-btn">
-                            <Paperclip size={14} aria-hidden="true" /> Attach a file…
-                            <input
-                              type="file"
-                              hidden
-                              onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                e.target.value = "";
-                                if (f) void attach(r, f);
-                              }}
+                      {/* Expanded Body */}
+                      {open && (
+                        <div className="rs-card__body">
+                          {r.beats ? (
+                            <BeatSheet
+                              beats={r.beats}
+                              scenes={r.parentId ? (scenesByProject[r.parentId] ?? []) : []}
+                              onChange={(next: Beat[]) =>
+                                void patchReference(r.id, { beats: next })
+                              }
                             />
-                          </label>
+                          ) : null}
+
+                          <div className="rs-field">
+                            <div className="rs-field__header">
+                              <span className="rs-field__label">
+                                <Link2 size={13} aria-hidden="true" /> Source Link
+                              </span>
+                              {r.url && (
+                                <a
+                                  className="tln-btn rs-open-link-btn"
+                                  href={r.url}
+                                  target="_blank"
+                                  rel="noreferrer noopener"
+                                >
+                                  <ExternalLink size={13} aria-hidden="true" /> Open link
+                                </a>
+                              )}
+                            </div>
+                            <input
+                              className="tln-ref__url rs-field-input"
+                              placeholder="https://… (optional)"
+                              aria-label="Source link"
+                              value={r.url ?? ""}
+                              onChange={(e) => void patchReference(r.id, { url: e.target.value })}
+                            />
+                          </div>
+
+                          <div className="rs-field">
+                            <div className="rs-field__header">
+                              <span className="rs-field__label">
+                                <FileText size={13} aria-hidden="true" />{" "}
+                                {r.beats
+                                  ? "Overall Notes & Thoughts"
+                                  : "Research Notes & Synthesis"}
+                              </span>
+                            </div>
+                            <textarea
+                              className="tln-seed__note rs-field-textarea"
+                              rows={r.beats ? 3 : 7}
+                              placeholder={
+                                r.beats
+                                  ? "Anything about this sheet as a whole…"
+                                  : "Notes, quotes, takeaways, observations…"
+                              }
+                              value={r.synopsis ?? ""}
+                              onChange={(e) =>
+                                void patchReference(r.id, { synopsis: e.target.value })
+                              }
+                            />
+                          </div>
+
+                          {(r.attachments?.length ?? 0) > 0 && (
+                            <div className="tln-ref__files">
+                              {(r.attachments ?? []).map((a) => (
+                                <button
+                                  key={a.id}
+                                  className={`tln-ref__file${present[a.id] ? "" : " tln-ref__file--absent"}`}
+                                  disabled={!present[a.id]}
+                                  onClick={() => void openAttachment(a)}
+                                  title={
+                                    present[a.id]
+                                      ? `Open ${a.name}`
+                                      : "Recorded on another device — the file itself is not on this one"
+                                  }
+                                >
+                                  {a.name} · {describeSize(a.size)}
+                                  {present[a.id] ? "" : " · elsewhere"}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="tln-ref__row rs-card__footer">
+                            <div className="rs-card__footer-actions">
+                              <label className="tln-btn rs-attach-btn">
+                                <Paperclip size={14} aria-hidden="true" /> Attach a file…
+                                <input
+                                  type="file"
+                                  hidden
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    e.target.value = "";
+                                    if (f) void attach(r, f);
+                                  }}
+                                />
+                              </label>
+                            </div>
+                            <span className="tln-ref__hint">
+                              Files stay on this device. Notes and links follow the story
+                              everywhere.
+                            </span>
+                          </div>
                         </div>
-                        <span className="tln-ref__hint">
-                          Files stay on this device. Notes and links follow the story everywhere.
-                        </span>
-                      </div>
-                    </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
+        )}
+
+        {section === "telugu" && (
+          <div className="tln-sheets rs-guides rs-telugu">
+            <div className="rs-blueprints__head">
+              <span className="tln-sheets__label rs-blueprints__label">
+                <Clapperboard size={14} aria-hidden="true" /> Screenplay study shelf
+              </span>
+              <span className="rs-blueprints__hint">
+                Scripts, series and craft books — filter by what and language, open to read.
+              </span>
+            </div>
+            <div className="rs-telugu__filtersbar">
+              <div className="rs-telugu__filter">
+                <label htmlFor="rs-telugu-what">What</label>
+                <div className="rs-scope-filter" title="Show one kind of shelf item">
+                  <Clapperboard size={15} className="rs-scope-filter__icon" aria-hidden="true" />
+                  <select
+                    id="rs-telugu-what"
+                    className="rs-scope-filter__select"
+                    aria-label="What kind"
+                    value={shelfWhat}
+                    onChange={(e) => setShelfWhat(e.target.value as ShelfKind)}
+                  >
+                    <option value="all">Everything ({shelfItems.length})</option>
+                    {shelfKindOptions.map((k) => (
+                      <option key={k.key} value={k.key}>
+                        {k.label} ({k.count})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="rs-scope-filter__arrow" aria-hidden="true" />
+                </div>
+              </div>
+              <div className="rs-telugu__filter">
+                <label htmlFor="rs-telugu-lang">Language</label>
+                <div className="rs-scope-filter" title="Show one language">
+                  <Globe size={15} className="rs-scope-filter__icon" aria-hidden="true" />
+                  <select
+                    id="rs-telugu-lang"
+                    className="rs-scope-filter__select"
+                    aria-label="Language"
+                    value={shelfLang}
+                    onChange={(e) => setShelfLang(e.target.value)}
+                  >
+                    <option value="all">All languages ({shelfItems.length})</option>
+                    {shelfLangOptions.map((l) => (
+                      <option key={l.key} value={l.key}>
+                        {l.label} ({l.count})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="rs-scope-filter__arrow" aria-hidden="true" />
+                </div>
+              </div>
+              <span className="rs-telugu__count" aria-live="polite">
+                Showing <strong>{shelfVisible}</strong> of {shelfItems.length}
+              </span>
+            </div>
+            {shelfMovies.length > 0 && (
+              <>
+                <div className="rs-blueprints__head rs-telugu__sechead">
+                  <span className="tln-sheets__label rs-blueprints__label">Movies</span>
+                  <span className="rs-blueprints__hint">
+                    Shooting scripts & transcripts, shared by makers — free to read.
+                  </span>
+                </div>
+                <div className="rs-blueprints__cards">{shelfMovies.map(shelfCard)}</div>
+              </>
+            )}
+            {shelfSeries.length > 0 && (
+              <>
+                <div className="rs-blueprints__head rs-telugu__sechead">
+                  <span className="tln-sheets__label rs-blueprints__label">Web series</span>
+                  <span className="rs-blueprints__hint">
+                    No Telugu series scripts are shared publicly yet — this Hindi landmark teaches
+                    serial structure instead.
+                  </span>
+                </div>
+                <div className="rs-blueprints__cards">{shelfSeries.map(shelfCard)}</div>
+              </>
+            )}
+            {shelfBooks.length > 0 && (
+              <>
+                <div className="rs-blueprints__head rs-telugu__sechead">
+                  <span className="tln-sheets__label rs-blueprints__label">Books</span>
+                  <span className="rs-blueprints__hint">
+                    Craft books to own or borrow — publishers and bookshops, never piracy.
+                  </span>
+                </div>
+                <div className="rs-blueprints__cards">{shelfBooks.map(bookCard)}</div>
+              </>
+            )}
+            {shelfVisible === 0 && (
+              <div className="rs-empty">
+                <h2>Nothing on this shelf combination</h2>
+                <p>Try widening the filters — every language pairs with something.</p>
+                <button
+                  className="tln-btn"
+                  onClick={() => {
+                    setShelfWhat("all");
+                    setShelfLang("all");
+                  }}
+                >
+                  Reset filters
+                </button>
+              </div>
+            )}
+            {activeTelugu && (
+              <div className="rs-guide-panel">
+                <p className="rs-guide-panel__blurb">
+                  {shelfCategoryLabel(activeTelugu)} · Written by {activeTelugu.writer} · Directed
+                  by {activeTelugu.director} · {activeTelugu.source}
+                </p>
+                <div className="rs-guide-panel__body">
+                  {activeTelugu.logline}
+                  {"\n\n"}Why study it: {activeTelugu.studyNote}
+                </div>
+                <div className="rs-guide-panel__actions">
+                  <a
+                    className="tln-btn tln-btn--accent"
+                    href={activeTelugu.pageUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    title={`Read ${activeTelugu.title} (${activeTelugu.source})`}
+                  >
+                    <ExternalLink size={13} aria-hidden="true" /> Open script page
+                  </a>
+                  {activeTelugu.pdfUrl && activeTelugu.pdfUrl !== activeTelugu.pageUrl && (
+                    <a
+                      className="tln-btn"
+                      href={activeTelugu.pdfUrl}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      title={`Open the ${activeTelugu.format} PDF directly`}
+                    >
+                      <ExternalLink size={13} aria-hidden="true" /> Open PDF
+                    </a>
                   )}
-                </li>
-              );
-            })}
-          </ul>
+                  <button
+                    className="tln-btn"
+                    onClick={() => saveTelugu(activeTelugu.id)}
+                    title={`Save “${activeTelugu.title}” as a note you can annotate`}
+                  >
+                    <Plus size={14} aria-hidden="true" /> Save as note
+                  </button>
+                  <span className="rs-guide-panel__file-hint">
+                    Filing to: <strong>{titleOf(scope === "all" ? undefined : scope)}</strong>
+                  </span>
+                </div>
+              </div>
+            )}
+            {activeBook && (
+              <div className="rs-guide-panel">
+                <p className="rs-guide-panel__blurb">
+                  {activeBook.lang} · Books · {activeBook.detail} · {activeBook.source}
+                </p>
+                <div className="rs-guide-panel__body">
+                  By {activeBook.author}. {activeBook.blurb}
+                  {"\n\n"}Why read it: {activeBook.why}
+                </div>
+                <div className="rs-guide-panel__actions">
+                  <a
+                    className="tln-btn tln-btn--accent"
+                    href={activeBook.pageUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    title={`Find ${activeBook.title} (${activeBook.source})`}
+                  >
+                    <ExternalLink size={13} aria-hidden="true" /> Open book page
+                  </a>
+                  <button
+                    className="tln-btn"
+                    onClick={() => saveBook(activeBook.id)}
+                    title={`Save “${activeBook.title}” as a note you can annotate`}
+                  >
+                    <Plus size={14} aria-hidden="true" /> Save as note
+                  </button>
+                  <span className="rs-guide-panel__file-hint">
+                    Filing to: <strong>{titleOf(scope === "all" ? undefined : scope)}</strong>
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </main>

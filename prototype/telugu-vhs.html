@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Throughline — Telugu video store (PROTOTYPE)</title>
+<!--
+  PROTOTYPE (throwaway). Question: should the shelf feel like a retro video
+  store — tapes on genre aisles you pull off the shelf and rent into your
+  personal crate? Hover a spine to slide the tape out; RENT files it in your
+  crate (localStorage). Cover art is procedural CSS standing in for posters.
+-->
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#2a2118 url('');color:#f5ead6;font:13px/1.5 "Segoe UI",system-ui,sans-serif;
+    padding:30px 26px 90px;max-width:1180px;margin:0 auto}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:repeating-linear-gradient(0deg,#00000014 0 3px,transparent 3px 6px)}
+  #watermark{position:fixed;top:12px;right:-34px;transform:rotate(35deg);background:#b3452f;color:#fff;
+    font-size:10px;font-weight:700;letter-spacing:.2em;padding:4px 40px;z-index:60}
+  header,main{position:relative;z-index:1}
+  .open{font-size:12px;font-weight:700;letter-spacing:.3em;color:#ffcf5f;text-align:center}
+  .open i{font-style:normal;animation:blink 1.2s steps(2) infinite}
+  @keyframes blink{50%{opacity:.25}}
+  h1{font:400 40px/1.1 Georgia,serif;text-align:center;margin:6px 0 2px;color:#ffe9bd}
+  .sub{text-align:center;color:#b9a888;max-width:64ch;margin:0 auto 22px}
+  #crate{background:#1d1712;border:2px solid #ffcf5f;border-radius:12px;padding:14px 18px;margin-bottom:26px}
+  #crate h2{font-size:11px;letter-spacing:.2em;color:#ffcf5f;margin-bottom:8px}
+  #crate .in{font-size:12.5px;color:#f5ead6}
+  #crate button{all:unset;cursor:pointer;font-size:11px;color:#b9a888;margin-left:10px;text-decoration:underline}
+  .aisle{margin-bottom:30px}
+  .aisle h2{font-size:12px;letter-spacing:.24em;color:#ffcf5f;margin-bottom:4px}
+  .shelf{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;padding:18px 16px 0;
+    background:linear-gradient(#4a3826,#3a2c1e);border-radius:8px 8px 0 0}
+  .plank{height:14px;background:linear-gradient(#6b5236,#4a3826);border-radius:0 0 6px 6px;
+    box-shadow:0 8px 18px #0009;margin-bottom:6px}
+  .tape{width:104px;cursor:pointer;transition:transform .25s}
+  .tape:hover{transform:translateY(-26px)}
+  .spine{height:190px;border-radius:5px;padding:12px 8px;position:relative;overflow:hidden;
+    box-shadow:inset -6px 0 10px #0007,inset 4px 0 8px #ffffff22;display:flex}
+  .spine b{writing-mode:vertical-rl;font-size:14px;letter-spacing:.04em;color:#fff;margin:auto}
+  .spine small{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:10px;color:#ffffffcc}
+  .spine .stripe{position:absolute;top:0;left:0;right:0;height:26px;background:#00000055;
+    font-size:9px;letter-spacing:.2em;color:#fff;text-align:center;line-height:26px}
+  .detail{display:none;background:#14100c;border:1px solid #6b5236;border-radius:10px;
+    padding:14px 16px;margin-top:10px}
+  .detail.on{display:block}
+  .detail h3{font-size:16px}
+  .detail h3 span{color:#b9a888;font-weight:400}
+  .detail p{font-size:12.5px;color:#d8c9a8;margin:4px 0}
+  .detail .row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .detail a,.detail button.rent{font-size:12px;font-weight:700;text-decoration:none;cursor:pointer;
+    padding:7px 16px;border-radius:999px;background:#ffcf5f;color:#241b10;border:0}
+  .detail button.rent{background:transparent;color:#ffcf5f;border:1px solid #ffcf5f}
+  #hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;color:#b9a888;
+    background:#000d;border:1px solid #6b5236;padding:5px 16px;border-radius:999px;white-space:nowrap;z-index:5}
+</style>
+</head>
+<body>
+<div id="watermark">PROTOTYPE</div>
+<header>
+  <p class="open"><i>●</i> OPEN LATE · BE KIND, REWIND <i>●</i></p>
+  <h1>Sangeeth Video Library</h1>
+  <p class="sub">Ten Telugu screenplays on the shelves. Hover to slide a tape out, click it
+  for the back-cover blurb, RENT it into your crate. Your crate lives on this machine.</p>
+  <div id="crate"><h2>▣ YOUR CRATE · <span id="ccount">0</span> TAPES</h2><div id="cin"></div></div>
+</header>
+<main id="store"></main>
+<div id="hint">hover a spine to pull the tape · click for the back cover · RENT to take it home</div>
+
+<script>
+const TAPES = [
+  {t:"Pelli Choopulu",y:2016,a:"Comedy aisle",w:"Tharun Bhascker",hue:320,tag:"ROM-COM",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-pelli-choopulu",
+   b:"A matchmaking gone wrong, a locked room, a food truck. Study the one-location second act."},
+  {t:"Jathi Ratnalu",y:2021,a:"Comedy aisle",w:"Anudeep KV",hue:45,tag:"COMEDY",
+   p:"https://www.scrite.io/download-jathi-ratnalu-telugu-movie-script-pdf/",
+   b:"Three friends vs Hyderabad. Joke density that never drops the courtroom plot."},
+  {t:"Agent Sai Srinivasa Athreya",y:2019,a:"Caper aisle",w:"Swaroop RSJ",hue:165,tag:"DETECTIVE",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-agent-sai-srinivas-athreya-starring-naveen-polishetty",
+   b:"Nellore noir. Every gag in act one is evidence by act three."},
+  {t:"Brochevarevarura",y:2019,a:"Caper aisle",w:"Vivek Athreya",hue:265,tag:"CAPER",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-brochevarevarura",
+   b:"A fake kidnapping meets a struggler director. Two tracks, one fuse."},
+  {t:"C/o Kancharapalem",y:2018,a:"Drama aisle",w:"Venkatesh Maha",hue:20,tag:"ANTHOLOGY",
+   p:"https://scriptick.in/en/popular.html",
+   b:"Four loves in one Vizag neighbourhood, shot sync-sound with non-actors."},
+  {t:"Mental Madhilo",y:2017,a:"Drama aisle",w:"Vivek Athreya",hue:205,tag:"ROMANCE",
+   p:"https://pdfcoffee.com/mentalmadilocinemascreenplay-free-kinigedotcom-pdf-free.html",
+   b:"An indecisive hero, a decisive heroine. The flaw IS the plot."},
+  {t:"Arjun Reddy",y:2017,a:"Drama aisle",w:"Sandeep Reddy Vanga",hue:38,tag:"TRANSCRIPT",
+   p:"https://www.scripts.com/script/arjun_reddy_3089",
+   b:"Transcript, not a shooting script — rent it for voice, not formatting."},
+  {t:"Republic",y:2021,a:"Political aisle",w:"Deva Katta",hue:0,tag:"POLITICAL",
+   p:"https://www.idlebrain.com/news/today/republic-screenplay.html",
+   b:"A collector vs the machine. Every briefing is a power negotiation."},
+  {t:"Prasthanam",y:2010,a:"Political aisle",w:"Deva Katta",hue:8,tag:"POLITICAL",
+   p:"https://www.idlebrain.com/news/2000march20/prasthanam-screenplay.html",
+   b:"The 2009 draft. Compare against the film — spot the cuts."},
+  {t:"Baahubali: The Beginning",y:2015,a:"Epic aisle",w:"Vijayendra Prasad",hue:48,tag:"TRANSCRIPT",
+   p:"https://www.scripts.com/script/baahubali:_the_beginning_3365",
+   b:"Transcript of the epic. A reveal every 10 min, a set piece every 30."},
+];
+const KEY = "telugu-crate-v1";
+let crate = [];
+try { crate = JSON.parse(localStorage.getItem(KEY) ?? "[]"); } catch { crate = []; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(crate)); } catch {} };
+let open = null;
+function render(){
+  document.querySelector("#ccount").textContent = crate.length;
+  document.querySelector("#cin").innerHTML = crate.length
+    ? crate.map((t,i)=>`<span class="in">▸ ${t}<button data-ret="${i}">return</button></span>`).join("")
+    : `<span class="in" style="color:#b9a888">Empty — go pull something off the shelves.</span>`;
+  const aisles = [...new Set(TAPES.map(t=>t.a))];
+  document.querySelector("#store").innerHTML = aisles.map(a=>{
+    const tapes = TAPES.map((t,i)=>({...t,i})).filter(t=>t.a===a);
+    return `<section class="aisle"><h2>▸ ${a.toUpperCase()}</h2><div class="shelf">` +
+      tapes.map(t=>`<div class="tape" data-t="${t.i}">
+        <div class="spine" style="background:linear-gradient(160deg,hsl(${t.hue},55%,32%),hsl(${t.hue},65%,16%))">
+          <div class="stripe">${t.tag}</div><b>${t.t}</b><small>${t.y}</small></div></div>`).join("") +
+      `</div><div class="plank"></div><div class="detail" id="d"></div></section>`;
+  }).join("");
+  document.querySelectorAll(".tape").forEach(el=>el.onclick=()=>{
+    const t = TAPES[+el.dataset.t];
+    const box = el.closest(".aisle").querySelector(".detail");
+    const was = box.classList.contains("on") && open === t.t;
+    document.querySelectorAll(".detail").forEach(d=>d.classList.remove("on"));
+    if (was) { open = null; return; }
+    open = t.t;
+    const inCrate = crate.includes(t.t);
+    box.innerHTML = `<h3>${t.t} <span>· ${t.y} · ${t.w}</span></h3><p>${t.b}</p>
+      <div class="row"><a href="${t.p}" target="_blank" rel="noopener">Read script ↗</a>
+      <button class="rent" data-rent="${t.t}">${inCrate?"✓ IN YOUR CRATE":"RENT THIS TAPE"}</button></div>`;
+    box.classList.add("on");
+    box.querySelector("[data-rent]").onclick = ev => {
+      ev.stopPropagation();
+      if (!crate.includes(t.t)) { crate.push(t.t); save(); render(); }
+    };
+  });
+  document.querySelectorAll("[data-ret]").forEach(b=>b.onclick=()=>{
+    crate.splice(+b.dataset.ret,1); save(); render();
+  });
+}
+render();
+</script>
+</body>
+</html>

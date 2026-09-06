@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Throughline — Shelf tickets (PROTOTYPE)</title>
+<!--
+  PROTOTYPE (throwaway). Question: does the ticket metaphor survive without the
+  neon — app tokens, real poster art, flip for the study note? Click a ticket
+  to flip it; category pills on top (language × movie/series); sun/moon toggles Director's Studio vs Archival
+  Print, same tokens as app/src/styles.css. Posters hotlink Wikipedia for
+  REVIEW ONLY (never bundle them); any missing poster falls back to monogram.
+-->
+<style>
+  :root, [data-theme="dark"]{
+    --bg:#101214; --panel:#15181b; --card:#1c2024; --ink:#fafafa; --ink-2:#a1a1aa;
+    --dim:#71717a; --line:#2b3035; --line-strong:#3f3f46;
+    --accent:#c6a573; --accent-hover:#e1bf8b; --tint:rgba(198,165,115,.12);
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+  [data-theme="light"]{
+    --bg:#ffffff; --panel:#f4f4f5; --card:#ffffff; --ink:#101214; --ink-2:#52525b;
+    --dim:#71717a; --line:#e4e4e7; --line-strong:#d4d4d8;
+    --accent:#d97706; --accent-hover:#b45309; --tint:rgba(217,119,6,.1);
+    --shadow:0 1px 2px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font:13px/1.5 "Segoe UI",system-ui,sans-serif;
+    min-height:100vh;padding:32px 24px 90px;max-width:1060px;margin:0 auto}
+  #watermark{position:fixed;top:12px;right:-34px;transform:rotate(35deg);background:#b3452f;color:#fff;
+    font-size:10px;font-weight:700;letter-spacing:.2em;padding:4px 40px;z-index:60}
+  .eyebrow{font-size:11px;letter-spacing:.14em;color:var(--accent);font-weight:700}
+  .eyebrow span{display:inline-block;width:22px;height:2px;background:var(--accent);vertical-align:middle;margin-right:8px}
+  h1{font:400 30px/1.2 Georgia,serif;margin:4px 0 6px}
+  .sub{color:var(--ink-2);max-width:70ch}
+  #bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 20px}
+  #bar button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:10px;
+    font-size:13px;font-weight:700;padding:9px 18px 9px 10px;border-radius:14px;
+    border:1px solid var(--line);background:var(--card);color:var(--ink-2);
+    transition:transform .12s ease,border-color .15s ease,background .15s ease,color .15s ease}
+  #bar button:hover{transform:translateY(-2px);border-color:var(--accent);color:var(--ink)}
+  #bar button.on{color:var(--ink);border-color:var(--accent);background:var(--tint)}
+  #bar button b{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;
+    padding:0 7px;border-radius:999px;background:var(--panel);border:1px solid var(--line);
+    font-size:12px;color:var(--ink);transition:transform .15s ease}
+  #bar button.on b{background:var(--accent);border-color:var(--accent);color:#fff;transform:scale(1.1)}
+  #theme{margin-left:auto}
+  .pick{display:flex;flex-direction:column;gap:6px;font-size:10px;letter-spacing:.18em;color:var(--dim);font-weight:700}
+  .pick select{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;
+    font:500 13px/1.2 "Segoe UI",system-ui,sans-serif;padding:9px 12px;outline:none;cursor:pointer;min-width:190px}
+  .pick select:focus{border-color:var(--accent)}
+  .pick select option{background:var(--card);color:var(--ink);font-weight:400}
+  #count{margin-left:auto;align-self:center;font-size:12px;color:var(--dim)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;perspective:1400px}
+  .ticket{cursor:pointer;height:205px;position:relative;transform-style:preserve-3d;transition:transform .45s}
+  .ticket.flip{transform:rotateY(180deg)}
+  .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+    background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);
+    overflow:hidden;display:flex}
+  .ticket:hover .face{border-color:var(--line-strong)}
+  .ticket.flip .face{border-color:var(--accent)}
+  .back{transform:rotateY(180deg);flex-direction:column;padding:16px 18px;gap:8px}
+  .poster{flex:0 0 112px;position:relative;background:var(--panel);overflow:hidden}
+  .poster .mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font:700 40px/1 Georgia,serif;color:#fff}
+  .poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .main{flex:1;min-width:0;padding:14px 6px 14px 16px}
+  .main h2{font-size:15px;line-height:1.3}
+  .main h2 span{color:var(--dim);font-weight:400}
+  .by{font-size:12px;color:var(--ink-2);margin-top:2px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{font:600 10.5px/1 ui-monospace,Menlo,monospace;color:var(--dim);background:var(--panel);
+    border:1px solid var(--line);border-radius:5px;padding:4px 7px}
+  .chip.hot{color:var(--accent);border-color:var(--accent)}
+  .stub{flex:0 0 58px;border-left:1px dashed var(--line-strong);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:5px;color:var(--dim)}
+  .stub b{font-size:14px;color:var(--ink);writing-mode:vertical-rl;letter-spacing:.18em}
+  .stub small{font-size:9px;letter-spacing:.2em}
+  .back .k{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
+  .back p{font-size:13px}
+  .back .why b{color:var(--accent)}
+  .back .row{display:flex;gap:8px;margin-top:auto;flex-wrap:wrap}
+  .back a{font-size:12.5px;font-weight:600;text-decoration:none;padding:7px 15px;border-radius:8px;
+    background:var(--accent);color:var(--bg)}
+  .back a.ghost{background:transparent;color:var(--ink);border:1px solid var(--line-strong)}
+  .lane{font-size:11px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;margin:24px 0 12px}
+  .note{margin-top:22px;font-size:12px;color:var(--dim);border-top:1px solid var(--line);padding-top:12px}
+  #hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--ink-2);
+    background:var(--card);border:1px solid var(--line);padding:5px 16px;border-radius:999px;white-space:nowrap}
+  [data-theme="light"] #hint{background:#101214;color:#fafafa;border-color:#101214}
+</style>
+</head>
+<body data-theme="dark">
+<div id="watermark">PROTOTYPE</div>
+<p class="eyebrow"><span></span>THE STUDY · SHELF</p>
+<h1>Ten tickets, ten scripts</h1>
+<p class="sub">Shooting scripts shared by their makers, free to read for education.
+Flip a ticket for the study note. Transcripts are badged as transcripts.</p>
+<div id="bar"></div>
+<div class="grid" id="grid"></div>
+<h2 class="lane" id="bonusHead">Long-form bonus · no Telugu series scripts are shared publicly yet</h2>
+<div class="grid" id="bonus"></div>
+<h2 class="lane" id="booksHead">Books · craft to own or borrow</h2>
+<div class="grid" id="booksGrid"></div>
+<p class="note">Prototype only: poster art hotlinks Wikipedia for review and is never bundled
+with the app — C/o Kancharapalem and Prasthanam have no Wikipedia poster, so they stay
+monograms. Scripts themselves stay with their hosts.</p>
+<div id="hint">click a ticket to flip it · ☾ / ☀ switches studio / print theme</div>
+
+<script>
+const FILMS = [
+  {t:"Pelli Choopulu",y:2016,g:"Rom-com",w:"Tharun Bhascker",hue:320,mono:"Pe",f:"script",fl:"Shooting script",src:"Film Companion",
+   img:"https://upload.wikimedia.org/wikipedia/en/b/b3/Pelli_Choopulu_poster.jpg",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-pelli-choopulu",
+   why:"Locked-room second act: one location, two wants, no villains. National Award, tiny budget."},
+  {t:"Agent Sai Srinivasa Athreya",y:2019,g:"Detective caper",w:"Swaroop RSJ",hue:165,mono:"Ag",f:"script",fl:"Scene-divided script",src:"Film Companion",
+   img:"https://upload.wikimedia.org/wikipedia/en/6/61/Agent_Sai_Srinivasa_Athreya_poster.jpg",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-agent-sai-srinivas-athreya-starring-naveen-polishetty",
+   why:"Clue-planting masterclass: every act-one gag pays off as act-three evidence."},
+  {t:"Brochevarevarura",y:2019,g:"Crime caper",w:"Vivek Athreya",hue:265,mono:"Br",f:"script",fl:"Screenplay",src:"Film Companion",
+   img:"https://upload.wikimedia.org/wikipedia/en/6/68/Brochevarevarura_poster.jpg",
+   p:"https://www.filmcompanion.in/companion-zone/download-the-script-of-brochevarevarura",
+   why:"Braided two-track structure: parallel stories touch at the midpoint, then fuse."},
+  {t:"Jathi Ratnalu",y:2021,g:"Comedy",w:"Anudeep KV",hue:45,mono:"Ja",f:"script",fl:"Censor script",src:"Film Companion via Scrite",
+   img:"https://upload.wikimedia.org/wikipedia/en/7/7e/Jathi_Ratnalu_poster.jpg",
+   p:"https://www.scrite.io/download-jathi-ratnalu-telugu-movie-script-pdf/",
+   why:"Joke density without losing plot: each set piece moves the courtroom frame story."},
+  {t:"C/o Kancharapalem",y:2018,g:"Anthology",w:"Venkatesh Maha",hue:20,mono:"C/",f:"script",fl:"Full script",src:"Scriptick library",
+   img:"",
+   p:"https://scriptick.in/en/popular.html",
+   why:"Writing for real locations and non-actors: short scenes, behaviour over dialogue."},
+  {t:"Republic",y:2021,g:"Political drama",w:"Deva Katta",hue:0,mono:"Re",f:"script",fl:"152-page screenplay",src:"Director via Idlebrain",
+   img:"https://upload.wikimedia.org/wikipedia/en/a/a4/Republic_film.jpg",
+   p:"https://www.idlebrain.com/news/today/republic-screenplay.html",
+   why:"Exposition as confrontation: almost every briefing is a power negotiation."},
+  {t:"Prasthanam",y:2010,g:"Political family drama",w:"Deva Katta",hue:8,mono:"Pr",f:"script",fl:"2009 shooting draft",src:"Director via Idlebrain",
+   img:"",
+   p:"https://www.idlebrain.com/news/2000march20/prasthanam-screenplay.html",
+   why:"Compare the 2009 draft against the 2010 film: what was cut, merged, moved off-screen."},
+  {t:"Mental Madhilo",y:2017,g:"Romance",w:"Vivek Athreya",hue:205,mono:"Me",f:"script",fl:"Screenplay book",src:"Kinige / Bommalaata",
+   img:"https://upload.wikimedia.org/wikipedia/en/5/53/Mental_Madhilo.jpg",
+   p:"https://pdfcoffee.com/mentalmadilocinemascreenplay-free-kinigedotcom-pdf-free.html",
+   why:"Confusion-as-engine: the flaw IS the plot."},
+  {t:"Arjun Reddy",y:2017,g:"Drama",w:"Sandeep Reddy Vanga",hue:38,mono:"Ar",f:"transcript",fl:"Transcript",src:"Scripts.com",
+   img:"https://upload.wikimedia.org/wikipedia/en/4/46/Arjun_Reddy.jpg",
+   p:"https://www.scripts.com/script/arjun_reddy_3089",
+   why:"Voice and scene-length study. Compare any scene against Kabir Singh."},
+  {t:"Baahubali: The Beginning",y:2015,g:"Epic",w:"Vijayendra Prasad",hue:48,mono:"Ba",f:"transcript",fl:"Transcript",src:"Scripts.com",
+   img:"https://upload.wikimedia.org/wikipedia/en/5/5f/Baahubali_The_Beginning_poster.jpg",
+   p:"https://www.scripts.com/script/baahubali:_the_beginning_3365",
+   why:"Interval architecture: a reveal every 10 minutes, a set piece every 30."},
+];
+let theme = "dark", what = "all", lang = "all";
+const BOOKS = [
+ {t:"Save the Cat!",y:2005,author:"Blake Snyder",lang:"English",detail:"Craft book",src:"Author site",hue:45,mono:"SB",
+  img:"https://upload.wikimedia.org/wikipedia/en/6/65/Save_the_Cat%21_The_Last_Book_on_Screenwriting_You%27ll_Ever_Need.jpg",
+  p:"https://www.savethecat.com/",
+  blurb:"The 15-beat structure bible behind a thousand pitches.",
+  why:"Pairs with the app's Save the Cat sheet: read the chapter, tick the beats."},
+ {t:"Story",y:1997,author:"Robert McKee",lang:"English",detail:"Craft book · 480 pp",src:"Author site",hue:205,mono:"RM",img:"",
+  p:"https://mckeestory.com/books/story/",
+  blurb:"Form, not formula: structure, character, image systems.",
+  why:"Graduate from beats to principles, then run the scene test."},
+ {t:"Screenplay",y:1979,author:"Syd Field",lang:"English",detail:"Craft book",src:"Open Library",hue:220,mono:"SF",img:"",
+  p:"https://openlibrary.org/search?q=screenplay+the+foundations+of+screenwriting+syd+field",
+  blurb:"The original three-act paradigm: plot points near pages 25 and 75.",
+  why:"The industry's first shared vocabulary."},
+ {t:"The Anatomy of Story",y:2007,author:"John Truby",lang:"English",detail:"Craft book",src:"Author site",hue:265,mono:"JT",img:"",
+  p:"https://truby.com/the-anatomy-of-story/",
+  blurb:"22 steps from weakness to new equilibrium.",
+  why:"Build the hero's moral change first."},
+ {t:"Adventures in the Screen Trade",y:1983,author:"William Goldman",lang:"English",detail:"Memoir & craft · 608 pp",src:"Goodreads",hue:0,mono:"WG",
+  img:"https://upload.wikimedia.org/wikipedia/en/2/29/AdventuresInTheScreenTrade.jpg",
+  p:"https://www.goodreads.com/book/show/459744.Adventures_in_the_Screen_Trade",
+  blurb:"“Nobody knows anything”: war stories plus a full adaptation workshop.",
+  why:"How scripts survive studios — adaptation on the page."},
+ {t:"Making Movies",y:1995,author:"Sidney Lumet",lang:"English",detail:"Director memoir · 240 pp",src:"Apple Books",hue:150,mono:"SL",img:"",
+  p:"https://books.apple.com/us/book/making-movies/id420537049",
+  blurb:"What a director needs from a script.",
+  why:"Write action lines a director can shoot."},
+ {t:"Samagra Cinema Script Rayadam Ala",y:2022,author:"Dasam Venkatarao",lang:"Telugu",detail:"Craft book · 117 pp",src:"Logili Books",hue:30,mono:"DV",img:"",
+  p:"https://logilitelugubooks.com/book/samagra-cinema-script-rayadam-ala-dasam-venkatarao-movie-writer",
+  blurb:"What a complete Telugu script contains.",
+  why:"The only manual here written for Telugu production realities."},
+ {t:"Cinema Screenplay Darshakatvam Nerchukovadam Ala",y:2022,author:"Dasam Venkatarao",lang:"Telugu",detail:"Craft book · 160 pp",src:"Logili Books",hue:10,mono:"DV",img:"",
+  p:"https://www.logilitelugubooks.com/book/cinema-screenplay-darshakatvam-nerchukovadam-ala-dasam-venkatarao-movie-writer",
+  blurb:"Story as illusion, engineered shot by shot.",
+  why:"Write only what camera and microphone catch."},
+];
+function render(){
+  document.body.dataset.theme = theme;
+  const sel = (id,label,opts,cur) =>
+    `<label class="pick">${label}<select id="${id}">` +
+    opts.map(([v,l,n])=>`<option value="${v}"${v===cur?" selected":""}>${l} (${n})</option>`).join("") +
+    `</select></label>`;
+  document.querySelector("#bar").innerHTML =
+    sel("selW","What",[["all","Everything",19],["movie","Movies",10],["series","Web series",1],["book","Books",8]],what) +
+    sel("selL","Language",[["all","All languages",19],["Telugu","Telugu",12],["Hindi","Hindi",1],["English","English",6]],lang) +
+    `<span id="count"></span>` +
+    `<button id="theme">${theme==="dark"?"☀ print":"☾ studio"}</button>`;
+  const movies = what !== "series" && what !== "book" && lang !== "Hindi" && lang !== "English" ? FILMS : [];
+  const showSeries = what !== "movie" && what !== "book" && lang !== "Telugu" && lang !== "English";
+  const books = what !== "movie" && what !== "series" ? BOOKS.filter(b=>lang==="all"||b.lang===lang) : [];
+  document.querySelector("#bonus").style.display = showSeries ? "" : "none";
+  document.querySelector("#bonusHead").style.display = showSeries ? "" : "none";
+  document.querySelector("#booksHead").style.display = books.length ? "" : "none";
+  document.querySelector("#grid").innerHTML = (movies.length
+    ? `<h2 class="lane" style="grid-column:1/-1">Movies · ${movies.length}</h2>` : "") +
+    movies.map(f=>`
+    <div class="ticket" data-t="${f.t}">
+      <div class="face">
+        <div class="poster"><div class="mono" style="background:linear-gradient(150deg,hsl(${f.hue},45%,30%),hsl(${f.hue},55%,14%))">${f.mono}</div>
+          ${f.img?`<img loading="lazy" src="${f.img}" alt="${f.t} poster" onerror="this.remove()">`:""}</div>
+        <div class="main"><h2>${f.t} <span>· ${f.y}</span></h2>
+          <p class="by">${f.w}</p>
+          <div class="chips"><span class="chip">Telugu · Movie</span><span class="chip${f.f==="transcript"?" hot":""}">${f.fl}</span></div></div>
+        <div class="stub"><small>READ</small><b>${f.y}</b></div>
+      </div>
+      <div class="face back">
+        <p class="k">${f.src}</p>
+        <p>${f.why}</p>
+        <p class="why"><b>Why study it</b> — filed as a note beside your draft with one click in the app.</p>
+        <div class="row"><a href="${f.p}" target="_blank" rel="noopener">Open script ↗</a>
+        <a class="ghost" href="${f.p}" target="_blank" rel="noopener">Script page</a></div>
+      </div></div>`).join("");
+  document.querySelector("#booksGrid").innerHTML = (books.length
+    ? `<h2 class="lane" style="grid-column:1/-1">Books · ${books.length}</h2>` : "") +
+    books.map(b=>`
+    <div class="ticket">
+      <div class="face">
+        <div class="poster"><div class="mono" style="background:linear-gradient(150deg,hsl(${b.hue},45%,30%),hsl(${b.hue},55%,14%))">${b.mono}</div>
+          ${b.img?`<img loading="lazy" src="${b.img}" alt="${b.t} cover" onerror="this.remove()">`:""}</div>
+        <div class="main"><h2>${b.t} <span>· ${b.y}</span></h2>
+          <p class="by">${b.author}</p>
+          <div class="chips"><span class="chip">${b.lang} · Books</span><span class="chip">${b.detail}</span></div></div>
+        <div class="stub"><small>READ</small><b>BOOK</b></div>
+      </div>
+      <div class="face back">
+        <p class="k">${b.src}</p>
+        <p>${b.blurb}</p>
+        <p class="why"><b>Why read it</b> — ${b.why}</p>
+        <div class="row"><a href="${b.p}" target="_blank" rel="noopener">Open book page ↗</a></div>
+      </div></div>`).join("");
+  if(!movies.length && !showSeries && !books.length)
+    document.querySelector("#grid").innerHTML = `<p style="grid-column:1/-1;color:var(--dim)">Nothing here — widen the filters.</p>`;
+  document.querySelector("#count").textContent =
+    `Showing ${movies.length + (showSeries?1:0) + books.length} of 19`;
+  document.querySelector("#selW").onchange=e=>{what=e.target.value;render();};
+  document.querySelector("#selL").onchange=e=>{lang=e.target.value;render();};
+  document.querySelector("#theme").onclick=()=>{theme=theme==="dark"?"light":"dark";render();};
+  document.querySelectorAll(".ticket").forEach(t=>t.onclick=e=>{
+    if(e.target.tagName!=="A") t.classList.toggle("flip");});
+}
+const BONUS = {t:"Paatal Lok (Season 1)",y:"2020 · Hindi",
+  by:"Sudip Sharma, Hardik Mehta, Sagar Haveli, Gunjit Chopra",
+  mono:"Pa",hue:0,
+  img:"https://upload.wikimedia.org/wikipedia/en/3/39/Paatal_Lok_poster.jpg",
+  p:"https://www.filmcompanion.in/streaming/download-the-script-of-paatal-lok",
+  k:"Film Companion Scripts · Hindi crime series · 9 locked episode drafts",
+  body:"A disillusioned Delhi cop lands an assassination case gone wrong — and finds three Indias underneath it.",
+  why:"Watch a season think in episodes: each draft carries its lock version, so you can see how late the back half was still moving."};
+document.querySelector("#bonus").innerHTML = `
+    <div class="ticket">
+      <div class="face">
+        <div class="poster"><div class="mono" style="background:linear-gradient(150deg,hsl(${BONUS.hue},45%,30%),hsl(${BONUS.hue},55%,14%))">${BONUS.mono}</div>
+          <img loading="lazy" src="${BONUS.img}" alt="Paatal Lok poster" onerror="this.remove()"></div>
+        <div class="main"><h2>${BONUS.t} <span>· ${BONUS.y}</span></h2>
+          <p class="by">${BONUS.by}</p>
+          <div class="chips"><span class="chip">9 episode drafts</span><span class="chip">Crime series</span></div></div>
+        <div class="stub"><small>READ</small><b>9 EP</b></div>
+      </div>
+      <div class="face back">
+        <p class="k">${BONUS.k}</p>
+        <p>${BONUS.body}</p>
+        <p class="why"><b>Why study it</b> — ${BONUS.why}</p>
+        <div class="row"><a href="${BONUS.p}" target="_blank" rel="noopener">Open scripts ↗</a>
+        <a class="ghost" href="${BONUS.p}" target="_blank" rel="noopener">Script page</a></div>
+      </div></div>`;
+document.querySelectorAll("#bonus .ticket").forEach(t=>t.onclick=e=>{
+  if(e.target.tagName!=="A") t.classList.toggle("flip");});
+render();
+</script>
+</body>
+</html>
