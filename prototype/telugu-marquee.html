@@ -55,11 +55,14 @@
   .ticket.flip{transform:rotateY(180deg)}
   .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
     background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);
-    overflow:hidden;display:flex}
+    display:flex;transition:visibility 0s linear .225s}
   .ticket:hover .face{border-color:var(--line-strong)}
   .ticket.flip .face{border-color:var(--accent)}
+  .back{visibility:hidden}
+  .ticket.flip .back{visibility:visible}
+  .ticket.flip .face:not(.back){visibility:hidden}
   .back{transform:rotateY(180deg);flex-direction:column;padding:16px 18px;gap:8px}
-  .poster{flex:0 0 112px;position:relative;background:var(--panel);overflow:hidden}
+  .poster{flex:0 0 112px;position:relative;background:var(--panel);overflow:hidden;border-radius:11px 0 0 11px}
   .poster .mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     font:700 40px/1 Georgia,serif;color:#fff}
   .poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}

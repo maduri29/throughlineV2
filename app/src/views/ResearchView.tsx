@@ -183,10 +183,6 @@ export default function ResearchView() {
     projects.find((p) => p.id === id)?.title ?? "Shared";
 
   const activeGuide = GUIDES.find((g) => g.id === guideId) ?? null;
-  const activeTelugu =
-    TELUGU_SCRIPTS.find((t) => t.id === teluguId) ??
-    SERIES_SPOTLIGHT.find((t) => t.id === teluguId) ??
-    null;
 
   const shelfItems: (TeluguScript | SeriesSpotlight | ShelfBook)[] = [
     ...TELUGU_SCRIPTS,
@@ -275,8 +271,6 @@ export default function ResearchView() {
   // A screenplay link is a pointer, not the script itself — saving it files
   // the link plus study notes as an ordinary reference, so it is searchable
   // under Links and travels with the story. The PDF stays with its host.
-  const activeBook = SHELF_BOOKS.find((b) => b.id === bookId) ?? null;
-
   // A book link points at a bookshop, not the book — saving it files the
   // link plus reading notes as an ordinary reference.
   const saveBook = (id: string): void => {
@@ -347,70 +341,183 @@ export default function ResearchView() {
     setPresent((p) => ({ ...p, [meta.id]: true }));
   };
 
-  /** One book ticket: cover, title + author + chips, BOOK stub. */
-  const bookCard = (b: ShelfBook) => (
-    <button
-      key={b.id}
-      aria-expanded={bookId === b.id}
-      className={`tln-btn rs-blueprint-card rs-ticket${bookId === b.id ? " rs-blueprint-card--active" : ""}`}
-      title={`${b.title} — ${b.author}`}
-      onClick={() => setBookId(bookId === b.id ? null : b.id)}
-    >
-      <span className="rs-ticket__poster" aria-hidden="true">
-        {b.title.charAt(0)}
-        {b.posterUrl && (
-          <img src={b.posterUrl} alt="" loading="lazy" onError={(e) => e.currentTarget.remove()} />
-        )}
-      </span>
-      <span className="rs-ticket__main">
-        <span className="rs-ticket__title">
-          {b.title} <span>· {b.year}</span>
-        </span>
-        <span className="rs-ticket__by">{b.author}</span>
-        <span className="rs-ticket__chips">
-          <span className="rs-chip">{b.lang} · Books</span>
-          <span className="rs-chip">{b.detail}</span>
-        </span>
-      </span>
-      <span className="rs-ticket__stub" aria-hidden="true">
-        <small>READ</small>
-        <b>BOOK</b>
-      </span>
-    </button>
-  );
+  /** Tickets flip in place like the prototype; details + links live on the
+      back. A div (not a button) so the back can hold real links and a save
+      button — keyboard toggles with Enter/Space like a button. */
+  const flipKeys = (flip: () => void) => (e: { key: string; preventDefault: () => void }) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      flip();
+    }
+  };
 
-  /** One ticket: poster, title + writer + chips, perforated stub. Keeps the
-      blueprint-card class so hover, active and filter selectors keep working. */
-  const shelfCard = (t: TeluguScript | SeriesSpotlight) => (
-    <button
-      key={t.id}
-      aria-expanded={teluguId === t.id}
-      className={`tln-btn rs-blueprint-card rs-ticket${teluguId === t.id ? " rs-blueprint-card--active" : ""}`}
-      title={`${t.title} (${t.year}) — ${t.format}`}
-      onClick={() => setTeluguId(teluguId === t.id ? null : t.id)}
-    >
-      <span className="rs-ticket__poster" aria-hidden="true">
-        {t.title.charAt(0)}
-        {t.posterUrl && (
-          <img src={t.posterUrl} alt="" loading="lazy" onError={(e) => e.currentTarget.remove()} />
-        )}
-      </span>
-      <span className="rs-ticket__main">
-        <span className="rs-ticket__title">
-          {t.title} <span>· {t.year}</span>
-        </span>
-        <span className="rs-ticket__by">{t.writer}</span>
-        <span className="rs-ticket__chips">
-          <span className="rs-chip">{shelfCategoryLabel(t)}</span>
-          <span className="rs-chip">{t.format}</span>
-        </span>
-      </span>
-      <span className="rs-ticket__stub" aria-hidden="true">
-        <small>{"episodes" in t ? "EPs" : "READ"}</small>
-        <b>{"episodes" in t ? t.episodes : t.year}</b>
-      </span>
-    </button>
-  );
+  /** One book ticket: cover front, blurb + bookshop link on the back. */
+  const bookCard = (b: ShelfBook) => {
+    const flipped = bookId === b.id;
+    const flip = (): void => setBookId(flipped ? null : b.id);
+    return (
+      <div
+        key={b.id}
+        role="button"
+        tabIndex={0}
+        aria-expanded={flipped}
+        aria-label={`${b.title} — flip for details`}
+        title={`${b.title} — ${b.author}`}
+        className={`tln-btn rs-blueprint-card rs-ticket${flipped ? " rs-ticket--flip" : ""}`}
+        onClick={flip}
+        onKeyDown={flipKeys(flip)}
+      >
+        <div className="rs-ticket__face rs-ticket__front" aria-hidden={flipped}>
+          <span className="rs-ticket__poster" aria-hidden="true">
+            {b.title.charAt(0)}
+            {b.posterUrl && (
+              <img
+                src={b.posterUrl}
+                alt=""
+                loading="lazy"
+                onError={(e) => e.currentTarget.remove()}
+              />
+            )}
+          </span>
+          <span className="rs-ticket__main">
+            <span className="rs-ticket__title">
+              {b.title} <span>· {b.year}</span>
+            </span>
+            <span className="rs-ticket__by">{b.author}</span>
+            <span className="rs-ticket__chips">
+              <span className="rs-chip">{b.lang} · Books</span>
+              <span className="rs-chip">{b.detail}</span>
+            </span>
+          </span>
+          <span className="rs-ticket__stub" aria-hidden="true">
+            <small>READ</small>
+            <b>BOOK</b>
+          </span>
+        </div>
+        <div className="rs-ticket__face rs-ticket__back" aria-hidden={!flipped}>
+          <p className="rs-ticket__kicker">
+            {b.lang} · Books · {b.source}
+          </p>
+          <p className="rs-ticket__log">
+            By {b.author}. {b.blurb}
+          </p>
+          <p className="rs-ticket__why">
+            <b>Why read it:</b> {b.why}
+          </p>
+          <div className="rs-ticket__actions">
+            <a
+              className="tln-btn tln-btn--accent"
+              href={b.pageUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Open book page ↗
+            </a>
+            <button
+              className="tln-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                saveBook(b.id);
+              }}
+            >
+              + Save
+            </button>
+          </div>
+          <p className="rs-ticket__file">Saves to {titleOf(scope === "all" ? undefined : scope)}</p>
+        </div>
+      </div>
+    );
+  };
+
+  /** One script ticket: poster front, logline + script links on the back. */
+  const shelfCard = (t: TeluguScript | SeriesSpotlight) => {
+    const flipped = teluguId === t.id;
+    const flip = (): void => setTeluguId(flipped ? null : t.id);
+    const cat = shelfCategoryLabel(t);
+    return (
+      <div
+        key={t.id}
+        role="button"
+        tabIndex={0}
+        aria-expanded={flipped}
+        aria-label={`${t.title} (${t.year}) — flip for details`}
+        title={`${t.title} (${t.year}) — ${t.format}`}
+        className={`tln-btn rs-blueprint-card rs-ticket${flipped ? " rs-ticket--flip" : ""}`}
+        onClick={flip}
+        onKeyDown={flipKeys(flip)}
+      >
+        <div className="rs-ticket__face rs-ticket__front" aria-hidden={flipped}>
+          <span className="rs-ticket__poster" aria-hidden="true">
+            {t.title.charAt(0)}
+            {t.posterUrl && (
+              <img
+                src={t.posterUrl}
+                alt=""
+                loading="lazy"
+                onError={(e) => e.currentTarget.remove()}
+              />
+            )}
+          </span>
+          <span className="rs-ticket__main">
+            <span className="rs-ticket__title">
+              {t.title} <span>· {t.year}</span>
+            </span>
+            <span className="rs-ticket__by">{t.writer}</span>
+            <span className="rs-ticket__chips">
+              <span className="rs-chip">{cat}</span>
+              <span className="rs-chip">{t.format}</span>
+            </span>
+          </span>
+          <span className="rs-ticket__stub" aria-hidden="true">
+            <small>{"episodes" in t ? "EPs" : "READ"}</small>
+            <b>{"episodes" in t ? t.episodes : t.year}</b>
+          </span>
+        </div>
+        <div className="rs-ticket__face rs-ticket__back" aria-hidden={!flipped}>
+          <p className="rs-ticket__kicker">
+            {cat} · {t.source}
+          </p>
+          <p className="rs-ticket__log">{t.logline}</p>
+          <p className="rs-ticket__why">
+            <b>Why study it:</b> {t.studyNote}
+          </p>
+          <div className="rs-ticket__actions">
+            <a
+              className="tln-btn tln-btn--accent"
+              href={t.pageUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Open script ↗
+            </a>
+            {t.pdfUrl && t.pdfUrl !== t.pageUrl && (
+              <a
+                className="tln-btn"
+                href={t.pdfUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                onClick={(e) => e.stopPropagation()}
+              >
+                PDF
+              </a>
+            )}
+            <button
+              className="tln-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                void saveTelugu(t.id);
+              }}
+            >
+              + Save
+            </button>
+          </div>
+          <p className="rs-ticket__file">Saves to {titleOf(scope === "all" ? undefined : scope)}</p>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <main className="tln-library rs-page">
@@ -1095,82 +1202,6 @@ export default function ResearchView() {
                 >
                   Reset filters
                 </button>
-              </div>
-            )}
-            {activeTelugu && (
-              <div className="rs-guide-panel">
-                <p className="rs-guide-panel__blurb">
-                  {shelfCategoryLabel(activeTelugu)} · Written by {activeTelugu.writer} · Directed
-                  by {activeTelugu.director} · {activeTelugu.source}
-                </p>
-                <div className="rs-guide-panel__body">
-                  {activeTelugu.logline}
-                  {"\n\n"}Why study it: {activeTelugu.studyNote}
-                </div>
-                <div className="rs-guide-panel__actions">
-                  <a
-                    className="tln-btn tln-btn--accent"
-                    href={activeTelugu.pageUrl}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    title={`Read ${activeTelugu.title} (${activeTelugu.source})`}
-                  >
-                    <ExternalLink size={13} aria-hidden="true" /> Open script page
-                  </a>
-                  {activeTelugu.pdfUrl && activeTelugu.pdfUrl !== activeTelugu.pageUrl && (
-                    <a
-                      className="tln-btn"
-                      href={activeTelugu.pdfUrl}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      title={`Open the ${activeTelugu.format} PDF directly`}
-                    >
-                      <ExternalLink size={13} aria-hidden="true" /> Open PDF
-                    </a>
-                  )}
-                  <button
-                    className="tln-btn"
-                    onClick={() => saveTelugu(activeTelugu.id)}
-                    title={`Save “${activeTelugu.title}” as a note you can annotate`}
-                  >
-                    <Plus size={14} aria-hidden="true" /> Save as note
-                  </button>
-                  <span className="rs-guide-panel__file-hint">
-                    Filing to: <strong>{titleOf(scope === "all" ? undefined : scope)}</strong>
-                  </span>
-                </div>
-              </div>
-            )}
-            {activeBook && (
-              <div className="rs-guide-panel">
-                <p className="rs-guide-panel__blurb">
-                  {activeBook.lang} · Books · {activeBook.detail} · {activeBook.source}
-                </p>
-                <div className="rs-guide-panel__body">
-                  By {activeBook.author}. {activeBook.blurb}
-                  {"\n\n"}Why read it: {activeBook.why}
-                </div>
-                <div className="rs-guide-panel__actions">
-                  <a
-                    className="tln-btn tln-btn--accent"
-                    href={activeBook.pageUrl}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    title={`Find ${activeBook.title} (${activeBook.source})`}
-                  >
-                    <ExternalLink size={13} aria-hidden="true" /> Open book page
-                  </a>
-                  <button
-                    className="tln-btn"
-                    onClick={() => saveBook(activeBook.id)}
-                    title={`Save “${activeBook.title}” as a note you can annotate`}
-                  >
-                    <Plus size={14} aria-hidden="true" /> Save as note
-                  </button>
-                  <span className="rs-guide-panel__file-hint">
-                    Filing to: <strong>{titleOf(scope === "all" ? undefined : scope)}</strong>
-                  </span>
-                </div>
               </div>
             )}
           </div>
