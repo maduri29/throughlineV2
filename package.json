@@ -22,6 +22,8 @@
     "verify:mobile": "bun --cwd app verify:mobile",
     "verify:library": "bun --cwd app verify:library",
     "verify:search": "bun --cwd app verify:search",
-    "verify:ui": "bun --cwd app verify:ui"
+    "verify:ui": "bun --cwd app verify:ui",
+    "deploy": "bunx vercel --prod --yes",
+    "deploy:prod": "bunx vercel --prod --yes"
   }
 }

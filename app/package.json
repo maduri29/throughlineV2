@@ -25,7 +25,9 @@
     "verify:search": "bun verify-search.ts",
     "verify:ui": "bun verify-ui.ts",
     "check": "bun run fmt:check && bun run lint && bun run typecheck && bun test",
-    "start": "next start -p 4517"
+    "start": "next start -p 4517",
+    "deploy": "bunx vercel --prod --yes --cwd ..",
+    "deploy:prod": "bunx vercel --prod --yes --cwd .."
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.0",
