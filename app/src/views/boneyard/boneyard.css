@@ -15,9 +15,7 @@
   color: var(--ink-2);
 }
 .by-empty h2 {
-  font:
-    400 28px/1.3 Georgia,
-    serif;
+  font: 600 28px/1.3 var(--font-sans);
   color: var(--ink);
 }
 /* Incubation workspace */
@@ -32,9 +30,7 @@
   margin-bottom: 26px;
 }
 .by-title {
-  font:
-    400 46px/1.1 Georgia,
-    serif;
+  font: 600 46px/1.1 var(--font-sans);
   margin: 0 0 12px;
 }
 .by-subtitle {
@@ -230,9 +226,7 @@
   background: none;
   color: var(--ink);
   cursor: pointer;
-  font:
-    400 23px/1.3 Georgia,
-    serif;
+  font: 600 23px/1.3 var(--font-sans);
   overflow-wrap: anywhere;
 }
 .by-card__summary {
@@ -286,9 +280,7 @@
   gap: 12px;
 }
 .by-detail__title {
-  font:
-    400 30px/1.25 Georgia,
-    serif;
+  font: 600 30px/1.25 var(--font-sans);
   overflow-wrap: anywhere;
   margin: 24px 0;
 }
@@ -360,9 +352,7 @@
   background: rgb(0 0 0 / 0.7);
 }
 .by-evolve h2 {
-  font:
-    400 29px/1.2 Georgia,
-    serif;
+  font: 600 29px/1.2 var(--font-sans);
 }
 .by-evolve > p {
   font-size: 13px;

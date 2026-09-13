@@ -274,7 +274,7 @@ export function downloadEnvelope(env: Envelope): void {
   );
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${kebab(env.project.title)}.throughline.json`;
+  a.download = `${kebab(env.project.title)}.story-lane.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

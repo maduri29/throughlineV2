@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { groupByDay, scopeToProject } from "../src/data/scopes";
+import { autoScheduleDays, groupByDay, scopeToProject } from "../src/data/scopes";
 import type { GraphEdge, GraphNode } from "../src/types";
 
 function N(id: string, type: GraphNode["type"], parentId?: string): GraphNode {
@@ -73,5 +73,56 @@ describe("groupByDay (Timeline)", () => {
     expect(buckets.map((b) => b.day)).toEqual([-9, -2, 1, 3, null]);
     expect(buckets[0]?.scenes.map((s) => s.id)).toEqual(["fb"]);
     expect(buckets[4]?.scenes.map((s) => s.id)).toEqual(["u"]);
+  });
+});
+
+describe("autoScheduleDays (Timeline)", () => {
+  const scene = (id: string, parentId?: string, day?: number | null): GraphNode => {
+    const n: GraphNode = { id, type: "scene", title: id };
+    if (parentId) n.parentId = parentId;
+    if (day !== undefined) n.storyTime = { storyDay: day, tod: null, eraLabel: null };
+    return n;
+  };
+  const episode = (id: string, order: string[] = []): GraphNode => ({
+    id,
+    type: "episode",
+    title: id,
+    parentId: "p",
+    order,
+  });
+
+  test("dates unscheduled from day 1 in episode then child order", () => {
+    const nodes = [
+      episode("e1", ["s2", "s1"]),
+      episode("e2", ["s3"]),
+      scene("s1", "e1"),
+      scene("s2", "e1"),
+      scene("s3", "e2"),
+    ];
+    expect(autoScheduleDays(nodes)).toEqual([
+      { id: "s2", day: 1 },
+      { id: "s1", day: 2 },
+      { id: "s3", day: 3 },
+    ]);
+  });
+
+  test("continues after the highest day and never touches dated scenes", () => {
+    const nodes = [
+      episode("e1", ["done", "next", "fb"]),
+      scene("done", "e1", 2),
+      scene("next", "e1"),
+      scene("fb", "e1", -9),
+    ];
+    expect(autoScheduleDays(nodes)).toEqual([{ id: "next", day: 3 }]);
+  });
+
+  test("parentless unscheduled scenes go last; nothing to do returns []", () => {
+    const nodes = [episode("e1", ["a"]), scene("a", "e1"), scene("loose")];
+    expect(autoScheduleDays(nodes)).toEqual([
+      { id: "a", day: 1 },
+      { id: "loose", day: 2 },
+    ]);
+    expect(autoScheduleDays([episode("e1", []), scene("a", "e1", 4)])).toEqual([]);
+    expect(autoScheduleDays([])).toEqual([]);
   });
 });

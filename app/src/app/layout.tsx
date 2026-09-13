@@ -12,12 +12,19 @@ import "../styles.css";
 import "../views/library/library.css";
 import "../shell/shell.css";
 import "../shell/mobile.css";
+import "../views/palette.css";
 import "../views/boneyard/boneyard.css";
 import "../views/research/research.css";
 
 export const metadata: Metadata = {
-  title: "Throughline",
-  description: "Develop a film or series: map, timeline, characters and script in one graph.",
+  title: "Story Lane",
+  applicationName: "Story Lane",
+  description:
+    "A little structure. A world of possibilities. Capture ideas, shape characters, and find your way into a story.",
+  icons: {
+    icon: { url: "/brand/story-lane-mark.svg?v=07", type: "image/svg+xml" },
+    shortcut: "/brand/story-lane-mark.svg?v=07",
+  },
 };
 
 export const viewport: Viewport = {

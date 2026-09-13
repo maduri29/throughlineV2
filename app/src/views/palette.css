@@ -1,0 +1,212 @@
+.tln-quick-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.tln-quick-search:hover {
+  background: var(--tint);
+  color: var(--ink);
+  border-color: var(--accent);
+}
+.tln-quick-search kbd,
+.tln-palette kbd {
+  font: inherit;
+  font-size: 10px;
+  padding: 2px 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+}
+dialog.tln-palette {
+  inset: 12dvh auto auto 50%;
+  margin: 0;
+  padding: 0;
+  width: min(620px, calc(100vw - 32px));
+  max-width: none;
+  max-height: 78dvh;
+  color: var(--ink);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 35%);
+}
+dialog.tln-palette[open] {
+  display: flex;
+  flex-direction: column;
+}
+.tln-palette::backdrop {
+  background: rgb(0 0 0 / 55%);
+  backdrop-filter: blur(5px);
+}
+.tln-palette__search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.tln-palette .tln-palette__input {
+  min-width: 0;
+  flex: 1;
+  padding: 8px 0;
+  border: 0;
+  font-size: 16px;
+}
+.tln-palette__input::placeholder {
+  color: var(--ink-2);
+}
+.tln-palette__close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.tln-palette button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.tln-palette__scope {
+  margin: 0;
+  padding: 10px 18px 4px;
+  font-size: 11px;
+  color: var(--ink-2);
+  flex-shrink: 0;
+}
+.tln-palette .tln-palette__list {
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px;
+}
+.tln-palette__group {
+  padding: 12px 10px 7px;
+  color: var(--ink-2);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.tln-palette .tln-palette__item {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid transparent;
+}
+.tln-palette .tln-palette__item--on {
+  border-color: var(--accent);
+}
+.tln-palette__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--accent);
+}
+.tln-palette__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.tln-palette__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tln-palette__label mark {
+  color: var(--accent);
+  background: transparent;
+}
+.tln-palette .tln-palette__sub,
+.tln-palette .tln-palette__hint {
+  color: var(--ink-2);
+}
+.tln-palette__arrow {
+  color: var(--accent);
+  opacity: 0;
+  flex-shrink: 0;
+}
+.tln-palette__item--on .tln-palette__arrow {
+  opacity: 1;
+}
+.tln-palette .tln-palette__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 28px 20px;
+  text-align: center;
+  overflow-wrap: anywhere;
+  overflow-y: auto;
+  color: var(--ink-2);
+}
+.tln-palette__empty strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+.tln-palette__empty p {
+  margin: 0;
+}
+.tln-palette .tln-palette__hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 18px;
+  flex-shrink: 0;
+  background: var(--panel);
+  font-size: 11px;
+}
+@media (max-width: 900px) {
+  .tln-quick-search kbd {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  .tln-quick-search {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .tln-quick-search > span {
+    display: none;
+  }
+  dialog.tln-palette {
+    top: 16px;
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 32px);
+  }
+  .tln-palette__search-row {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .tln-palette__close {
+    width: 44px;
+    height: 44px;
+  }
+  .tln-palette__hint > span:first-child {
+    display: none;
+  }
+}

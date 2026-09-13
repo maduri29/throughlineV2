@@ -1,35 +1,30 @@
-/**
- * The mark: one unbroken line rising through three points and back down.
- *
- * It is the product's name drawn literally — a throughline is the single thread
- * running through a story — and it happens to trace a story arc, with the beats
- * sitting on it. Both readings are true at once, which is why this shape rather
- * than a generic glyph.
- *
- * `currentColor` throughout so it inherits whatever it sits on, and no fixed
- * pixel size: the caller sets it.
- */
-export default function Logo({ size = 22 }: { size?: number }) {
+/** Option 07 transparent header lockup: shot / reverse shot dialogue frames. */
+export default function Logo({ size = 44 }: { size?: number }) {
   return (
-    <svg
-      className="tln-logo"
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      role="img"
-      aria-label="Throughline"
-    >
-      <path
-        d="M3 19C6 19 7 5 12 5s6 14 9 14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        opacity="0.55"
-      />
-      <circle cx="3" cy="19" r="2.3" fill="currentColor" />
-      <circle cx="12" cy="5" r="2.3" fill="currentColor" />
-      <circle cx="21" cy="19" r="2.3" fill="currentColor" />
-    </svg>
+    <span className="tln-logo-lockup">
+      <svg
+        className="tln-logo"
+        viewBox="0 0 128 128"
+        width={size}
+        height={size}
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path
+          d="M29 15H12v18m87-18h17v18M12 96v17h17m70 0h17V96"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="5"
+        />
+        <path d="M23 29h70v29H49L36 71V58H23Z" fill="var(--ink)" />
+        <path d="M105 76H49v27h28l13 12v-12h15Z" fill="currentColor" />
+        <path d="M46 38h25M34 47h47" stroke="var(--panel)" strokeWidth="3" />
+        <path d="M67 85h20M60 94h34" stroke="var(--accent-fg)" strokeWidth="3" />
+      </svg>
+      <span className="tln-logo-lockup__type">
+        <span className="tln-logo-lockup__title">Story Lane</span>
+        <span className="tln-logo-lockup__subtitle">Stories made for the screen</span>
+      </span>
+    </span>
   );
 }

@@ -1,5 +1,6 @@
 // Normalized IndexedDB access for ADR-0001 (build-phase adapter that replaces the
 // scaffold's idb-keyval blob). Five object stores, one database.
+// Keep the original storage namespace: the Story Lane rename must preserve existing work.
 const DB_NAME = "throughline.v1";
 const VERSION = 3;
 
@@ -58,7 +59,7 @@ function request(version: number | undefined): Promise<IDBDatabase> {
     req.onblocked = () =>
       reject(
         new Error(
-          "Throughline is open in another tab running an older version. Close the other tabs and reload.",
+          "Story Lane is open in another tab running an older version. Close the other tabs and reload.",
         ),
       );
     req.onsuccess = () => resolve(watch(req.result));

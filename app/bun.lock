@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "throughline-app",
+      "name": "story-lane-app",
       "dependencies": {
         "@codemirror/commands": "^6.11.0",
         "@codemirror/state": "^6.7.2",

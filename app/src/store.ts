@@ -1,4 +1,4 @@
-// Throughline state: normalized in-memory maps over IndexedDB (ADR-0001) with a
+// Story Lane state: normalized in-memory maps over IndexedDB (ADR-0001) with a
 // full persisted undo/redo op-log (ADR-0003) and hybrid autosave (ADR-0004).
 import { create } from "zustand";
 import { demoGraph } from "./demo";
@@ -43,6 +43,8 @@ type Actions = {
   select: (ids: string[]) => void;
   addNode: (partial: Pick<GraphNode, "type" | "title"> & Partial<GraphNode>) => string;
   patchNode: (id: string, patch: Partial<GraphNode>) => void;
+  /** Schedule scenes in one undoable step; days come from autoScheduleDays. */
+  scheduleScenes: (plan: Array<{ id: string; day: number | null }>) => void;
   deleteSelection: () => void;
   connect: (from: string, to: string, type: EdgeType, label?: string) => boolean;
   patchEdge: (id: string, patch: Partial<GraphEdge>) => void;
@@ -583,6 +585,25 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
       prev[k] = cur[k] as never;
     }
     commit(set, get, "Edit", [{ t: "patchNode", id, patch, prev }]);
+  },
+
+  scheduleScenes: (plan) => {
+    const { nodes } = get();
+    const forward: Op[] = [];
+    for (const { id, day } of plan) {
+      const cur = nodes[id];
+      if (!cur || cur.type !== "scene") continue;
+      const st = cur.storyTime ?? { storyDay: null, tod: null, eraLabel: null };
+      if (st.storyDay === day) continue;
+      forward.push({
+        t: "patchNode",
+        id,
+        patch: { storyTime: { ...st, storyDay: day } },
+        prev: { storyTime: cur.storyTime },
+      });
+    }
+    if (forward.length === 0) return;
+    commit(set, get, `Schedule ${forward.length} scenes`, forward);
   },
 
   deleteSelection: () => {

@@ -260,7 +260,7 @@ export async function importBoneyard(text: string): Promise<void> {
     data.version !== 1 ||
     !("revisions" in data)
   )
-    throw new Error("Choose a Throughline Boneyard backup. Story backups belong in Stories.");
+    throw new Error("Choose a Story Lane Boneyard backup. Story backups belong in Stories.");
   await mergeRevisions(parseRevisions(data.revisions));
 }
 export { revisionHeads };

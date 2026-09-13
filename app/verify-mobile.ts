@@ -60,6 +60,7 @@ try {
   await page.getByTitle("All stories", { exact: true }).click();
   for (const name of ["Boneyard", "Research", "Stories"]) {
     await page.getByRole("button", { name, exact: true }).click();
+    await page.waitForURL(`**/${name.toLowerCase()}`);
     await page.locator(".tln-library").waitFor();
     check(
       `${name} fits a phone`,

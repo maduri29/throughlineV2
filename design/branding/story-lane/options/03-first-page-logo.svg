@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="240" viewBox="0 0 760 240" role="img" aria-labelledby="title desc"><title id="title">Story Lane — The First Page</title><desc id="desc">A folded screenplay page with scene-heading and dialogue lines; the page opens into a widescreen frame.</desc><rect width="760" height="240" rx="20" fill="#192c59"/><g transform="translate(38 43) scale(1.2)"><path d="M29 10h47l23 23v76a9 9 0 0 1-9 9H29a9 9 0 0 1-9-9V19a9 9 0 0 1 9-9Z" fill="#f6f3e9"/>
+    <path d="M76 10v23h23" fill="#92aaf4"/>
+    <path d="M32 33h25M32 43h34M44 60h21M38 68h39M40 75h35" fill="none" stroke="#192c59" stroke-width="4" stroke-linecap="square"/>
+    <rect x="48" y="83" width="69" height="35" rx="5" fill="#4673ed"/>
+    <path d="M57 101h50m-50 0 8-8m-8 8 8 8" fill="none" stroke="#f6f3e9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M32 88v18" stroke="#4673ed" stroke-width="4"/></g><text x="229" y="121" fill="#f6f3e9" font-family="Georgia, Times New Roman, serif" font-size="64" font-weight="400" letter-spacing="-2.7">Story Lane</text><path d="M233 145h38" stroke="#4673ed" stroke-width="3"/><text x="286" y="149" fill="#4673ed" font-family="Arial, Helvetica, sans-serif" font-size="11" letter-spacing="1.5">EVERY SCREEN STARTS HERE</text></svg>

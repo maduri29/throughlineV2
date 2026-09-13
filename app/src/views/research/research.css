@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------- research.css --
-   Editorial, craft-centric design language for Throughline's Research tab.
+   Editorial, craft-centric design language for Story Lane's Research tab.
    Matches the atmosphere, typography, and card treatments of Stories & Boneyard.
 ----------------------------------------------------------------------------- */
 
@@ -277,7 +277,7 @@
   font-weight: 600 !important;
   letter-spacing: -0.01em !important;
   line-height: 1 !important;
-  color: #101214 !important;
+  color: var(--accent-fg) !important;
   border-radius: 8px;
   flex-shrink: 0;
   white-space: nowrap;
@@ -859,9 +859,7 @@
 }
 
 .rs-empty h2 {
-  font:
-    400 24px/1.3 Georgia,
-    serif;
+  font: 600 24px/1.3 var(--font-sans);
   color: var(--ink);
   margin: 0 0 8px;
 }
@@ -1123,7 +1121,7 @@
   margin-top: 18px;
 }
 
-/* --- Shelf tickets: 3D flip, details + links on the back --- */
+/* Shelf tickets size to their content so details and actions remain readable. */
 .rs-telugu .rs-blueprints__cards {
   perspective: 1400px;
 }
@@ -1131,14 +1129,18 @@
 .rs-telugu .rs-ticket {
   flex: 1 1 300px;
   max-width: 430px;
-  height: 224px;
+  min-height: 224px;
+  height: auto;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
   padding: 0;
   gap: 0;
   align-items: stretch;
   text-align: left;
   position: relative;
-  transform-style: preserve-3d;
-  transition: transform 0.45s ease;
+  white-space: normal;
   cursor: pointer;
   border: 0;
   background: transparent;
@@ -1146,33 +1148,37 @@
 }
 
 .rs-telugu .rs-ticket--flip {
-  transform: rotateY(180deg);
+  transform: none;
 }
 
 .rs-ticket__face {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  min-width: 0;
+  min-height: 224px;
+  box-sizing: border-box;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: var(--shadow-sm);
-  transition: visibility 0s linear 0.225s;
 }
 
 /* Belt and braces: the showing face swaps exactly when the card is edge-on,
    so a correct side renders even where backface culling is ignored. */
 .rs-ticket__back {
   visibility: hidden;
+  display: none;
 }
 
 .rs-telugu .rs-ticket--flip .rs-ticket__back {
   visibility: visible;
+  display: flex;
 }
 
 .rs-telugu .rs-ticket--flip .rs-ticket__front {
   visibility: hidden;
+  display: none;
 }
 
 .rs-telugu .rs-ticket:hover .rs-ticket__face {
@@ -1190,11 +1196,16 @@
 }
 
 .rs-ticket__back {
-  transform: rotateY(180deg);
-  display: flex;
+  transform: none;
   flex-direction: column;
   gap: 8px;
   padding: 16px 18px;
+}
+.rs-ticket__back > p {
+  margin: 0;
+  flex-shrink: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .rs-ticket__meta {
@@ -1238,13 +1249,26 @@
 .rs-ticket__actions {
   margin-top: auto;
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
+  padding-top: 8px;
+  align-items: stretch;
 }
 
 .rs-ticket__actions .tln-btn {
-  font-size: 12.5px;
-  padding: 7px 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  min-width: 0;
+  flex: 1 0 auto;
+  font: 600 13px/1.2 var(--font-sans);
+  padding: 10px 12px;
+  margin: 0;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .rs-ticket__poster {
@@ -1256,9 +1280,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font:
-    700 30px/1 Georgia,
-    serif;
+  font: 700 30px/1 var(--font-sans);
   color: var(--ink-2);
 }
 
@@ -1342,6 +1364,32 @@
 }
 
 @media (max-width: 768px) {
+  .rs-telugu .rs-blueprints__cards {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rs-telugu .rs-ticket {
+    max-width: none;
+  }
+  .rs-ticket__poster {
+    flex-basis: 26%;
+  }
+  .rs-ticket__stub {
+    flex-basis: 36px;
+  }
+  .rs-ticket__main {
+    padding: 14px 10px;
+  }
+  .rs-ticket__chips .rs-chip {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .rs-ticket__back {
+    padding: 16px;
+  }
+  .rs-ticket__actions .tln-btn {
+    padding-inline: 9px;
+  }
   .rs-telugu__filtersbar {
     flex-direction: column;
     align-items: stretch;

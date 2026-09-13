@@ -9,7 +9,7 @@ import {
   SelectionMode,
   useReactFlow,
 } from "@xyflow/react";
-import type { Edge, NodeTypes, OnConnectEnd } from "@xyflow/react";
+import type { Edge, EdgeChange, NodeChange, NodeTypes, OnConnectEnd } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import GraphCard, { type CardFlowNode } from "../GraphNode";
 import { metaGet, metaSet } from "../data/idb";
@@ -157,6 +157,7 @@ function MapInner() {
   const connect = useGraphStore((s) => s.connect);
   const deleteSelection = useGraphStore((s) => s.deleteSelection);
   const select = useGraphStore((s) => s.select);
+  const selection = useGraphStore((s) => s.selection);
   const undo = useGraphStore((s) => s.undo);
   const screenToFlow = useReactFlow().screenToFlowPosition;
 
@@ -195,7 +196,14 @@ function MapInner() {
   );
   const visibleIds = useMemo(() => new Set(visibleNodes.map((n) => n.id)), [visibleNodes]);
 
-  const rfNodes = useMemo(() => layout(visibleNodes, orderFor), [visibleNodes, orderFor]);
+  const rfNodes = useMemo(
+    () =>
+      layout(visibleNodes, orderFor).map((node) => ({
+        ...node,
+        selected: selection.includes(node.id),
+      })),
+    [visibleNodes, orderFor, selection],
+  );
   const rfEdges = useMemo<Edge[]>(
     () =>
       Object.values(edgeMap)
@@ -204,6 +212,7 @@ function MapInner() {
           id: e.id,
           source: e.from,
           target: e.to,
+          selected: selection.includes(e.id),
           label: e.label,
           style: {
             stroke: EDGE_STROKE[e.type] ?? "#9aa3ba",
@@ -213,7 +222,22 @@ function MapInner() {
               : {}),
           },
         })),
-    [edgeMap, visibleIds],
+    [edgeMap, visibleIds, selection],
+  );
+
+  const onSelectionChanges = useCallback(
+    (changes: (NodeChange | EdgeChange)[]) => {
+      const selectionChanges = changes.filter((change) => change.type === "select");
+      if (!selectionChanges.length) return;
+      const current = useGraphStore.getState().selection;
+      const next = new Set(current);
+      for (const change of selectionChanges) {
+        if (change.selected) next.add(change.id);
+        else next.delete(change.id);
+      }
+      if (current.length !== next.size || !current.every((id) => next.has(id))) select([...next]);
+    },
+    [select],
   );
 
   const pushToast = useCallback((label: string) => {
@@ -356,13 +380,8 @@ function MapInner() {
           panOnDrag={[1, 2]}
           selectionMode={SelectionMode.Partial}
           proOptions={{ hideAttribution: true }}
-          onSelectionChange={(p) => {
-            const ids = [...p.nodes.map((n) => n.id), ...p.edges.map((e) => e.id)];
-            const s = useGraphStore.getState();
-            if (s.selection.length !== ids.length || !s.selection.every((v) => ids.includes(v))) {
-              select(ids);
-            }
-          }}
+          onNodesChange={onSelectionChanges}
+          onEdgesChange={onSelectionChanges}
           onPaneClick={() => select([])}
           onConnectEnd={onConnectEnd}
         >

@@ -3,7 +3,7 @@
 // and locations reached through the scenes' takes_place_at. A card expands
 // into an inline editor (name/role/synopsis/backstory) committing on blur via
 // patchNode so each blur is one undo entry (ADR-0003), like the Inspector.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CHAR_ROLE_SUGGESTIONS } from "../types";
 import type { GraphNode } from "../types";
 import { useGraphStore } from "../store";
@@ -16,8 +16,19 @@ export default function CharactersView() {
   const select = useGraphStore((s) => s.select);
   const addNodeOfType = useGraphStore((s) => s.addNodeOfType);
   const patchNode = useGraphStore((s) => s.patchNode);
+  const selection = useGraphStore((s) => s.selection);
+  const selectedCharacter = selection.find((id) => nodes[id]?.type === "character") ?? null;
+  const selectedCard = useRef<HTMLDivElement>(null);
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(selectedCharacter);
+  const [previousSelection, setPreviousSelection] = useState(selection);
+  if (selection !== previousSelection) {
+    setPreviousSelection(selection);
+    if (selectedCharacter) setExpandedId(selectedCharacter);
+  }
+  useEffect(() => {
+    selectedCard.current?.scrollIntoView({ block: "nearest" });
+  }, [selection]);
   const [draft, setDraft] = useState<Partial<GraphNode>>({});
 
   // Reset stale edits when the expanded card changes — derive-during-render.
@@ -61,7 +72,7 @@ export default function CharactersView() {
 
   const toggle = (id: string): void => {
     setExpandedId((cur) => (cur === id ? null : id));
-    select([id]);
+    if (expandedId !== id) select([id]);
   };
 
   return (
@@ -86,7 +97,11 @@ export default function CharactersView() {
         );
 
         return (
-          <div key={c.id} className={`tln-charcard${isExpanded ? " tln-charcard--open" : ""}`}>
+          <div
+            key={c.id}
+            ref={selectedCharacter === c.id ? selectedCard : undefined}
+            className={`tln-charcard${isExpanded ? " tln-charcard--open" : ""}`}
+          >
             <div className="tln-charcard__head">
               <span className="tln-charcard__name">{val("title") || c.title}</span>
               {!isExpanded && c.role ? <span className="tln-charcard__badge">{c.role}</span> : null}

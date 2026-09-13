@@ -3,7 +3,7 @@ import { StoryOrigins } from "./views/boneyard/StoryOrigins";
 import { useWorkspaceTheme } from "./shell/useWorkspaceTheme";
 import { usePathname, useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Cloud, CloudCheck, Laptop, RefreshCw } from "lucide-react";
+import { Cloud, CloudCheck, Laptop, RefreshCw, Search } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { useGraphStore } from "./store";
 import BoneyardView from "./views/BoneyardView";
@@ -105,6 +105,7 @@ export default function App() {
     const pid = useGraphStore.getState().projectId;
     if (pid && !routeId) router.push(`/stories/${pid}`);
     setLens(type === "character" ? "characters" : "map");
+    setDetailsOpen(type !== "character");
     useGraphStore.getState().select([id]);
   };
 
@@ -121,6 +122,13 @@ export default function App() {
       } else if (mod && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen((o) => !o);
+      } else if (
+        e.defaultPrevented ||
+        (e.target instanceof HTMLElement &&
+          e.target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]'))
+      ) {
+        // Text fields and the screenplay editor own their own undo history.
+        return;
       } else if (mod && !e.shiftKey && e.key.toLowerCase() === "z") {
         e.preventDefault();
         undo();
@@ -147,7 +155,6 @@ export default function App() {
             showing them there made the toolbar look broken rather than full. */}
         <button className="tln-brand" onClick={() => router.push("/stories")} title="All stories">
           <Logo />
-          <span className="tln-brand__name">Throughline</span>
         </button>
 
         {/* Top-level tabs, only outside a story — inside one, the header is
@@ -169,70 +176,83 @@ export default function App() {
           </nav>
         )}
 
-        <span className="tln-header__gap" />
-
-        {level !== "workspace" && (
+        <div className="tln-header__actions">
           <button
-            className="tln-sync-btn"
-            onClick={() => setSyncOpen(true)}
-            title={syncMessage ?? "Cross-device cloud sync (Turso)"}
-            aria-label="Cloud sync"
+            className="tln-quick-search"
+            onClick={() => setPaletteOpen(true)}
+            aria-label="Quick search"
+            aria-haspopup="dialog"
+            aria-keyshortcuts="Control+k Meta+k"
+            title="Quick search (Ctrl+K / ⌘K)"
           >
-            <span className={`tln-sync-icon tln-sync-icon--${syncStatus}`}>
-              {syncStatus === "syncing" ? (
-                <RefreshCw size={13} className="tln-spin" />
-              ) : syncStatus === "synced" ? (
-                <CloudCheck size={14} />
-              ) : (
-                <Cloud size={14} />
-              )}
-            </span>
+            <Search size={16} aria-hidden="true" />
+            <span>Quick search</span>
+            <kbd>⌘ / Ctrl K</kbd>
           </button>
-        )}
 
-        <button
-          className="tln-tool tln-tool--theme"
-          onClick={toggleTheme}
-          title={
-            theme === "dark"
-              ? "Switch to Archival Print (Light)"
-              : "Switch to Director's Studio (Dark)"
-          }
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? (
-            <svg
-              className="tln-tool__icon"
-              viewBox="0 0 16 16"
-              width="15"
-              height="15"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
+          {level !== "workspace" && (
+            <button
+              className="tln-sync-btn"
+              onClick={() => setSyncOpen(true)}
+              title={syncMessage ?? "Cross-device cloud sync (Turso)"}
+              aria-label="Cloud sync"
             >
-              <circle cx="8" cy="8" r="3.2" />
-              <path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" />
-            </svg>
-          ) : (
-            <svg
-              className="tln-tool__icon"
-              viewBox="0 0 16 16"
-              width="15"
-              height="15"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M13.5 9.5a5.5 5.5 0 1 1-7-7 4.5 4.5 0 0 0 7 7z" />
-            </svg>
+              <span className={`tln-sync-icon tln-sync-icon--${syncStatus}`}>
+                {syncStatus === "syncing" ? (
+                  <RefreshCw size={13} className="tln-spin" />
+                ) : syncStatus === "synced" ? (
+                  <CloudCheck size={14} />
+                ) : (
+                  <Cloud size={14} />
+                )}
+              </span>
+            </button>
           )}
-        </button>
+
+          <button
+            className="tln-tool tln-tool--theme"
+            onClick={toggleTheme}
+            title={
+              theme === "dark"
+                ? "Switch to Archival Print (Light)"
+                : "Switch to Director's Studio (Dark)"
+            }
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? (
+              <svg
+                className="tln-tool__icon"
+                viewBox="0 0 16 16"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="8" cy="8" r="3.2" />
+                <path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" />
+              </svg>
+            ) : (
+              <svg
+                className="tln-tool__icon"
+                viewBox="0 0 16 16"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M13.5 9.5a5.5 5.5 0 1 1-7-7 4.5 4.5 0 0 0 7 7z" />
+              </svg>
+            )}
+          </button>
+        </div>
       </header>
 
       {/* Boot failures used to be visible only inside a story, because that is
@@ -241,7 +261,7 @@ export default function App() {
           — which is precisely how it was reported. */}
       {status === "error" && (
         <div className="tln-fault" role="alert">
-          <strong>Throughline could not reach this browser&rsquo;s storage.</strong>{" "}
+          <strong>Story Lane could not reach this browser&rsquo;s storage.</strong>{" "}
           {bootError ?? "Unknown error."} Nothing you do will be saved until this clears. If the app
           is open in another tab, close it and reload.
           <button className="tln-btn" onClick={() => location.reload()}>
@@ -447,7 +467,12 @@ export default function App() {
       )}
       {paletteOpen && (
         <Suspense fallback={null}>
-          <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jumpTo} />
+          <Palette
+            open={paletteOpen}
+            onClose={() => setPaletteOpen(false)}
+            onJump={jumpTo}
+            onNavigate={(href) => router.push(href)}
+          />
         </Suspense>
       )}
       {syncOpen && (

@@ -15,7 +15,7 @@ import Loader from "../views/Loader";
 // exists as a thin boundary rather than living in page.tsx.
 const App = dynamic(() => import("../App"), {
   ssr: false,
-  loading: () => <Loader kind="countdown" label="Throughline" />,
+  loading: () => <Loader kind="countdown" label="Story Lane" />,
 });
 
 export default function ClientApp() {

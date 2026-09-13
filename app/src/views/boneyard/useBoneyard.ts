@@ -197,7 +197,7 @@ export function useBoneyard() {
       );
       const a = document.createElement("a");
       a.href = url;
-      a.download = `boneyard-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `story-lane-boneyard-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     },

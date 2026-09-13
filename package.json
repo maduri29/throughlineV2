@@ -1,5 +1,5 @@
 {
-  "name": "throughline",
+  "name": "story-lane",
   "private": true,
   "scripts": {
     "dev": "bun --cwd app dev",
@@ -21,7 +21,7 @@
     "verify:boneyard-sync": "bun --cwd app verify:boneyard-sync",
     "verify:mobile": "bun --cwd app verify:mobile",
     "verify:library": "bun --cwd app verify:library",
+    "verify:search": "bun --cwd app verify:search",
     "verify:ui": "bun --cwd app verify:ui"
   }
 }
-

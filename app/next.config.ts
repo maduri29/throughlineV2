@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   agentRules: false,
   reactStrictMode: true,
   poweredByHeader: false,
+  // Allow verification builds to avoid OneDrive locks in the active dev output.
+  distDir: process.env.STORY_LANE_BUILD_DIR ?? ".next",
   typescript: {
     // Typecheck is already enforced in the pre-commit/CI gate (`bun run check` / `tsc --noEmit`).
     // Skipping duplicate typechecking here shaves ~150-200ms off every build.

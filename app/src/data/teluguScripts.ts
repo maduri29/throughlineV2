@@ -34,7 +34,7 @@ export type TeluguScript = {
    */
   posterUrl?: string;
   logline: string;
-  /** One or two lines on what a Throughline writer should steal from it. */
+  /** One or two lines on what a Story Lane writer should steal from it. */
   studyNote: string;
 };
 

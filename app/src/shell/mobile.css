@@ -52,8 +52,28 @@
   .tln-story-bar__right {
     width: 100%;
   }
-  .tln-header .tln-brand__name {
-    font-size: 14px;
+  .tln-header .tln-brand {
+    width: auto;
+    min-height: 44px;
+  }
+  .tln-header .tln-brand .tln-logo {
+    width: 32px;
+    height: 32px;
+  }
+  .tln-logo-lockup {
+    gap: 7px;
+  }
+  .tln-logo-lockup__title {
+    font-size: 18px;
+  }
+  .tln-logo-lockup__subtitle {
+    font-size: 10px;
+  }
+  .tln-header .tln-header__actions :is(.tln-tool, .tln-sync-btn, .tln-quick-search) {
+    min-width: 36px;
+    width: 36px;
+    min-height: 44px;
+    height: 44px;
   }
   .tln-header .tln-brand,
   .tln-header .tln-tool,

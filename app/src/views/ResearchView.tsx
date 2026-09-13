@@ -344,12 +344,20 @@ export default function ResearchView() {
   /** Tickets flip in place like the prototype; details + links live on the
       back. A div (not a button) so the back can hold real links and a save
       button — keyboard toggles with Enter/Space like a button. */
-  const flipKeys = (flip: () => void) => (e: { key: string; preventDefault: () => void }) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      flip();
-    }
-  };
+  const flipKeys =
+    (flip: () => void) =>
+    (e: {
+      key: string;
+      target: EventTarget | null;
+      currentTarget: EventTarget | null;
+      preventDefault: () => void;
+    }) => {
+      if (e.target !== e.currentTarget) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        flip();
+      }
+    };
 
   /** One book ticket: cover front, blurb + bookshop link on the back. */
   const bookCard = (b: ShelfBook) => {

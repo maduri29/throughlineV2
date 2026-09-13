@@ -129,3 +129,44 @@ export function groupByDay(scenes: GraphNode[]): DayBucket[] {
   if (undated.length > 0) out.push({ day: null, scenes: undated });
   return out;
 }
+
+/**
+ * Days for every unscheduled scene, in Map order (episode order, then each
+ * episode's child order, then anything parentless), continuing after the
+ * highest scheduled day. Explicit days — including flashback negatives —
+ * are never touched, so this is safe to offer as a one-click catch-up for
+ * a story whose Timeline is still one big "unscheduled" pile.
+ */
+export function autoScheduleDays(nodes: GraphNode[]): Array<{ id: string; day: number }> {
+  const scenes = nodes.filter((n) => n.type === "scene");
+  let day = 1;
+  for (const s of scenes) {
+    const d = s.storyTime?.storyDay;
+    if (d != null) day = Math.max(day, d + 1);
+  }
+  const byId = (id: string): GraphNode | undefined => nodes.find((n) => n.id === id);
+  const queued = (parentId: string): GraphNode[] => {
+    const kids = new Map<string, GraphNode>();
+    for (const s of scenes) {
+      if (s.parentId === parentId && s.storyTime?.storyDay == null) kids.set(s.id, s);
+    }
+    const ordered = (byId(parentId)?.order ?? [])
+      .map((id) => kids.get(id))
+      .filter((s): s is GraphNode => Boolean(s));
+    for (const [, s] of kids) if (!ordered.includes(s)) ordered.push(s);
+    return ordered;
+  };
+  const out: Array<{ id: string; day: number }> = [];
+  const placed = new Set<string>();
+  for (const ep of nodes.filter((n) => n.type === "episode")) {
+    for (const s of queued(ep.id)) {
+      out.push({ id: s.id, day: day++ });
+      placed.add(s.id);
+    }
+  }
+  for (const s of scenes) {
+    if (s.storyTime?.storyDay != null || placed.has(s.id)) continue;
+    out.push({ id: s.id, day: day++ });
+  }
+  return out;
+}

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Story Lane</title>
+  <desc id="desc">Two opposing screenplay dialogue panels inside viewfinder corners.</desc>
+  <style>
+    svg { --mint: #8ddaaf; --paper: #f2f0e5; --cutout: #172622; }
+    @media (prefers-color-scheme: light) { svg { --mint: #247454; --paper: #101214; --cutout: #ffffff; } }
+  </style>
+  <path d="M29 15H12v18m87-18h17v18M12 96v17h17m70 0h17V96" fill="none" stroke="var(--mint)" stroke-width="5"/>
+  <path d="M23 29h70v29H49L36 71V58H23Z" fill="var(--paper)"/>
+  <path d="M105 76H49v27h28l13 12v-12h15Z" fill="var(--mint)"/>
+  <path d="M46 38h25M34 47h47M67 85h20M60 94h34" stroke="var(--cutout)" stroke-width="3"/>
+</svg>

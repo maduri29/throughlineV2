@@ -1,6 +1,5 @@
 // One story. The id in the path is the project id, so a story can be linked to,
 // bookmarked, and reopened in the tab it was left in.
-import ClientApp from "../../ClientApp";
 
 // The shell is byte-identical for every id -- the app reads the id from the URL
 // in the browser -- so there is nothing for a server to compute per request.
@@ -16,5 +15,5 @@ export function generateStaticParams(): Array<{ id: string }> {
 }
 
 export default function Page() {
-  return <ClientApp />;
+  return null;
 }

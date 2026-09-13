@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title desc"><title id="title">Story Lane — The Story Cut</title><desc id="desc">Three widescreen frames connected by a continuous S-shaped lane. Story beats become screen sequences.</desc><rect width="128" height="128" rx="24" fill="#172127"/><path d="M61 30h25c28 0 28 33 0 33H43c-28 0-28 33 0 33h25" fill="none" stroke="#e8b872" stroke-width="7" stroke-linecap="round"/>
+    <rect x="12" y="15" width="51" height="30" rx="5" fill="#e8b872"/>
+    <rect x="66" y="48" width="51" height="30" rx="5" fill="#e8b872"/>
+    <rect x="12" y="81" width="57" height="30" rx="5" fill="#e8b872"/>
+    <path d="M20 24h35v12H20zM74 57h35v12H74zM20 90h41v12H20z" fill="#172127"/>
+    <path d="m27 35 7-7 5 5 5-4 8 6m24 0" fill="none" stroke="#e8b872" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="88" cy="61" r="3" fill="#e8b872"/>
+    <path d="M83 68q5-6 10 0M26 96h12m5 0h12" fill="none" stroke="#e8b872" stroke-width="2" stroke-linecap="round"/></svg>
