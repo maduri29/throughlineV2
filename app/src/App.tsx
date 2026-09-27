@@ -3,7 +3,7 @@ import { StoryOrigins } from "./views/boneyard/StoryOrigins";
 import { useWorkspaceTheme } from "./shell/useWorkspaceTheme";
 import { usePathname, useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Cloud, CloudCheck, Laptop, RefreshCw, Search } from "lucide-react";
+import { Activity, Cloud, CloudCheck, Laptop, RefreshCw, Search } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { useGraphStore } from "./store";
 import BoneyardView from "./views/BoneyardView";
@@ -20,6 +20,7 @@ import ConnectionAdd from "./views/ConnectionAdd";
 const ScriptView = lazy(() => import("./views/ScriptView"));
 const Palette = lazy(() => import("./views/Palette"));
 const SyncModal = lazy(() => import("./views/SyncModal"));
+const StoryDiagnosticsModal = lazy(() => import("./views/StoryDiagnosticsModal"));
 
 const SAVE_LABEL: Record<string, string> = {
   booting: "Loading…",
@@ -58,6 +59,7 @@ export default function App() {
     })),
   );
   const [syncOpen, setSyncOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [lens, setLens] = useState<Lens>("map");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const { theme, toggleTheme } = useWorkspaceTheme();
@@ -369,6 +371,15 @@ export default function App() {
                 </button>
 
                 <button
+                  className="tln-tool"
+                  onClick={() => setDiagnosticsOpen(true)}
+                  title="Story Architecture & Health Diagnostics (powered by Effect)"
+                  aria-label="Story Health Diagnostics"
+                >
+                  <Activity size={15} />
+                </button>
+
+                <button
                   className="tln-status"
                   onClick={() => setSyncOpen(true)}
                   title={
@@ -478,6 +489,14 @@ export default function App() {
       {syncOpen && (
         <Suspense fallback={null}>
           <SyncModal onClose={() => setSyncOpen(false)} />
+        </Suspense>
+      )}
+      {diagnosticsOpen && (
+        <Suspense fallback={null}>
+          <StoryDiagnosticsModal
+            onClose={() => setDiagnosticsOpen(false)}
+            onNavigateToNode={jumpTo}
+          />
         </Suspense>
       )}
     </div>

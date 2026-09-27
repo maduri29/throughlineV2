@@ -1,3 +1,4 @@
+import { Effect, Schedule, Schema, Duration } from "effect";
 import { dbGetAll, dbPut } from "./idb";
 import type { GraphEdge, GraphNode } from "../types";
 import type { Revision } from "./boneyard/types";
@@ -30,14 +31,17 @@ export function getLastSyncedAt(): number | null {
 }
 
 export async function checkTursoConfigured(): Promise<boolean> {
-  try {
-    const res = await fetch("/api/sync");
-    if (!res.ok) return false;
-    const data = (await res.json()) as { configured?: boolean };
-    return data.configured === true;
-  } catch {
-    return false;
-  }
+  const checkEffect = Effect.tryPromise({
+    try: async () => {
+      const res = await fetch("/api/sync");
+      if (!res.ok) return false;
+      const data = (await res.json()) as { configured?: boolean };
+      return data.configured === true;
+    },
+    catch: () => false,
+  });
+
+  return Effect.runPromise(checkEffect);
 }
 
 export type SyncResult = {
@@ -47,85 +51,169 @@ export type SyncResult = {
   pulledEdges: GraphEdge[];
 };
 
-export async function executeSync(): Promise<SyncResult> {
-  const syncKey = getSyncKey();
-  if (!syncKey) {
-    return {
-      ok: false,
-      message: "Set a Sync Key to enable cloud sync.",
-      pulledNodes: [],
-      pulledEdges: [],
-    };
-  }
+/* --------------------------- Effect Typed Errors -------------------------- */
 
-  try {
-    const [localNodes, localEdges] = await Promise.all([
-      dbGetAll<GraphNode>("nodes"),
-      dbGetAll<GraphEdge>("edges"),
-    ]);
+export class SyncKeyMissingError extends Error {
+  readonly _tag = "SyncKeyMissingError";
+  constructor() {
+    super("Set a Sync Key to enable cloud sync.");
+  }
+}
+
+export class SyncNetworkError extends Error {
+  readonly _tag = "SyncNetworkError";
+  constructor(public readonly originalError: unknown) {
+    super(`Network/sync error: ${String(originalError)}`);
+  }
+}
+
+export class SyncServerError extends Error {
+  readonly _tag = "SyncServerError";
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+/* --------------------------- API Response Schemas ------------------------- */
+
+const SyncApiResponseSchema = Schema.Struct({
+  ok: Schema.Boolean,
+  error: Schema.optional(Schema.String),
+  syncedAt: Schema.optional(Schema.Number),
+  pulledNodes: Schema.optional(Schema.Array(Schema.Unknown)),
+  pulledEdges: Schema.optional(Schema.Array(Schema.Unknown)),
+});
+
+const BoneyardApiResponseSchema = Schema.Struct({
+  ok: Schema.optional(Schema.Boolean),
+  boneyardProtocol: Schema.optional(Schema.Number),
+  revisions: Schema.optional(Schema.Unknown),
+  error: Schema.optional(Schema.String),
+});
+
+/** Retry policy for transient network drops: retry twice with exponential backoff */
+const retryPolicy = Schedule.exponential(Duration.millis(150)).pipe(
+  Schedule.compose(Schedule.recurs(2)),
+);
+
+/**
+ * Effect-native execution of cross-device sync.
+ * Provides automatic retries on transient network failures,
+ * schema validation of cloud payloads, and typed failure channels.
+ */
+export function executeSyncEffect(): Effect.Effect<
+  SyncResult,
+  SyncKeyMissingError | SyncNetworkError | SyncServerError
+> {
+  return Effect.gen(function* () {
+    const syncKey = getSyncKey();
+    if (!syncKey) {
+      return yield* Effect.fail(new SyncKeyMissingError());
+    }
 
     const lastSyncedAt = getLastSyncedAt() ?? 0;
 
-    const res = await fetch("/api/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        syncKey,
-        lastSyncedAt,
-        pushNodes: localNodes,
-        pushEdges: localEdges,
-      }),
+    // 1. Read local state from IndexedDB
+    const [localNodes, localEdges] = yield* Effect.tryPromise({
+      try: () => Promise.all([dbGetAll<GraphNode>("nodes"), dbGetAll<GraphEdge>("edges")]),
+      catch: (err) => new SyncNetworkError(err),
     });
 
-    const data = (await res.json()) as {
-      ok: boolean;
-      error?: string;
-      syncedAt?: number;
-      pulledNodes?: GraphNode[];
-      pulledEdges?: GraphEdge[];
-    };
+    // 2. Push graph nodes and edges to Turso with retry
+    const fetchSync = Effect.tryPromise({
+      try: async () => {
+        const res = await fetch("/api/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            syncKey,
+            lastSyncedAt,
+            pushNodes: localNodes,
+            pushEdges: localEdges,
+          }),
+        });
+        const json = await res.json();
+        return { status: res.status, ok: res.ok, json };
+      },
+      catch: (err) => new SyncNetworkError(err),
+    });
 
-    if (!res.ok || !data.ok) {
-      return {
-        ok: false,
-        message: data.error ?? "Failed to sync with Turso.",
-        pulledNodes: [],
-        pulledEdges: [],
-      };
+    const syncResponse = yield* fetchSync.pipe(Effect.retry(retryPolicy));
+
+    const decodedSync = yield* Schema.decodeUnknown(SyncApiResponseSchema)(syncResponse.json).pipe(
+      Effect.mapError((err) => new SyncServerError(`Invalid server sync response: ${err.message}`)),
+    );
+
+    if (!syncResponse.ok || !decodedSync.ok) {
+      return yield* Effect.fail(
+        new SyncServerError(decodedSync.error ?? "Failed to sync with Turso."),
+      );
     }
 
-    const pulledNodes = data.pulledNodes ?? [];
-    const pulledEdges = data.pulledEdges ?? [];
+    const pulledNodes = (decodedSync.pulledNodes ?? []) as GraphNode[];
+    const pulledEdges = (decodedSync.pulledEdges ?? []) as GraphEdge[];
 
     if (pulledNodes.length > 0) {
-      await dbPut("nodes", pulledNodes);
+      yield* Effect.tryPromise({
+        try: () => dbPut("nodes", pulledNodes),
+        catch: (err) => new SyncNetworkError(err),
+      });
     }
     if (pulledEdges.length > 0) {
-      await dbPut("edges", pulledEdges);
+      yield* Effect.tryPromise({
+        try: () => dbPut("edges", pulledEdges),
+        catch: (err) => new SyncNetworkError(err),
+      });
     }
 
-    // Independent, immutable Boneyard history cannot use graph replacement semantics.
-    const revisions = await dbGetAll<Revision>("boneyard");
-    const ideaResponse = await fetch("/api/boneyard-sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ syncKey, revisions }),
+    // 3. Push and pull Boneyard history
+    const revisions = yield* Effect.tryPromise({
+      try: () => dbGetAll<Revision>("boneyard"),
+      catch: (err) => new SyncNetworkError(err),
     });
-    const ideaData = (await ideaResponse.json()) as {
-      ok?: boolean;
-      boneyardProtocol?: number;
-      revisions?: unknown;
-      error?: string;
-    };
-    if (!ideaResponse.ok || !ideaData.ok || ideaData.boneyardProtocol !== 1)
-      throw new Error(
-        ideaData.error ?? "Update the server to sync Boneyard history. Local ideas are safe.",
-      );
-    const { mergeRevisions } = await import("./boneyard/repository");
-    await mergeRevisions(parseRevisions(ideaData.revisions));
 
-    if (data.syncedAt) {
-      localStorage.setItem(LAST_SYNCED_STORAGE, String(data.syncedAt));
+    const fetchBoneyard = Effect.tryPromise({
+      try: async () => {
+        const res = await fetch("/api/boneyard-sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ syncKey, revisions }),
+        });
+        const json = await res.json();
+        return { status: res.status, ok: res.ok, json };
+      },
+      catch: (err) => new SyncNetworkError(err),
+    });
+
+    const boneyardResponse = yield* fetchBoneyard.pipe(Effect.retry(retryPolicy));
+
+    const decodedBoneyard = yield* Schema.decodeUnknown(BoneyardApiResponseSchema)(
+      boneyardResponse.json,
+    ).pipe(
+      Effect.mapError((err) => new SyncServerError(`Invalid boneyard response: ${err.message}`)),
+    );
+
+    if (!boneyardResponse.ok || !decodedBoneyard.ok || decodedBoneyard.boneyardProtocol !== 1) {
+      return yield* Effect.fail(
+        new SyncServerError(
+          decodedBoneyard.error ??
+            "Update the server to sync Boneyard history. Local ideas are safe.",
+        ),
+      );
+    }
+
+    const { mergeRevisions } = yield* Effect.tryPromise({
+      try: () => import("./boneyard/repository"),
+      catch: (err) => new SyncNetworkError(err),
+    });
+
+    yield* Effect.tryPromise({
+      try: () => mergeRevisions(parseRevisions(decodedBoneyard.revisions)),
+      catch: (err) => new SyncNetworkError(err),
+    });
+
+    if (decodedSync.syncedAt) {
+      localStorage.setItem(LAST_SYNCED_STORAGE, String(decodedSync.syncedAt));
     }
 
     return {
@@ -137,12 +225,23 @@ export async function executeSync(): Promise<SyncResult> {
       pulledNodes,
       pulledEdges,
     };
-  } catch (err) {
-    return {
-      ok: false,
-      message: `Network/sync error: ${String(err)}`,
-      pulledNodes: [],
-      pulledEdges: [],
-    };
-  }
+  });
+}
+
+/**
+ * Public execution wrapper returning a promise-based SyncResult.
+ */
+export async function executeSync(): Promise<SyncResult> {
+  return Effect.runPromise(
+    executeSyncEffect().pipe(
+      Effect.catchAll((err) =>
+        Effect.succeed<SyncResult>({
+          ok: false,
+          message: err.message,
+          pulledNodes: [],
+          pulledEdges: [],
+        }),
+      ),
+    ),
+  );
 }

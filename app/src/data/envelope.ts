@@ -9,16 +9,17 @@
 // Import validates rather than trusts. A hand-edited or half-written file that
 // merges silently would corrupt the graph in ways undo cannot reach, so every
 // record is checked and anything unrecognised is rejected with a reason.
+import { Effect, Schema } from "effect";
 import {
   EDGE_TYPES,
   NODE_TYPES,
   TODS,
+  type Attachment,
+  type Beat,
   type EdgeType,
   type GraphEdge,
   type GraphNode,
   type NodeType,
-  type Attachment,
-  type Beat,
   type StoryTime,
   type Tod,
 } from "../types";
@@ -35,6 +36,79 @@ export type Envelope = {
 };
 
 export type ImportResult = { ok: true; envelope: Envelope } | { ok: false; error: string };
+
+/* --------------------------------- Effect Schemas --------------------------------- */
+
+export const NodeTypeSchema = Schema.Literal(...NODE_TYPES);
+export const EdgeTypeSchema = Schema.Literal(...EDGE_TYPES);
+export const TodSchema = Schema.Literal(...TODS);
+
+export const StoryTimeSchema = Schema.Struct({
+  storyDay: Schema.NullOr(Schema.Number),
+  tod: Schema.NullOr(TodSchema),
+  eraLabel: Schema.NullOr(Schema.String),
+});
+
+export const BeatSchema = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  done: Schema.Boolean,
+  note: Schema.optional(Schema.String),
+  sceneId: Schema.optional(Schema.String),
+});
+
+export const AttachmentSchema = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  mime: Schema.String,
+  size: Schema.Number,
+});
+
+export const IdeaSourceSchema = Schema.Struct({
+  id: Schema.String,
+  title: Schema.String,
+  body: Schema.String,
+});
+
+export const GraphEdgeSchema = Schema.Struct({
+  id: Schema.String,
+  type: EdgeTypeSchema,
+  from: Schema.String,
+  to: Schema.String,
+  label: Schema.optional(Schema.String),
+});
+
+export const GraphNodeSchema = Schema.Struct({
+  id: Schema.String,
+  type: NodeTypeSchema,
+  title: Schema.String,
+  sparkType: Schema.optional(
+    Schema.Literal("premise", "character", "location", "scene", "dialogue", "twist"),
+  ),
+  synopsis: Schema.optional(Schema.String),
+  storyTime: Schema.optional(StoryTimeSchema),
+  parentId: Schema.optional(Schema.String),
+  order: Schema.optional(Schema.Array(Schema.String)),
+  pos: Schema.optional(Schema.NullOr(Schema.Struct({ x: Schema.Number, y: Schema.Number }))),
+  fountain: Schema.optional(Schema.String),
+  intExt: Schema.optional(Schema.Literal("INT.", "EXT.", "EST.", "INT./EXT.")),
+  author: Schema.optional(Schema.String),
+  contact: Schema.optional(Schema.String),
+  role: Schema.optional(Schema.String),
+  backstory: Schema.optional(Schema.String),
+  url: Schema.optional(Schema.String),
+  attachments: Schema.optional(Schema.Array(AttachmentSchema)),
+  beats: Schema.optional(Schema.Array(BeatSchema)),
+  ideaSources: Schema.optional(Schema.Array(IdeaSourceSchema)),
+});
+
+export const EnvelopeSchema = Schema.Struct({
+  schemaVersion: Schema.Number,
+  exportedAt: Schema.String,
+  project: GraphNodeSchema,
+  nodes: Schema.Array(GraphNodeSchema),
+  edges: Schema.Array(GraphEdgeSchema),
+});
 
 /* --------------------------------- export --------------------------------- */
 
@@ -91,8 +165,6 @@ function readNode(v: unknown, where: string): GraphNode | string {
   if (typeof title !== "string") return `${where}: missing title`;
 
   const node: GraphNode = { id, type: type as NodeType, title };
-  // Optional fields are copied only when well-formed; a bad value is dropped
-  // rather than failing the whole import, since none of them are load-bearing.
   const str = (k: string): void => {
     const raw = v[k];
     if (typeof raw === "string") Object.assign(node, { [k]: raw });
@@ -123,8 +195,6 @@ function readNode(v: unknown, where: string): GraphNode | string {
   // Attachment METADATA only — the bytes live in the IndexedDB `files` store and
   // deliberately do not travel (data/files.ts). Importing keeps the record so the
   // reader can see a file was collected, and the UI marks it as elsewhere.
-  // Beats are validated field by field: a sheet is the one place a bad import
-  // could silently attach a beat to a scene that is not there.
   const rawBeats = v["beats"];
   if (Array.isArray(rawBeats)) {
     const kept: Beat[] = [];
@@ -194,65 +264,99 @@ function readEdge(v: unknown, where: string): GraphEdge | string {
   return edge;
 }
 
+export class EnvelopeError extends Error {
+  readonly _tag = "EnvelopeError";
+}
+
+/**
+ * Parse and validate envelope with Effect.
+ * Returns an Effect that fails with EnvelopeError or succeeds with validated Envelope.
+ */
+export function parseEnvelopeEffect(text: string): Effect.Effect<Envelope, EnvelopeError> {
+  return Effect.gen(function* () {
+    const raw = yield* Effect.try({
+      try: () => JSON.parse(text),
+      catch: () => new EnvelopeError("Not valid JSON."),
+    });
+
+    if (!isRecord(raw)) {
+      return yield* Effect.fail(new EnvelopeError("Top level is not an object."));
+    }
+
+    const version = raw["schemaVersion"];
+    if (typeof version !== "number") {
+      return yield* Effect.fail(new EnvelopeError("Missing schemaVersion."));
+    }
+    if (version > ENVELOPE_VERSION) {
+      return yield* Effect.fail(
+        new EnvelopeError(
+          `File is schemaVersion ${version}; this build understands up to ${ENVELOPE_VERSION}.`,
+        ),
+      );
+    }
+
+    const projectRaw = readNode(raw["project"], "project");
+    if (typeof projectRaw === "string") {
+      return yield* Effect.fail(new EnvelopeError(projectRaw));
+    }
+    if (projectRaw.type !== "project") {
+      return yield* Effect.fail(new EnvelopeError("project is not a project node."));
+    }
+
+    const nodesRaw = raw["nodes"];
+    const edgesRaw = raw["edges"];
+    if (!Array.isArray(nodesRaw)) {
+      return yield* Effect.fail(new EnvelopeError("nodes is not an array."));
+    }
+    if (!Array.isArray(edgesRaw)) {
+      return yield* Effect.fail(new EnvelopeError("edges is not an array."));
+    }
+
+    const nodes: GraphNode[] = [];
+    for (const [i, n] of nodesRaw.entries()) {
+      const parsed = readNode(n, `nodes[${i}]`);
+      if (typeof parsed === "string") {
+        return yield* Effect.fail(new EnvelopeError(parsed));
+      }
+      nodes.push(parsed);
+    }
+
+    const known = new Set<string>([projectRaw.id, ...nodes.map((n) => n.id)]);
+    const edges: GraphEdge[] = [];
+    for (const [i, e] of edgesRaw.entries()) {
+      const parsed = readEdge(e, `edges[${i}]`);
+      if (typeof parsed === "string") {
+        return yield* Effect.fail(new EnvelopeError(parsed));
+      }
+      if (!known.has(parsed.from) || !known.has(parsed.to)) continue; // dangling
+      edges.push(parsed);
+    }
+
+    const exportedAt = raw["exportedAt"];
+    const envelope: Envelope = {
+      schemaVersion: version,
+      exportedAt: typeof exportedAt === "string" ? exportedAt : new Date().toISOString(),
+      project: projectRaw,
+      nodes,
+      edges,
+    };
+
+    return envelope;
+  });
+}
+
 /**
  * Parse and validate. Edges pointing at nodes the file does not contain are
  * dropped, not imported: a dangling edge renders as a connection to nowhere and
  * would be harder to find later than it is to discard now.
  */
 export function parseEnvelope(text: string): ImportResult {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    return { ok: false, error: "Not valid JSON." };
-  }
-  if (!isRecord(raw)) return { ok: false, error: "Top level is not an object." };
-
-  const version = raw["schemaVersion"];
-  if (typeof version !== "number") return { ok: false, error: "Missing schemaVersion." };
-  if (version > ENVELOPE_VERSION) {
-    return {
-      ok: false,
-      error: `File is schemaVersion ${version}; this build understands up to ${ENVELOPE_VERSION}.`,
-    };
-  }
-
-  const projectRaw = readNode(raw["project"], "project");
-  if (typeof projectRaw === "string") return { ok: false, error: projectRaw };
-  if (projectRaw.type !== "project") return { ok: false, error: "project is not a project node." };
-
-  const nodesRaw = raw["nodes"];
-  const edgesRaw = raw["edges"];
-  if (!Array.isArray(nodesRaw)) return { ok: false, error: "nodes is not an array." };
-  if (!Array.isArray(edgesRaw)) return { ok: false, error: "edges is not an array." };
-
-  const nodes: GraphNode[] = [];
-  for (const [i, n] of nodesRaw.entries()) {
-    const parsed = readNode(n, `nodes[${i}]`);
-    if (typeof parsed === "string") return { ok: false, error: parsed };
-    nodes.push(parsed);
-  }
-
-  const known = new Set<string>([projectRaw.id, ...nodes.map((n) => n.id)]);
-  const edges: GraphEdge[] = [];
-  for (const [i, e] of edgesRaw.entries()) {
-    const parsed = readEdge(e, `edges[${i}]`);
-    if (typeof parsed === "string") return { ok: false, error: parsed };
-    if (!known.has(parsed.from) || !known.has(parsed.to)) continue; // dangling
-    edges.push(parsed);
-  }
-
-  const exportedAt = raw["exportedAt"];
-  return {
-    ok: true,
-    envelope: {
-      schemaVersion: version,
-      exportedAt: typeof exportedAt === "string" ? exportedAt : new Date().toISOString(),
-      project: projectRaw,
-      nodes,
-      edges,
-    },
-  };
+  return Effect.runSync(
+    parseEnvelopeEffect(text).pipe(
+      Effect.map((envelope): ImportResult => ({ ok: true, envelope })),
+      Effect.catchAll((err) => Effect.succeed<ImportResult>({ ok: false, error: err.message })),
+    ),
+  );
 }
 
 /* -------------------------------- download -------------------------------- */
