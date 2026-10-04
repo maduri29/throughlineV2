@@ -90,16 +90,33 @@ export default function ScriptView() {
     scheduleScene(scene.id, text + addition);
   };
 
-  const handleAddScene = () => {
+  const handleAddScene = (targetContainerId?: string) => {
     if (!project) return;
-    const newId = useGraphStore.getState().addNode({
-      type: "scene",
-      title: "New Scene",
-      parentId: project.id,
-    });
+    const parentId =
+      targetContainerId ??
+      (effectiveSceneId ? nodeMap[effectiveSceneId]?.parentId : undefined) ??
+      project.order?.[0] ??
+      project.id;
+    const newId = useGraphStore.getState().addScene(parentId);
     if (newId) {
       setSceneId(newId);
       setMobileTab("edit");
+    }
+  };
+
+  const handleMoveScene = (targetId: string, containerId: string, beforeId?: string) => {
+    useGraphStore.getState().moveScene(targetId, containerId, beforeId);
+  };
+
+  const handleDeleteScene = (targetSceneId: string) => {
+    const sc = nodeMap[targetSceneId];
+    const name = sc?.title || "this scene";
+    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
+      useGraphStore.getState().deleteNodes([targetSceneId]);
+      if (effectiveSceneId === targetSceneId) {
+        const remaining = sequence.filter((it) => it.scene.id !== targetSceneId);
+        setSceneId(remaining[0]?.scene.id ?? null);
+      }
     }
   };
 
@@ -211,6 +228,9 @@ export default function ScriptView() {
           setMobileTab("edit");
         }}
         onAddScene={handleAddScene}
+        onMoveScene={handleMoveScene}
+        onDeleteScene={handleDeleteScene}
+        onCloseMobileRail={() => setMobileTab("edit")}
       />
 
       <div className="tln-script__main" ref={wrapRef}>
