@@ -312,13 +312,21 @@
   /* ------------------------------ Toolbar ------------------------------ */
   .tln-script__toolbar {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    flex-direction: column;
+    gap: 6px;
     padding: 6px 12px;
     background: var(--panel);
     border-bottom: 1px solid var(--line);
     box-sizing: border-box;
+    width: 100%;
+  }
+
+  .tln-script__toolbar-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
   }
 
   /* Common minimal icon button */
@@ -546,24 +554,35 @@
     font-family: var(--font-script-family, monospace);
   }
 
-  /* Heading Slot */
+  /* Heading & Scene Title Slot */
   .tln-script__heading-slot {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    margin: 0 4px;
-  }
-
-  .tln-slug-box {
-    display: flex;
-    align-items: center;
-    gap: 6px;
     width: 100%;
-    min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
 
-  .tln-slug-btn {
+  /* Scene Banner (Read Mode) */
+  .tln-slug-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-height: 32px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 3px 6px 3px 8px;
+    box-sizing: border-box;
+    transition: all 0.15s ease;
+  }
+
+  .tln-slug-banner:hover {
+    border-color: var(--line-strong);
+    background: var(--card-elevated, var(--card));
+  }
+
+  .tln-slug-banner__content {
     all: unset;
     cursor: pointer;
     box-sizing: border-box;
@@ -572,43 +591,40 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    height: 32px;
-    padding: 0 10px;
-    background: var(--card);
-    border: 1px dashed var(--line-strong);
-    border-radius: 6px;
-    font-size: 12.5px;
-    user-select: none;
-    transition: all 0.15s ease;
+    text-align: left;
   }
 
-  .tln-slug-btn:hover {
+  .tln-slug-banner__badge {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
     background: var(--tint);
-    border-color: var(--accent);
+    border-radius: 4px;
+    padding: 1px 5px;
+    flex-shrink: 0;
   }
 
-  .tln-slug-btn:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-
-  .tln-slug-btn__title {
+  .tln-slug-banner__title {
+    font-size: 12.5px;
     font-weight: 700;
     color: var(--ink);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
   }
 
-  .tln-slug-btn__divider {
+  .tln-slug-banner__sep {
     color: var(--line-strong);
     flex-shrink: 0;
   }
 
-  .tln-slug-btn__slug {
+  .tln-slug-banner__slug {
     font-family: var(--font-script-family, var(--font-script));
-    font-weight: 600;
     font-size: 11.5px;
+    font-weight: 600;
     color: var(--accent);
     letter-spacing: 0.03em;
     white-space: nowrap;
@@ -617,32 +633,35 @@
     flex-shrink: 0;
   }
 
-  .tln-slug__pencil-btn {
+  .tln-slug-banner__edit-btn {
     all: unset;
     cursor: pointer;
     box-sizing: border-box;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    border-radius: 6px;
-    background: var(--card);
+    gap: 4px;
+    height: 26px;
+    padding: 0 8px;
+    border-radius: 5px;
+    background: var(--panel);
     border: 1px solid var(--line);
     color: var(--dim);
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
     transition: all 0.15s ease;
   }
 
-  .tln-slug__pencil-btn:hover {
+  .tln-slug-banner__edit-btn:hover {
     background: var(--tint);
     color: var(--accent);
     border-color: var(--accent);
   }
 
-  .tln-slug__pencil-btn:focus-visible {
+  .tln-slug-banner__edit-btn:focus-visible,
+  .tln-slug-banner__content:focus-visible {
     outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline-offset: 1px;
   }
 
   /* Heading & Scene Title Edit Form */
@@ -659,17 +678,31 @@
     box-sizing: border-box;
   }
 
+  .tln-slug-edit__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .tln-slug-edit__title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+  }
+
   .tln-slug-edit__inputs-grid {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 8px;
     width: 100%;
-    flex-wrap: wrap;
   }
 
   .tln-slug-edit__field {
     flex: 1;
-    min-width: 160px;
+    min-width: 140px;
     display: flex;
     flex-direction: column;
     gap: 3px;
@@ -725,7 +758,7 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
-    height: 32px;
+    height: 28px;
     padding: 0 10px;
     border-radius: 6px;
     font-size: 12px;
@@ -759,22 +792,28 @@
     outline-offset: 2px;
   }
 
-  .tln-slug-edit__chips {
+  .tln-slug-edit__presets {
     display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 6px;
     padding-top: 6px;
     border-top: 1px solid var(--line);
   }
 
-  .tln-slug-edit__chips-label {
+  .tln-slug-edit__presets-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+
+  .tln-slug-edit__presets-label {
     font-size: 9.5px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--dim);
-    margin-right: 2px;
+    min-width: 44px;
   }
 
   .tln-slug-chip {
@@ -784,13 +823,17 @@
     font-family: var(--font-script-family, var(--font-script));
     font-size: 10.5px;
     font-weight: 600;
-    padding: 3px 7px;
+    padding: 3px 8px;
     border-radius: 4px;
     background: var(--panel);
     border: 1px solid var(--line);
     color: var(--ink-2);
     transition: all 0.12s ease;
     user-select: none;
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .tln-slug-chip:hover {
@@ -807,12 +850,6 @@
   .tln-slug-chip:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
-  }
-
-  .tln-slug-chip__sep {
-    color: var(--line-strong);
-    font-size: 11px;
-    margin: 0 2px;
   }
 
   /* Tool Actions (Right side) */
@@ -1238,41 +1275,40 @@
 
     /* Toolbar on mobile */
     .tln-script__toolbar {
-      padding: 8px 10px;
+      padding: 6px 8px;
       gap: 6px;
-      flex-wrap: wrap;
     }
 
-    .tln-script__scene-nav {
-      order: 1;
-    }
-
-    .tln-script__tool-actions {
-      order: 2;
+    .tln-script__toolbar-bar {
+      gap: 6px;
     }
 
     .tln-script__heading-slot {
-      order: 3;
-      width: 100%;
-      margin: 4px 0 0;
-    }
-
-    .tln-slug-box {
       width: 100%;
     }
 
-    .tln-slug-btn {
-      font-size: 12px;
-      padding: 0 8px;
-      height: 34px;
+    .tln-slug-banner {
+      min-height: 38px;
+      padding: 4px 8px;
     }
 
-    .tln-slug-btn__title {
+    .tln-slug-banner__title {
       font-size: 12px;
     }
 
-    .tln-slug-btn__slug {
+    .tln-slug-banner__slug {
       font-size: 11px;
+    }
+
+    .tln-slug-banner__edit-btn {
+      height: 30px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+
+    .tln-slug-edit-form {
+      padding: 10px;
+      gap: 8px;
     }
 
     .tln-slug-edit__inputs-grid {
@@ -1285,21 +1321,19 @@
       min-width: 100%;
     }
 
-    .tln-slug-edit__actions {
-      width: 100%;
-      justify-content: flex-end;
-      margin-top: 2px;
+    .tln-slug-edit__input {
+      height: 36px;
+      font-size: 13.5px;
     }
 
-    .tln-slug__pencil-btn {
-      width: 34px;
-      height: 34px;
-      min-width: 34px;
+    .tln-slug-edit__actions {
+      gap: 6px;
     }
 
     .tln-slug-edit__btn {
-      height: 34px;
+      height: 32px;
       padding: 0 12px;
+      font-size: 12px;
     }
 
     .tln-icon-btn {
@@ -1315,9 +1349,9 @@
     }
 
     .tln-slug-chip {
-      padding: 4px 8px;
-      font-size: 11px;
-      min-height: 28px;
+      padding: 5px 9px;
+      font-size: 11.5px;
+      min-height: 30px;
     }
 
     .tln-script__ta .cm-content {

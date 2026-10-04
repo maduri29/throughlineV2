@@ -105,13 +105,51 @@ export default function ScriptView() {
 
   const handlePatchScene = (patch: Partial<GraphNode>, locationName?: string) => {
     if (!scene) return;
-    useGraphStore.getState().patchNode(scene.id, patch);
-    if (locationName) {
-      const locEdge = Object.values(edgeMap).find(
+    const store = useGraphStore.getState();
+    store.patchNode(scene.id, patch);
+
+    const cleanLoc = locationName?.trim();
+    if (cleanLoc) {
+      const currentLocEdge = Object.values(store.edges).find(
         (e) => e.type === "takes_place_at" && e.from === scene.id,
       );
-      if (locEdge && nodeMap[locEdge.to]) {
-        useGraphStore.getState().patchNode(locEdge.to, { title: locationName });
+
+      // Check if a location with this title already exists in the graph
+      const existingLoc = Object.values(store.nodes).find(
+        (n) =>
+          n.type === "location" &&
+          n.title.trim().toLowerCase() === cleanLoc.toLowerCase(),
+      );
+
+      if (existingLoc) {
+        if (!currentLocEdge) {
+          store.connect(scene.id, existingLoc.id, "takes_place_at");
+        } else if (currentLocEdge.to !== existingLoc.id) {
+          store.deleteEdge(currentLocEdge.id);
+          store.connect(scene.id, existingLoc.id, "takes_place_at");
+        }
+      } else if (currentLocEdge && store.nodes[currentLocEdge.to]) {
+        const otherScenesSharing = Object.values(store.edges).some(
+          (e) => e.type === "takes_place_at" && e.to === currentLocEdge.to && e.from !== scene.id,
+        );
+        if (!otherScenesSharing) {
+          store.patchNode(currentLocEdge.to, { title: cleanLoc });
+        } else {
+          const newLocId = store.addNode({
+            type: "location",
+            title: cleanLoc,
+            parentId: project?.id,
+          });
+          store.deleteEdge(currentLocEdge.id);
+          store.connect(scene.id, newLocId, "takes_place_at");
+        }
+      } else {
+        const newLocId = store.addNode({
+          type: "location",
+          title: cleanLoc,
+          parentId: project?.id,
+        });
+        store.connect(scene.id, newLocId, "takes_place_at");
       }
     }
   };

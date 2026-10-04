@@ -73,17 +73,17 @@ export default function ScriptToolbar({
     };
   }, [pickerOpen]);
 
-  // Close title/slug edit box on outside click
+  // Close title/slug edit box on outside click or tap
   useEffect(() => {
     if (!isEditing) return;
-    const handleDown = (e: MouseEvent) => {
+    const handlePointerDown = (e: PointerEvent) => {
       if (editContainerRef.current && !editContainerRef.current.contains(e.target as Node)) {
         setIsEditing(false);
       }
     };
-    window.addEventListener("mousedown", handleDown);
+    window.addEventListener("pointerdown", handlePointerDown);
     return () => {
-      window.removeEventListener("mousedown", handleDown);
+      window.removeEventListener("pointerdown", handlePointerDown);
     };
   }, [isEditing]);
 
@@ -138,7 +138,7 @@ export default function ScriptToolbar({
       };
     }
 
-    const locationSync = parsedSlug.location || finalTitle;
+    const locationSync = parsedSlug.location?.trim() || undefined;
     onPatchScene(patch, locationSync);
   };
 
@@ -184,98 +184,136 @@ export default function ScriptToolbar({
 
   return (
     <div className="tln-script__toolbar">
-      {/* 1. Scene Navigation & Picker */}
-      <div className="tln-script__scene-nav">
-        <button
-          type="button"
-          className="tln-icon-btn"
-          disabled={!prevScene}
-          onClick={() => prevScene && onSelectScene(prevScene.id)}
-          title={prevScene ? `Previous: #${currentIndex} ${prevScene.title}` : "First scene"}
-          aria-label="Previous scene"
-        >
-          <ChevronLeft size={15} aria-hidden="true" />
-        </button>
-
-        <div className="tln-script__scene-picker-wrap" ref={pickerRef}>
+      {/* Tier 1: Scene Navigation & Utility Tools */}
+      <div className="tln-script__toolbar-bar">
+        <div className="tln-script__scene-nav">
           <button
             type="button"
-            className="tln-script__scene-picker-btn"
-            onClick={() => setPickerOpen((p) => !p)}
-            aria-expanded={pickerOpen}
-            title="Jump to scene or episode"
-            aria-label={`Current scene: ${currentIndex >= 0 ? currentIndex + 1 : 1} of ${totalScenes}. Click to jump`}
+            className="tln-icon-btn"
+            disabled={!prevScene}
+            onClick={() => prevScene && onSelectScene(prevScene.id)}
+            title={prevScene ? `Previous: #${currentIndex} ${prevScene.title}` : "First scene"}
+            aria-label="Previous scene"
           >
-            <span className="tln-script__scene-picker-num">
-              {currentIndex >= 0 ? `#${currentIndex + 1}/${totalScenes}` : "Scene"}
-            </span>
-            {currentContainer && (
-              <span className="tln-script__scene-picker-ep">{currentContainer.title}</span>
-            )}
-            <ChevronDown size={12} className="tln-script__scene-picker-caret" aria-hidden="true" />
+            <ChevronLeft size={16} aria-hidden="true" />
           </button>
 
-          {pickerOpen && (
-            <div className="tln-script__scene-picker-popover" role="dialog" aria-label="Jump to scene">
-              <div className="tln-script__picker-search">
-                <Search size={13} aria-hidden="true" />
-                <input
-                  autoFocus
-                  placeholder="Jump to scene or episode..."
-                  aria-label="Search scene to jump to"
-                  value={pickerQuery}
-                  onChange={(e) => setPickerQuery(e.target.value)}
-                />
-              </div>
+          <div className="tln-script__scene-picker-wrap" ref={pickerRef}>
+            <button
+              type="button"
+              className="tln-script__scene-picker-btn"
+              onClick={() => setPickerOpen((p) => !p)}
+              aria-expanded={pickerOpen}
+              title="Jump to scene or episode"
+              aria-label={`Current scene: ${currentIndex >= 0 ? currentIndex + 1 : 1} of ${totalScenes}. Click to jump`}
+            >
+              <span className="tln-script__scene-picker-num">
+                {currentIndex >= 0 ? `#${currentIndex + 1}/${totalScenes}` : "Scene"}
+              </span>
+              {currentContainer && (
+                <span className="tln-script__scene-picker-ep">{currentContainer.title}</span>
+              )}
+              <ChevronDown size={12} className="tln-script__scene-picker-caret" aria-hidden="true" />
+            </button>
 
-              <div className="tln-script__picker-scroll">
-                {groupedPickerList.length === 0 ? (
-                  <div className="tln-script__picker-empty">No matching scenes</div>
-                ) : (
-                  groupedPickerList.map((grp) => (
-                    <div key={grp.id} className="tln-script__picker-group">
-                      <div className="tln-script__picker-group-title">{grp.title}</div>
-                      {grp.items.map((it) => {
-                        const isActive = it.scene.id === scene?.id;
-                        return (
-                          <button
-                            key={it.scene.id}
-                            type="button"
-                            className={`tln-script__picker-row${isActive ? " tln-script__picker-row--active" : ""}`}
-                            onClick={() => {
-                              onSelectScene(it.scene.id);
-                              setPickerOpen(false);
-                            }}
-                          >
-                            <span className="tln-script__picker-num">#{it.index + 1}</span>
-                            <span className="tln-script__picker-name">
-                              {it.scene.title || "Untitled"}
-                            </span>
-                            <span className="tln-script__picker-slug">{it.slugText}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ))
-                )}
+            {pickerOpen && (
+              <div className="tln-script__scene-picker-popover" role="dialog" aria-label="Jump to scene">
+                <div className="tln-script__picker-search">
+                  <Search size={13} aria-hidden="true" />
+                  <input
+                    autoFocus
+                    placeholder="Jump to scene or episode..."
+                    aria-label="Search scene to jump to"
+                    value={pickerQuery}
+                    onChange={(e) => setPickerQuery(e.target.value)}
+                  />
+                </div>
+
+                <div className="tln-script__picker-scroll">
+                  {groupedPickerList.length === 0 ? (
+                    <div className="tln-script__picker-empty">No matching scenes</div>
+                  ) : (
+                    groupedPickerList.map((grp) => (
+                      <div key={grp.id} className="tln-script__picker-group">
+                        <div className="tln-script__picker-group-title">{grp.title}</div>
+                        {grp.items.map((it) => {
+                          const isActive = it.scene.id === scene?.id;
+                          return (
+                            <button
+                              key={it.scene.id}
+                              type="button"
+                              className={`tln-script__picker-row${isActive ? " tln-script__picker-row--active" : ""}`}
+                              onClick={() => {
+                                onSelectScene(it.scene.id);
+                                setPickerOpen(false);
+                              }}
+                            >
+                              <span className="tln-script__picker-num">#{it.index + 1}</span>
+                              <span className="tln-script__picker-name">
+                                {it.scene.title || "Untitled"}
+                              </span>
+                              <span className="tln-script__picker-slug">{it.slugText}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="tln-icon-btn"
+            disabled={!nextScene}
+            onClick={() => nextScene && onSelectScene(nextScene.id)}
+            title={nextScene ? `Next: #${currentIndex + 2} ${nextScene.title}` : "Last scene"}
+            aria-label="Next scene"
+          >
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
         </div>
 
-        <button
-          type="button"
-          className="tln-icon-btn"
-          disabled={!nextScene}
-          onClick={() => nextScene && onSelectScene(nextScene.id)}
-          title={nextScene ? `Next: #${currentIndex + 2} ${nextScene.title}` : "Last scene"}
-          aria-label="Next scene"
-        >
-          <ChevronRight size={15} aria-hidden="true" />
-        </button>
+        {/* Minimal Icon Tool Actions */}
+        <div className="tln-script__tool-actions">
+          <ScriptTypographyMenu
+            typography={typography}
+            onChange={onTypographyChange}
+            onInsertCueSnippet={onInsertCueSnippet}
+            compact
+          />
+
+          <button
+            type="button"
+            className="tln-icon-btn"
+            onClick={() => fileInput.current?.click()}
+            title="Import screenplay (.fountain, .txt)"
+            aria-label="Import screenplay"
+          >
+            <Upload size={15} aria-hidden="true" />
+          </button>
+
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".fountain,.txt,text/plain"
+            hidden
+            onChange={() => {
+              const f = fileInput.current?.files?.[0];
+              fileInput.current!.value = "";
+              if (f) void onImportFile(f);
+            }}
+          />
+
+          <ScriptDownloads typography={typography} iconOnly />
+
+          {importNote && <span className="tln-script__note">{importNote}</span>}
+        </div>
       </div>
 
-      {/* 2. Scene Title & Heading Slot */}
+      {/* Tier 2: Dedicated Full-Width Scene Identity & Edit Banner */}
       <div className="tln-script__heading-slot" ref={editContainerRef}>
         {isEditing ? (
           <form
@@ -285,11 +323,38 @@ export default function ScriptToolbar({
               handleSaveEditing();
             }}
           >
-            {/* Top row: Scene Title input & Action buttons */}
+            <div className="tln-slug-edit__header">
+              <span className="tln-slug-edit__title">Edit Scene Title & Heading</span>
+              <div className="tln-slug-edit__actions">
+                <button
+                  type="button"
+                  className="tln-slug-edit__btn tln-slug-edit__btn--cancel"
+                  title="Cancel editing (Escape)"
+                  aria-label="Cancel editing"
+                  onClick={handleCancelEditing}
+                >
+                  <X size={14} aria-hidden="true" />
+                  <span>Cancel</span>
+                </button>
+                <button
+                  type="submit"
+                  className="tln-slug-edit__btn tln-slug-edit__btn--save"
+                  title="Save changes (Enter)"
+                  aria-label="Save changes"
+                >
+                  <Check size={14} aria-hidden="true" />
+                  <span>Save</span>
+                </button>
+              </div>
+            </div>
+
             <div className="tln-slug-edit__inputs-grid">
               <div className="tln-slug-edit__field">
-                <span className="tln-slug-edit__field-label">Scene Title</span>
+                <label className="tln-slug-edit__field-label" htmlFor="tln-slug-title-input">
+                  Scene Title (Outline)
+                </label>
                 <input
+                  id="tln-slug-title-input"
                   autoFocus
                   className="tln-slug-edit__input"
                   aria-label="Scene Title"
@@ -306,8 +371,11 @@ export default function ScriptToolbar({
               </div>
 
               <div className="tln-slug-edit__field">
-                <span className="tln-slug-edit__field-label">Scene Heading (Slugline)</span>
+                <label className="tln-slug-edit__field-label" htmlFor="tln-slug-heading-input">
+                  Screenplay Heading (Slugline)
+                </label>
                 <input
+                  id="tln-slug-heading-input"
                   className="tln-slug-edit__input tln-slug-edit__input--slug"
                   aria-label="Scene Heading"
                   placeholder="e.g. INT. COFFEE SHOP - DAY"
@@ -321,127 +389,76 @@ export default function ScriptToolbar({
                   }}
                 />
               </div>
-
-              <div className="tln-slug-edit__actions">
-                <button
-                  type="submit"
-                  className="tln-slug-edit__btn tln-slug-edit__btn--save"
-                  title="Save changes (Enter)"
-                  aria-label="Save changes"
-                >
-                  <Check size={14} aria-hidden="true" />
-                  <span>Save</span>
-                </button>
-                <button
-                  type="button"
-                  className="tln-slug-edit__btn tln-slug-edit__btn--cancel"
-                  title="Cancel editing (Escape)"
-                  aria-label="Cancel editing"
-                  onClick={handleCancelEditing}
-                >
-                  <X size={14} aria-hidden="true" />
-                  <span>Cancel</span>
-                </button>
-              </div>
             </div>
 
-            {/* Presets Chips: Prefix & Time of Day */}
-            <div className="tln-slug-edit__chips" role="group" aria-label="Heading quick presets">
-              <span className="tln-slug-edit__chips-label">Prefix:</span>
-              {(["INT.", "EXT.", "INT./EXT."] as const).map((prefix) => (
-                <button
-                  key={prefix}
-                  type="button"
-                  className="tln-slug-chip"
-                  onClick={() => setSlugDraft((curr) => applyPrefixToSlug(curr, prefix))}
-                >
-                  {prefix}
-                </button>
-              ))}
+            {/* Quick Presets: Prefix & Time of Day */}
+            <div className="tln-slug-edit__presets" role="group" aria-label="Heading quick presets">
+              <div className="tln-slug-edit__presets-group">
+                <span className="tln-slug-edit__presets-label">Prefix:</span>
+                {(["INT.", "EXT.", "INT./EXT."] as const).map((prefix) => (
+                  <button
+                    key={prefix}
+                    type="button"
+                    className="tln-slug-chip"
+                    onPointerDown={(e) => e.preventDefault()}
+                    onClick={() => setSlugDraft((curr) => applyPrefixToSlug(curr, prefix))}
+                  >
+                    {prefix}
+                  </button>
+                ))}
+              </div>
 
-              <span className="tln-slug-chip__sep" aria-hidden="true">
-                ·
-              </span>
-
-              <span className="tln-slug-edit__chips-label">Time:</span>
-              {["DAY", "NIGHT", "DAWN", "DUSK", "CONTINUOUS"].map((tod) => (
-                <button
-                  key={tod}
-                  type="button"
-                  className="tln-slug-chip"
-                  onClick={() => setSlugDraft((curr) => applyTodToSlug(curr, tod))}
-                >
-                  {tod}
-                </button>
-              ))}
+              <div className="tln-slug-edit__presets-group">
+                <span className="tln-slug-edit__presets-label">Time:</span>
+                {["DAY", "NIGHT", "DAWN", "DUSK", "CONTINUOUS"].map((tod) => (
+                  <button
+                    key={tod}
+                    type="button"
+                    className="tln-slug-chip"
+                    onPointerDown={(e) => e.preventDefault()}
+                    onClick={() => setSlugDraft((curr) => applyTodToSlug(curr, tod))}
+                  >
+                    {tod}
+                  </button>
+                ))}
+              </div>
             </div>
           </form>
         ) : (
-          <div className="tln-slug-box">
+          <div className="tln-slug-banner">
             <button
               type="button"
-              className="tln-slug-btn"
+              className="tln-slug-banner__content"
               title={onPatchScene ? "Click to rename scene title and heading" : "Scene heading"}
               onClick={handleStartEditing}
             >
-              <span className="tln-slug-btn__title">{scene?.title || "Untitled Scene"}</span>
-              <span className="tln-slug-btn__divider" aria-hidden="true">
+              <span className="tln-slug-banner__badge">
+                {currentIndex >= 0 ? `#${currentIndex + 1}` : "SCENE"}
+              </span>
+              <span className="tln-slug-banner__title">
+                {scene?.title || "Untitled Scene"}
+              </span>
+              <span className="tln-slug-banner__sep" aria-hidden="true">
                 ·
               </span>
-              <span className="tln-slug-btn__slug">{slug || "INT. UNTITLED - DAY"}</span>
+              <span className="tln-slug-banner__slug">
+                {slug || "INT. UNTITLED - DAY"}
+              </span>
             </button>
             {onPatchScene && (
               <button
                 type="button"
-                className="tln-slug__pencil-btn"
+                className="tln-slug-banner__edit-btn"
                 title="Edit scene title and heading"
                 aria-label="Edit scene title and heading"
                 onClick={handleStartEditing}
               >
                 <Pencil size={13} aria-hidden="true" />
+                <span>Edit</span>
               </button>
             )}
           </div>
         )}
-      </div>
-
-      {/* 3. Minimal Icon Tool Actions (Right side) */}
-      <div className="tln-script__tool-actions">
-        {/* Typography in compact mode */}
-        <ScriptTypographyMenu
-          typography={typography}
-          onChange={onTypographyChange}
-          onInsertCueSnippet={onInsertCueSnippet}
-          compact
-        />
-
-        {/* Import as icon button */}
-        <button
-          type="button"
-          className="tln-icon-btn"
-          onClick={() => fileInput.current?.click()}
-          title="Import screenplay (.fountain, .txt)"
-          aria-label="Import screenplay"
-        >
-          <Upload size={15} aria-hidden="true" />
-        </button>
-
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".fountain,.txt,text/plain"
-          hidden
-          onChange={() => {
-            const f = fileInput.current?.files?.[0];
-            fileInput.current!.value = "";
-            if (f) void onImportFile(f);
-          }}
-        />
-
-        {/* Download as icon button */}
-        <ScriptDownloads typography={typography} iconOnly />
-
-        {importNote && <span className="tln-script__note">{importNote}</span>}
       </div>
     </div>
   );
