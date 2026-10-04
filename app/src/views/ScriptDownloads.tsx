@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useGraphStore } from "../store";
 import { assembleExport, downloadFountain, parseFountain, renderPreview } from "../data/fountain";
 import { getFontOption, type ScriptTypographyState } from "./script/scriptTypography";
@@ -16,6 +16,16 @@ type ScriptDownloadsProps = {
 
 export default function ScriptDownloads({ typography }: ScriptDownloadsProps) {
   const menu = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (menu.current?.open && !menu.current.contains(event.target as Node)) {
+        menu.current.open = false;
+      }
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
   function exportAs(format: "fountain" | "pdf" | "json") {
     window.dispatchEvent(new Event("throughline:flush-script"));
     const state = useGraphStore.getState();
@@ -72,22 +82,44 @@ export default function ScriptDownloads({ typography }: ScriptDownloadsProps) {
         if (event.key === "Escape" && menu.current) menu.current.open = false;
       }}
     >
-      <summary>
+      <summary aria-haspopup="menu">
         Download <span aria-hidden="true">▾</span>
       </summary>
-      <div className="script-downloads__menu">
-        <strong>Save your script</strong>
-        <button onClick={() => exportAs("fountain")}>
+      <div
+        className="script-downloads__scrim"
+        aria-hidden="true"
+        onClick={(event) => {
+          event.preventDefault();
+          if (menu.current) menu.current.open = false;
+        }}
+      />
+      <div className="script-downloads__menu" role="menu">
+        <div className="script-downloads__handle" aria-hidden="true" />
+        <div className="script-downloads__header">
+          <strong>Save your script</strong>
+          <button
+            type="button"
+            className="script-downloads__close"
+            aria-label="Close download menu"
+            onClick={(event) => {
+              event.preventDefault();
+              if (menu.current) menu.current.open = false;
+            }}
+          >
+            ×
+          </button>
+        </div>
+        <button onClick={() => exportAs("fountain")} role="menuitem">
           <b>Fountain (.fountain) · Recommended</b>
           <span>
             Editable screenplay text. Best for continuing to write; import it back in Script view.
           </span>
         </button>
-        <button onClick={() => exportAs("pdf")}>
+        <button onClick={() => exportAs("pdf")} role="menuitem">
           <b>Print / Save as PDF</b>
           <span>Formatted reading copy for sharing. Opens a print preview in a new tab.</span>
         </button>
-        <button onClick={() => exportAs("json")}>
+        <button onClick={() => exportAs("json")} role="menuitem">
           <b>Story backup (.json)</b>
           <span>
             Restore your story, scenes, characters and connections in Throughline. Attachment files

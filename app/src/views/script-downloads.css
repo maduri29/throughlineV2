@@ -4,37 +4,78 @@
   color: var(--ink);
   font-size: 12px;
 }
+
 .script-downloads summary {
   cursor: pointer;
   list-style: none;
   padding: 7px 10px;
   border: 1px solid var(--line);
   border-radius: 6px;
+  background: var(--card);
+  transition: all 0.15s ease;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
+
+.script-downloads summary:hover {
+  background: var(--tint);
+  border-color: var(--line-strong);
+  color: var(--accent);
+}
+
 .script-downloads summary::-webkit-details-marker {
   display: none;
 }
+
 .script-downloads summary:focus-visible,
 .script-downloads button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-.script-downloads__menu {
-  position: absolute;
-  z-index: 100;
-  right: 0;
-  top: calc(100% + 8px);
-  width: min(340px, calc(100vw - 32px));
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel);
-  box-shadow: 0 8px 32px #0003;
+
+/* Scrim & Mobile Handle defaults (hidden on desktop) */
+.script-downloads__scrim {
+  display: none;
 }
-.script-downloads__menu > strong {
+
+.script-downloads__handle {
+  display: none;
+}
+
+.script-downloads__close {
+  display: none;
+}
+
+.script-downloads__header {
   display: block;
   margin: 2px 8px 8px;
 }
+
+.script-downloads__header > strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+/* Desktop dropdown */
+@media (min-width: 769px) {
+  .script-downloads__menu {
+    position: absolute;
+    z-index: 100;
+    right: 0;
+    top: calc(100% + 8px);
+    width: min(340px, calc(100vw - 32px));
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    animation: sd-fade-in 0.12s ease-out;
+  }
+}
+
 .script-downloads__menu button {
   display: block;
   width: 100%;
@@ -46,19 +87,147 @@
   padding: 10px 8px;
   cursor: pointer;
   font: inherit;
+  transition: all 0.15s ease;
 }
+
 .script-downloads__menu button:hover {
-  background: var(--card-elevated);
+  background: var(--card-elevated, var(--card));
 }
+
+.script-downloads__menu button b {
+  display: block;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
 .script-downloads__menu span {
   display: block;
   margin-top: 5px;
+  font-size: 11.5px;
   line-height: 1.5;
   color: var(--ink-2);
 }
+
 .script-downloads__menu small {
   display: block;
   margin: 8px;
   line-height: 1.5;
-  color: var(--ink-2);
+  color: var(--dim);
+}
+
+/* Mobile responsive bottom sheet */
+@media (max-width: 768px) {
+  .script-downloads[open] .script-downloads__scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 998;
+    animation: sd-fade-in 0.2s ease-out;
+  }
+
+  .script-downloads__menu {
+    position: fixed;
+    z-index: 999;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+    border: 1px solid var(--line-strong);
+    border-bottom: none;
+    background: var(--panel);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+    max-height: 85vh;
+    overflow-y: auto;
+    animation: sd-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .script-downloads__handle {
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line-strong);
+    margin: 0 auto 12px;
+  }
+
+  .script-downloads__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .script-downloads__header > strong {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .script-downloads__close {
+    all: unset;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--dim);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    transition: all 0.15s ease;
+  }
+
+  .script-downloads__close:hover {
+    color: var(--ink);
+    background: var(--tint);
+  }
+
+  .script-downloads__close:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .script-downloads__menu button {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+
+  .script-downloads__menu button:hover,
+  .script-downloads__menu button:active {
+    background: var(--tint);
+    border-color: var(--accent);
+  }
+}
+
+@keyframes sd-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sd-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

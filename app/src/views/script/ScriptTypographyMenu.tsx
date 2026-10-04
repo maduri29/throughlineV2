@@ -68,7 +68,14 @@ export default function ScriptTypographyMenu({ typography, onChange, onInsertCue
       </button>
 
       {open && (
-        <div className="tln-script-typo__popover" role="dialog" aria-label="Script Typography">
+        <>
+          <div
+            className="tln-script-typo__scrim"
+            aria-hidden="true"
+            onClick={() => setOpen(false)}
+          />
+          <div className="tln-script-typo__popover" role="dialog" aria-label="Script Typography">
+            <div className="tln-script-typo__handle" aria-hidden="true" />
           <div className="tln-script-typo__header">
             <div>
               <div className="tln-script-typo__title">Telugu & Script Typography</div>
@@ -169,6 +176,7 @@ export default function ScriptTypographyMenu({ typography, onChange, onInsertCue
             )}
           </div>
         </div>
+        </>
       )}
     </div>
   );
