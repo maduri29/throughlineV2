@@ -1,10 +1,9 @@
 import { Effect, Schedule } from "effect";
-import { dbGetAll, dbGet, dbPut, dbDelete, metaGet, metaSet } from "./idb";
 import type { GraphEdge, GraphNode } from "../types";
-import type { Revision } from "./boneyard/types";
 import { parseRevisions } from "./boneyard/validation";
 import { accountStorageKey, getWorkspaceAccount } from "./account";
 import { authenticatedFetch } from "../lib/auth-client";
+import { getSyncStorage, type SyncStorageAdapter } from "./syncStorage";
 
 import {
   changedRecords,
@@ -14,18 +13,16 @@ import {
   type CloudConflict,
 } from "./sync-protocol";
 
-const BASELINE_KEY = "cloud-baseline-v2";
-const CONFLICT_KEY = "cloud-conflicts-v2";
-
-export function getSyncConflictsEffect(): Effect.Effect<CloudConflict[], unknown> {
+export function getSyncConflictsEffect(
+  storage: SyncStorageAdapter = getSyncStorage(),
+): Effect.Effect<CloudConflict[], unknown> {
   return Effect.gen(function* () {
-    const conflicts =
-      (yield* Effect.tryPromise(() => metaGet<CloudConflict[]>(CONFLICT_KEY))) ?? [];
+    const conflicts = yield* Effect.tryPromise(() => storage.getConflicts());
     return yield* Effect.all(
       conflicts.map((record) =>
         Effect.tryPromise(async () => ({
           ...record,
-          local: (await dbGet<GraphNode | GraphEdge>(record.kind, record.id)) ?? null,
+          local: await storage.getNodeOrEdge(record.kind, record.id),
         })),
       ),
       { concurrency: "unbounded" },
@@ -33,15 +30,20 @@ export function getSyncConflictsEffect(): Effect.Effect<CloudConflict[], unknown
   });
 }
 
-export function getSyncConflicts(): Promise<CloudConflict[]> {
-  return Effect.runPromise(getSyncConflictsEffect());
+export function getSyncConflicts(
+  storage: SyncStorageAdapter = getSyncStorage(),
+): Promise<CloudConflict[]> {
+  return Effect.runPromise(getSyncConflictsEffect(storage));
 }
 
-export async function resolveSyncConflicts(choice: "local" | "cloud"): Promise<void> {
-  const conflicts = await getSyncConflicts();
-  const baseline = (await metaGet<CloudRecord[]>(BASELINE_KEY)) ?? [];
+export async function resolveSyncConflicts(
+  choice: "local" | "cloud",
+  storage: SyncStorageAdapter = getSyncStorage(),
+): Promise<void> {
+  const conflicts = await getSyncConflicts(storage);
+  const baseline = await storage.getBaseline();
   const records = new Map(baseline.map((r) => [recordKey(r), r]));
-  await metaSet(`cloud-conflict-backup-${Date.now()}`, conflicts);
+  await storage.saveBackup(`cloud-conflict-backup-${Date.now()}`, conflicts);
   for (const conflict of conflicts) {
     records.set(recordKey(conflict), {
       kind: conflict.kind,
@@ -67,14 +69,14 @@ export async function resolveSyncConflicts(choice: "local" | "cloud"): Promise<v
     }
 
     await Promise.all([
-      nodesToPut.length > 0 ? dbPut("nodes", nodesToPut) : undefined,
-      edgesToPut.length > 0 ? dbPut("edges", edgesToPut) : undefined,
-      nodesToDelete.length > 0 ? dbDelete("nodes", nodesToDelete) : undefined,
-      edgesToDelete.length > 0 ? dbDelete("edges", edgesToDelete) : undefined,
+      storage.putNodes(nodesToPut),
+      storage.putEdges(edgesToPut),
+      storage.deleteNodes(nodesToDelete),
+      storage.deleteEdges(edgesToDelete),
     ]);
   }
-  await metaSet(BASELINE_KEY, [...records.values()]);
-  await metaSet(CONFLICT_KEY, []);
+  await storage.setBaseline([...records.values()]);
+  await storage.setConflicts([]);
 }
 
 const SYNC_KEY_STORAGE = "throughline.sync_key";
@@ -127,6 +129,7 @@ export type SyncResult = {
 
 export function executeSyncEffect(
   beforeApply?: () => Promise<void>,
+  storage: SyncStorageAdapter = getSyncStorage(),
 ): Effect.Effect<SyncResult, never> {
   return Effect.gen(function* () {
     const syncKey = getSyncKey();
@@ -141,9 +144,9 @@ export function executeSyncEffect(
 
     const [localNodes, localEdges, baseline] = yield* Effect.all(
       [
-        Effect.tryPromise(() => dbGetAll<GraphNode>("nodes")),
-        Effect.tryPromise(() => dbGetAll<GraphEdge>("edges")),
-        Effect.tryPromise(async () => (await metaGet<CloudRecord[]>(BASELINE_KEY)) ?? []),
+        Effect.tryPromise(() => storage.getNodes()),
+        Effect.tryPromise(() => storage.getEdges()),
+        Effect.tryPromise(() => storage.getBaseline()),
       ],
       { concurrency: "unbounded" },
     );
@@ -169,7 +172,8 @@ export function executeSyncEffect(
     };
 
     if (res.status === 409 && data.conflicts) {
-      yield* Effect.tryPromise(() => metaSet(CONFLICT_KEY, data.conflicts));
+      const serverConflicts = data.conflicts;
+      yield* Effect.tryPromise(() => storage.setConflicts(serverConflicts));
     }
 
     if (!res.ok || !data.ok || data.protocol !== 2 || !Array.isArray(data.records)) {
@@ -191,10 +195,7 @@ export function executeSyncEffect(
     }
 
     const [liveNodes, liveEdges] = yield* Effect.all(
-      [
-        Effect.tryPromise(() => dbGetAll<GraphNode>("nodes")),
-        Effect.tryPromise(() => dbGetAll<GraphEdge>("edges")),
-      ],
+      [Effect.tryPromise(() => storage.getNodes()), Effect.tryPromise(() => storage.getEdges())],
       { concurrency: "unbounded" },
     );
 
@@ -245,22 +246,18 @@ export function executeSyncEffect(
 
     yield* Effect.all(
       [
-        nodesToPut.length > 0 ? Effect.tryPromise(() => dbPut("nodes", nodesToPut)) : Effect.void,
-        edgesToPut.length > 0 ? Effect.tryPromise(() => dbPut("edges", edgesToPut)) : Effect.void,
-        nodesToDelete.length > 0
-          ? Effect.tryPromise(() => dbDelete("nodes", nodesToDelete))
-          : Effect.void,
-        edgesToDelete.length > 0
-          ? Effect.tryPromise(() => dbDelete("edges", edgesToDelete))
-          : Effect.void,
-        Effect.tryPromise(() => metaSet(BASELINE_KEY, [...nextBaseline.values()])),
-        Effect.tryPromise(() => metaSet(CONFLICT_KEY, conflicts)),
+        Effect.tryPromise(() => storage.putNodes(nodesToPut)),
+        Effect.tryPromise(() => storage.putEdges(edgesToPut)),
+        Effect.tryPromise(() => storage.deleteNodes(nodesToDelete)),
+        Effect.tryPromise(() => storage.deleteEdges(edgesToDelete)),
+        Effect.tryPromise(() => storage.setBaseline([...nextBaseline.values()])),
+        Effect.tryPromise(() => storage.setConflicts(conflicts)),
       ],
       { concurrency: "unbounded" },
     );
 
     const boneyardSyncEffect = Effect.gen(function* () {
-      const revisions = yield* Effect.tryPromise(() => dbGetAll<Revision>("boneyard"));
+      const revisions = yield* Effect.tryPromise(() => storage.getBoneyardRevisions());
       const ideaResponse = yield* Effect.tryPromise(() =>
         authenticatedFetch("/api/boneyard-sync", {
           method: "POST",
@@ -281,8 +278,9 @@ export function executeSyncEffect(
           ),
         );
       }
-      const { mergeRevisions } = yield* Effect.tryPromise(() => import("./boneyard/repository"));
-      yield* Effect.tryPromise(() => mergeRevisions(parseRevisions(ideaData.revisions)));
+      yield* Effect.tryPromise(() =>
+        storage.mergeBoneyardRevisions(parseRevisions(ideaData.revisions)),
+      );
     });
 
     const boneyardEither = yield* Effect.either(boneyardSyncEffect);
@@ -324,6 +322,9 @@ export function executeSyncEffect(
   );
 }
 
-export async function executeSync(beforeApply?: () => Promise<void>): Promise<SyncResult> {
-  return Effect.runPromise(executeSyncEffect(beforeApply));
+export async function executeSync(
+  beforeApply?: () => Promise<void>,
+  storage: SyncStorageAdapter = getSyncStorage(),
+): Promise<SyncResult> {
+  return Effect.runPromise(executeSyncEffect(beforeApply, storage));
 }

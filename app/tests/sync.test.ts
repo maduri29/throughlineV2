@@ -1,5 +1,15 @@
 import { describe, expect, it, beforeEach, afterAll } from "bun:test";
-import { getSyncKey, setSyncKey, getLastSyncedAt, executeSync } from "../src/data/sync";
+import {
+  getSyncKey,
+  setSyncKey,
+  getLastSyncedAt,
+  executeSync,
+  getSyncConflicts,
+  resolveSyncConflicts,
+} from "../src/data/sync";
+import { MemorySyncStorageAdapter } from "../src/data/syncStorage";
+import type { GraphNode } from "../src/types";
+import type { CloudConflict } from "../src/data/sync-protocol";
 
 class LocalStorageMock {
   private store: Record<string, string> = {};
@@ -64,5 +74,109 @@ describe("sync data helpers", () => {
     expect(res.message).toContain("Set a Sync Key");
     expect(res.pulledNodes).toHaveLength(0);
     expect(res.pulledEdges).toHaveLength(0);
+  });
+});
+
+describe("sync conflict resolution (MemorySyncStorageAdapter seam)", () => {
+  it("retrieves recorded conflicts and attaches current local state", async () => {
+    const localNode: GraphNode = {
+      id: "node-1",
+      type: "scene",
+      title: "Local Title",
+    };
+    const cloudConflict: CloudConflict = {
+      kind: "nodes",
+      id: "node-1",
+      version: 2,
+      data: {
+        id: "node-1",
+        type: "scene",
+        title: "Cloud Title",
+      },
+    };
+
+    const storage = new MemorySyncStorageAdapter({
+      nodes: [localNode],
+      conflicts: [cloudConflict],
+    });
+
+    const conflicts = await getSyncConflicts(storage);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]!.id).toBe("node-1");
+    expect((conflicts[0]!.local as GraphNode).title).toBe("Local Title");
+    expect((conflicts[0]!.data as GraphNode).title).toBe("Cloud Title");
+  });
+
+  it("resolves conflicts favoring local state without mutating local nodes", async () => {
+    const localNode: GraphNode = {
+      id: "node-1",
+      type: "scene",
+      title: "Local Kept Title",
+    };
+    const cloudConflict: CloudConflict = {
+      kind: "nodes",
+      id: "node-1",
+      version: 5,
+      data: {
+        id: "node-1",
+        type: "scene",
+        title: "Cloud Discarded Title",
+      },
+    };
+
+    const storage = new MemorySyncStorageAdapter({
+      nodes: [localNode],
+      conflicts: [cloudConflict],
+    });
+
+    await resolveSyncConflicts("local", storage);
+
+    // Local nodes untouched
+    const nodes = await storage.getNodes();
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0]!.title).toBe("Local Kept Title");
+
+    // Conflicts cleared
+    const remainingConflicts = await storage.getConflicts();
+    expect(remainingConflicts).toHaveLength(0);
+
+    // Baseline updated with the cloud version
+    const baseline = await storage.getBaseline();
+    expect(baseline).toHaveLength(1);
+    expect(baseline[0]!.version).toBe(5);
+  });
+
+  it("resolves conflicts favoring cloud state by updating local nodes and clearing conflicts", async () => {
+    const localNode: GraphNode = {
+      id: "node-2",
+      type: "scene",
+      title: "Old Local Title",
+    };
+    const cloudConflict: CloudConflict = {
+      kind: "nodes",
+      id: "node-2",
+      version: 3,
+      data: {
+        id: "node-2",
+        type: "scene",
+        title: "Accepted Cloud Title",
+      },
+    };
+
+    const storage = new MemorySyncStorageAdapter({
+      nodes: [localNode],
+      conflicts: [cloudConflict],
+    });
+
+    await resolveSyncConflicts("cloud", storage);
+
+    // Local node overwritten with cloud data
+    const nodes = await storage.getNodes();
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0]!.title).toBe("Accepted Cloud Title");
+
+    // Conflicts cleared
+    const remainingConflicts = await storage.getConflicts();
+    expect(remainingConflicts).toHaveLength(0);
   });
 });
