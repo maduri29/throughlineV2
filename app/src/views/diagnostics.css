@@ -208,15 +208,15 @@
 }
 
 .tln-diag-issue-card--error {
-  border-left: 4px solid var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
 }
 
 .tln-diag-issue-card--warning {
-  border-left: 4px solid var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 35%, var(--line));
 }
 
 .tln-diag-issue-card--info {
-  border-left: 4px solid var(--scene);
+  border-color: color-mix(in srgb, var(--scene) 35%, var(--line));
 }
 
 .tln-diag-issue-icon {

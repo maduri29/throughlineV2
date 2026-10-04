@@ -28,6 +28,11 @@ export function DeleteStoryDialog({
         event.preventDefault();
         if (!pending) onCancel();
       }}
+      onClick={(event) => {
+        if (event.target === dialog.current && !pending) {
+          onCancel();
+        }
+      }}
     >
       <span className="tln-delete-project__icon">
         <Trash2 size={24} aria-hidden="true" />

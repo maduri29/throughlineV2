@@ -141,6 +141,14 @@ export function useCharacterWorkspace() {
     }
   }
 
+  function remove(id = character?.id) {
+    if (!id) return;
+    setDraft(null);
+    const remaining = characters.filter((c) => c.id !== id);
+    setChosenId(remaining[0]?.id ?? null);
+    useGraphStore.getState().deleteNodes([id]);
+  }
+
   return {
     nodes,
     characters,
@@ -157,6 +165,7 @@ export function useCharacterWorkspace() {
     setCastQuery,
     edit,
     save,
+    remove,
     choose,
     create,
     changeField,

@@ -39,6 +39,7 @@ export default function CharactersView({ onOpenNode }: { onOpenNode: (id: string
         }}
         onChangeField={ws.changeField}
         onUploadPoster={(file) => void ws.uploadPoster(file)}
+        onDelete={() => ws.remove()}
       />
     </div>
   );

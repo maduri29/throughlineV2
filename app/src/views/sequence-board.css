@@ -201,8 +201,10 @@
   align-items: center;
   gap: 7px;
   margin-bottom: 9px;
-  border-left: 3px solid var(--sequence-color);
-  padding: 3px 6px;
+  border: 1px solid color-mix(in srgb, var(--sequence-color) 35%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--sequence-color) 6%, transparent);
+  padding: 3px 8px;
 }
 .sequence-board__group > header input {
   min-width: 0;

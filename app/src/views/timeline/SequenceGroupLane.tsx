@@ -26,6 +26,7 @@ interface SequenceGroupLaneProps {
   onSelectScene: (id: string) => void;
   onStartDrag: (id: string) => void;
   onAddScene: () => void;
+  onDeleteGroup?: (id: string) => void;
 }
 
 export function SequenceGroupLane({
@@ -50,6 +51,7 @@ export function SequenceGroupLane({
   onSelectScene,
   onStartDrag,
   onAddScene,
+  onDeleteGroup,
 }: SequenceGroupLaneProps) {
   const color = ["#54958b", "#af8860", "#8c82b7", "#5b8faf"][groupIndex % 4];
 
@@ -88,6 +90,22 @@ export function SequenceGroupLane({
             <button disabled={!canMoveLater} onClick={() => onMoveGroup(1)}>
               Move sequence later
             </button>
+            {!isUngrouped && onDeleteGroup && (
+              <button
+                style={{ color: "var(--danger)" }}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Delete sequence "${group.title}"? Any scenes inside will be kept as ungrouped.`,
+                    )
+                  ) {
+                    onDeleteGroup(group.id);
+                  }
+                }}
+              >
+                Delete sequence
+              </button>
+            )}
           </div>
         </details>
       </header>

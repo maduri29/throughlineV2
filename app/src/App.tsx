@@ -84,8 +84,13 @@ export default function App() {
   const jumpTo = (id: string, type: string): void => {
     const pid = useGraphStore.getState().projectId;
     if (pid && !routeId) router.push(`/stories/${pid}`);
-    setLens(type === "character" ? "characters" : "map");
-    setDetailsOpen(type !== "character");
+    if (type === "character") {
+      setLens("characters");
+      setDetailsOpen(false);
+    } else if (lens !== "script" && lens !== "timeline") {
+      setLens("map");
+      setDetailsOpen(true);
+    }
     useGraphStore.getState().select([id]);
   };
 

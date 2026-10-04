@@ -79,6 +79,16 @@ export default function ScriptView() {
     scheduleScene(scene.id, text + addition);
   };
 
+  const handleAddScene = () => {
+    if (!project) return;
+    const newId = useGraphStore.getState().addNode({
+      type: "scene",
+      title: "New Scene",
+      parentId: project.id,
+    });
+    if (newId) setSceneId(newId);
+  };
+
   const currentFont = getFontOption(typography.fontId);
   const typoStyles = {
     "--font-script-family": currentFont.cssFamily,
@@ -100,6 +110,7 @@ export default function ScriptView() {
         effectiveSceneId={effectiveSceneId}
         locationBySceneId={locationBySceneId}
         onSelectScene={setSceneId}
+        onAddScene={handleAddScene}
       />
 
       <div className="tln-script__main" ref={wrapRef}>
@@ -109,6 +120,10 @@ export default function ScriptView() {
         >
           <ScriptToolbar
             slug={slug}
+            scene={scene}
+            onPatchScene={(patch) => {
+              if (scene) useGraphStore.getState().patchNode(scene.id, patch);
+            }}
             typography={typography}
             onTypographyChange={handleTypographyChange}
             onInsertCueSnippet={handleInsertCueSnippet}

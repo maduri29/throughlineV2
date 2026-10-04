@@ -169,6 +169,10 @@ export default function TimelineView({ onScript }: { onScript: () => void }) {
                     onSelectScene={(id) => state.select([id])}
                     onStartDrag={(id) => dnd.setDragging(id)}
                     onAddScene={() => ws.add(group.id)}
+                    onDeleteGroup={(id) => {
+                      state.deleteNodes([id]);
+                      ws.setFilter("all");
+                    }}
                   />
                 );
               })}
@@ -193,6 +197,10 @@ export default function TimelineView({ onScript }: { onScript: () => void }) {
           }
           onForceSave={() => state.forceSave()}
           onFilterChange={ws.setFilter}
+          onDeleteScene={(id) => {
+            state.deleteNodes([id]);
+            state.select([]);
+          }}
         />
       </div>
     </section>

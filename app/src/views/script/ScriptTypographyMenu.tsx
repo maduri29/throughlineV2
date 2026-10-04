@@ -76,7 +76,7 @@ export default function ScriptTypographyMenu({ typography, onChange, onInsertCue
             </div>
             <button
               type="button"
-              className="sb-close"
+              className="tln-script-typo__close"
               aria-label="Close typography menu"
               onClick={() => setOpen(false)}
             >

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertCircle,
@@ -28,13 +28,44 @@ export default function StoryDiagnosticsModal({ onClose, onNavigateToNode }: Pro
     return analyzeStoryHealth(nodes, edges);
   }, [nodes, edges]);
 
-  // Close on Escape key
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Focus trap, initial focus, and close on Escape
   useEffect(() => {
+    const prevFocus = document.activeElement as HTMLElement | null;
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusable && focusable.length > 0) {
+      focusable[0]?.focus();
+    }
+
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key === "Tab" && dialogRef.current) {
+        const elements = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (!elements.length) return;
+        const first = elements[0];
+        const last = elements[elements.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
     };
     window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    return () => {
+      window.removeEventListener("keydown", handleKey);
+      prevFocus?.focus?.();
+    };
   }, [onClose]);
 
   const { errorCount, warnCount, infoCount } = useMemo(() => {
@@ -66,16 +97,18 @@ export default function StoryDiagnosticsModal({ onClose, onNavigateToNode }: Pro
   return (
     <div className="tln-dialog-scrim" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="tln-dialog tln-diag-dialog"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        aria-modal="true"
         aria-label="Story Architecture & Health Diagnostics"
       >
         <header className="tln-diag-head">
           <div className="tln-diag-title-row">
             <Activity size={18} className="tln-diag-issue-icon--info" />
             <h2 className="tln-diag-title">Story Architecture & Health</h2>
-            <span className="tln-diag-tag">Effect Engine</span>
+            <span className="tln-diag-tag">Structural Analysis</span>
           </div>
           <button className="tln-btn tln-btn--quiet" onClick={onClose} aria-label="Close dialog">
             <X size={16} />
@@ -119,27 +152,31 @@ export default function StoryDiagnosticsModal({ onClose, onNavigateToNode }: Pro
           </div>
 
           {/* Filter Bar */}
-          <div className="tln-diag-filter-row">
+          <div className="tln-diag-filter-row" role="toolbar" aria-label="Filter issues by severity">
             <button
               className={`tln-diag-filter-btn${filter === "all" ? " tln-diag-filter-btn--active" : ""}`}
+              aria-pressed={filter === "all"}
               onClick={() => setFilter("all")}
             >
               All Issues <span className="tln-diag-badge">{report.issues.length}</span>
             </button>
             <button
               className={`tln-diag-filter-btn${filter === "error" ? " tln-diag-filter-btn--active" : ""}`}
+              aria-pressed={filter === "error"}
               onClick={() => setFilter("error")}
             >
               Errors <span className="tln-diag-badge">{errorCount}</span>
             </button>
             <button
               className={`tln-diag-filter-btn${filter === "warning" ? " tln-diag-filter-btn--active" : ""}`}
+              aria-pressed={filter === "warning"}
               onClick={() => setFilter("warning")}
             >
               Warnings <span className="tln-diag-badge">{warnCount}</span>
             </button>
             <button
               className={`tln-diag-filter-btn${filter === "info" ? " tln-diag-filter-btn--active" : ""}`}
+              aria-pressed={filter === "info"}
               onClick={() => setFilter("info")}
             >
               Suggestions <span className="tln-diag-badge">{infoCount}</span>

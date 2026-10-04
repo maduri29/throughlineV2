@@ -33,6 +33,7 @@ interface CharacterDossierProps {
   onOpenNode: (id: string) => void;
   onChangeField: (key: CharacterField, value: string) => void;
   onUploadPoster: (file?: File) => void;
+  onDelete?: () => void;
 }
 
 export function CharacterDossier({
@@ -50,6 +51,7 @@ export function CharacterDossier({
   onOpenNode,
   onChangeField,
   onUploadPoster,
+  onDelete,
 }: CharacterDossierProps) {
   if (!character) {
     return (
@@ -121,9 +123,29 @@ export function CharacterDossier({
                 </button>
               </>
             ) : (
-              <button type="button" className="character-dossier__edit" onClick={onEdit}>
-                Edit profile
-              </button>
+              <>
+                {onDelete && (
+                  <button
+                    type="button"
+                    className="character-dossier__cancel"
+                    style={{ color: "var(--danger)" }}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Delete character "${character.title || "Untitled"}"? This cannot be undone.`,
+                        )
+                      ) {
+                        onDelete();
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
+                )}
+                <button type="button" className="character-dossier__edit" onClick={onEdit}>
+                  Edit profile
+                </button>
+              </>
             )}
           </div>
         </header>

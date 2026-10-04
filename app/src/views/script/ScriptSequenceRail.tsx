@@ -11,6 +11,7 @@ type ScriptSequenceRailProps = {
   effectiveSceneId: string | null;
   locationBySceneId: Map<string, string>;
   onSelectScene: (id: string) => void;
+  onAddScene?: () => void;
 };
 
 export default function ScriptSequenceRail({
@@ -18,6 +19,7 @@ export default function ScriptSequenceRail({
   effectiveSceneId,
   locationBySceneId,
   onSelectScene,
+  onAddScene,
 }: ScriptSequenceRailProps) {
   return (
     <aside className="tln-script__rail">
@@ -36,6 +38,16 @@ export default function ScriptSequenceRail({
           </span>
         </button>
       ))}
+      {onAddScene && (
+        <button
+          type="button"
+          className="tln-script__add-btn"
+          onClick={onAddScene}
+          title="Add a new scene"
+        >
+          + Add scene
+        </button>
+      )}
     </aside>
   );
 }

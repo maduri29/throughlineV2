@@ -14,6 +14,7 @@ interface SequenceSceneEditorProps {
   onMoveScene: (sceneId: string, containerId: string, beforeId?: string) => void;
   onForceSave: () => Promise<void>;
   onFilterChange: (f: string) => void;
+  onDeleteScene?: (id: string) => void;
 }
 
 export function SequenceSceneEditor({
@@ -30,6 +31,7 @@ export function SequenceSceneEditor({
   onMoveScene,
   onForceSave,
   onFilterChange,
+  onDeleteScene,
 }: SequenceSceneEditorProps) {
   if (!selected) {
     return (
@@ -158,6 +160,21 @@ export function SequenceSceneEditor({
         </label>
       </div>
       <footer>
+        {onDeleteScene && (
+          <button
+            type="button"
+            className="sb-quiet"
+            style={{ color: "var(--danger)", marginRight: "auto" }}
+            onClick={() => {
+              if (window.confirm(`Delete scene "${selected.title}"? This cannot be undone.`)) {
+                onDeleteScene(selected.id);
+                onClose();
+              }
+            }}
+          >
+            Delete scene
+          </button>
+        )}
         <button
           className="sb-quiet"
           onClick={() => {

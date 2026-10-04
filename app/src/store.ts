@@ -33,6 +33,7 @@ type Actions = {
   /** Schedule scenes in one undoable step; days come from autoScheduleDays. */
   scheduleScenes: (plan: Array<{ id: string; day: number | null }>) => void;
   deleteSelection: () => void;
+  deleteNodes: (ids: string[]) => void;
   connect: (from: string, to: string, type: EdgeType, label?: string) => boolean;
   patchEdge: (id: string, patch: Partial<GraphEdge>) => void;
   deleteEdge: (id: string) => void;
@@ -135,6 +136,12 @@ export const useGraphStore = create<State & Actions>()((set, get) => {
     deleteSelection: () => {
       graphEngine.deleteNodes(get().selection);
       set({ selection: [] });
+    },
+
+    deleteNodes: (ids) => {
+      graphEngine.deleteNodes(ids);
+      const remaining = get().selection.filter((id) => !ids.includes(id));
+      set({ selection: remaining });
     },
 
     connect: (from, to, type, label) => graphEngine.connect(from, to, type, label),

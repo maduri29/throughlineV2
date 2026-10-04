@@ -182,11 +182,31 @@
   font-weight: 600;
 }
 
+.tln-script-typo__close {
+  all: unset;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--dim);
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.tln-script-typo__close:hover {
+  color: var(--ink);
+}
+
+.tln-script-typo__close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .tln-script-typo__tip {
-  padding: 8px 10px;
-  background: color-mix(in srgb, var(--tint) 50%, var(--bg));
-  border-left: 3px solid var(--accent);
-  border-radius: 0 6px 6px 0;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--tint) 40%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 6px;
   font-size: 11.5px;
   line-height: 1.45;
   color: var(--ink);

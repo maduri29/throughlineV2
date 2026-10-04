@@ -160,9 +160,14 @@
     font-size: 10px;
   }
 
+  .tln-inspector__edel:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+  }
+
   .tln-inspector__none {
     font-size: 11px;
-    color: #a8b1c9;
+    color: var(--dim);
   }
 
   /* Add Connection Section */
@@ -214,6 +219,11 @@
     background: var(--tint);
     color: var(--ink);
     border-color: var(--line-strong);
+  }
+
+  .tln-conncadd__btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   .tln-conncadd__btn:disabled {

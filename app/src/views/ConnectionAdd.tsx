@@ -8,6 +8,23 @@ import { connectionTargets } from "../data/connections";
 import { useGraphStore } from "../store";
 import type { EdgeType } from "../types";
 
+const CONNECTION_LABELS: Record<string, string> = {
+  takes_place_at: "Takes place at",
+  flashback_of: "Flashback of",
+  sets_up: "Sets up",
+  appears_in: "Appears in",
+  contains: "Contains",
+  parallels: "Parallels",
+  opposes: "Opposes",
+  allied_with: "Allied with",
+  causes: "Causes",
+  resolves: "Resolves",
+};
+
+function formatConnectionLabel(t: string): string {
+  return CONNECTION_LABELS[t] ?? t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export default function ConnectionAdd() {
   const { nodeId, nodes, edges, connect } = useGraphStore(
     useShallow((s) => ({
@@ -78,7 +95,7 @@ export default function ConnectionAdd() {
       >
         {(cand?.types ?? []).map((t, i) => (
           <option key={t} value={i}>
-            {t}
+            {formatConnectionLabel(t)}
           </option>
         ))}
       </select>

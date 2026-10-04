@@ -3,9 +3,12 @@ import ScriptDownloads from "../ScriptDownloads";
 import { useGraphStore } from "../../store";
 import ScriptTypographyMenu from "./ScriptTypographyMenu";
 import type { ScriptTypographyState } from "./scriptTypography";
+import type { GraphNode } from "../../types";
 
 type ScriptToolbarProps = {
   slug: string;
+  scene?: GraphNode;
+  onPatchScene?: (patch: Partial<GraphNode>) => void;
   typography: ScriptTypographyState;
   onTypographyChange: (next: ScriptTypographyState) => void;
   onInsertCueSnippet?: () => void;
@@ -13,11 +16,15 @@ type ScriptToolbarProps = {
 
 export default function ScriptToolbar({
   slug,
+  scene,
+  onPatchScene,
   typography,
   onTypographyChange,
   onInsertCueSnippet,
 }: ScriptToolbarProps) {
   const [importNote, setImportNote] = useState<string | null>(null);
+  const [isEditingSlug, setIsEditingSlug] = useState(false);
+  const [slugDraft, setSlugDraft] = useState("");
   const fileInput = useRef<HTMLInputElement | null>(null);
 
   const onImportFile = async (file: File) => {
@@ -27,11 +34,56 @@ export default function ScriptToolbar({
     setTimeout(() => setImportNote(null), 5000);
   };
 
+  const handleStartEditingSlug = () => {
+    if (!scene || !onPatchScene) return;
+    setSlugDraft(scene.title || "");
+    setIsEditingSlug(true);
+  };
+
+  const handleSaveSlug = () => {
+    setIsEditingSlug(false);
+    const trimmed = slugDraft.trim();
+    if (trimmed && scene && trimmed !== scene.title) {
+      onPatchScene?.({ title: trimmed });
+    }
+  };
+
   return (
     <div className="tln-script__toolbar">
-      <div className="tln-slug" title="Graph-owned — edit in Inspector">
-        {slug}
-      </div>
+      {isEditingSlug ? (
+        <form
+          className="tln-slug-edit"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveSlug();
+          }}
+        >
+          <input
+            autoFocus
+            aria-label="Scene title"
+            value={slugDraft}
+            onChange={(e) => setSlugDraft(e.target.value)}
+            onBlur={handleSaveSlug}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setIsEditingSlug(false);
+            }}
+          />
+        </form>
+      ) : (
+        <button
+          type="button"
+          className="tln-slug tln-slug--interactive"
+          title={onPatchScene ? "Click to rename scene" : "Scene heading"}
+          onClick={handleStartEditingSlug}
+        >
+          <span>{slug || "UNTITLED SCENE"}</span>
+          {onPatchScene && (
+            <span className="tln-slug__edit-hint" aria-hidden="true">
+              {" "}✎
+            </span>
+          )}
+        </button>
+      )}
       <ScriptTypographyMenu
         typography={typography}
         onChange={onTypographyChange}
