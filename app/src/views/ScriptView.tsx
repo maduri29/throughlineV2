@@ -2,6 +2,7 @@
 // divider, collapsible preview, graph-owned locked slug, full-template
 // skeletons with bracketed hints, whole-project .fountain export.
 import { useMemo, useState } from "react";
+import { Eye, ListOrdered, PenLine } from "lucide-react";
 import {
   parseFountain,
   renderPreview,
@@ -22,6 +23,7 @@ import {
 } from "./script/scriptTypography";
 import { useScriptBuffers } from "./script/useScriptBuffers";
 import { useSplitPane } from "./script/useSplitPane";
+import type { GraphNode } from "../types";
 import "./script/script.css";
 
 export default function ScriptView() {
@@ -30,6 +32,7 @@ export default function ScriptView() {
   const projectId = useGraphStore((s) => s.projectId);
 
   const [sceneId, setSceneId] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<"scenes" | "edit" | "preview">("edit");
   const [typography, setTypography] = useState<ScriptTypographyState>(() => loadScriptTypography());
 
   const handleTypographyChange = (next: ScriptTypographyState) => {
@@ -70,8 +73,19 @@ export default function ScriptView() {
   const text =
     (effectiveSceneId ? buffers[effectiveSceneId] : undefined) ??
     (scene ? storedText || skeletonBody(scene) : "");
-  const slug = scene ? slugFor(scene, locationBySceneId.get(scene.id) ?? null) : "";
+
+  const locationTitle =
+    locationBySceneId.get(scene?.id ?? "") ??
+    (scene?.title &&
+    !scene.title.toLowerCase().startsWith("new scene") &&
+    scene.title.toLowerCase() !== "untitled scene"
+      ? scene.title
+      : null);
+  const slug = scene ? slugFor(scene, locationTitle) : "";
   const previewHtml = useMemo(() => renderPreview(parseFountain(text).els), [text]);
+
+  const sceneIndex = sequence.findIndex((item) => item.scene.id === effectiveSceneId);
+  const sceneNumber = sceneIndex >= 0 ? sceneIndex + 1 : undefined;
 
   const handleInsertCueSnippet = () => {
     if (!scene) return;
@@ -86,7 +100,23 @@ export default function ScriptView() {
       title: "New Scene",
       parentId: project.id,
     });
-    if (newId) setSceneId(newId);
+    if (newId) {
+      setSceneId(newId);
+      setMobileTab("edit");
+    }
+  };
+
+  const handlePatchScene = (patch: Partial<GraphNode>, locationName?: string) => {
+    if (!scene) return;
+    useGraphStore.getState().patchNode(scene.id, patch);
+    if (locationName) {
+      const locEdge = Object.values(edgeMap).find(
+        (e) => e.type === "takes_place_at" && e.from === scene.id,
+      );
+      if (locEdge && nodeMap[locEdge.to]) {
+        useGraphStore.getState().patchNode(locEdge.to, { title: locationName });
+      }
+    }
   };
 
   const currentFont = getFontOption(typography.fontId);
@@ -103,13 +133,48 @@ export default function ScriptView() {
       </div>
     );
 
+  const mobileClass = `tln-script--mobile-${mobileTab}`;
+
   return (
-    <div className="tln-script" style={typoStyles}>
+    <div className={`tln-script ${mobileClass}`} style={typoStyles}>
+      <nav className="tln-script__mobile-nav" aria-label="Script mobile navigation">
+        <button
+          type="button"
+          className={`tln-script__mobile-tab${mobileTab === "scenes" ? " tln-script__mobile-tab--active" : ""}`}
+          onClick={() => setMobileTab("scenes")}
+          aria-pressed={mobileTab === "scenes"}
+        >
+          <ListOrdered size={14} aria-hidden="true" />
+          <span>Scenes ({sequence.length})</span>
+        </button>
+        <button
+          type="button"
+          className={`tln-script__mobile-tab${mobileTab === "edit" ? " tln-script__mobile-tab--active" : ""}`}
+          onClick={() => setMobileTab("edit")}
+          aria-pressed={mobileTab === "edit"}
+        >
+          <PenLine size={14} aria-hidden="true" />
+          <span>Write</span>
+        </button>
+        <button
+          type="button"
+          className={`tln-script__mobile-tab${mobileTab === "preview" ? " tln-script__mobile-tab--active" : ""}`}
+          onClick={() => setMobileTab("preview")}
+          aria-pressed={mobileTab === "preview"}
+        >
+          <Eye size={14} aria-hidden="true" />
+          <span>Preview</span>
+        </button>
+      </nav>
+
       <ScriptSequenceRail
         sequence={sequence}
         effectiveSceneId={effectiveSceneId}
         locationBySceneId={locationBySceneId}
-        onSelectScene={setSceneId}
+        onSelectScene={(id) => {
+          setSceneId(id);
+          setMobileTab("edit");
+        }}
         onAddScene={handleAddScene}
       />
 
@@ -121,12 +186,13 @@ export default function ScriptView() {
           <ScriptToolbar
             slug={slug}
             scene={scene}
-            onPatchScene={(patch) => {
-              if (scene) useGraphStore.getState().patchNode(scene.id, patch);
-            }}
+            onPatchScene={handlePatchScene}
             typography={typography}
             onTypographyChange={handleTypographyChange}
             onInsertCueSnippet={handleInsertCueSnippet}
+            sceneNumber={sceneNumber}
+            totalScenes={sequence.length}
+            onOpenMobileScenes={() => setMobileTab("scenes")}
           />
 
           {scene ? (
@@ -155,6 +221,7 @@ export default function ScriptView() {
           className="tln-script__collapse"
           onClick={() => setCollapsed((c) => !c)}
           title={collapsed ? "Show preview" : "Hide preview"}
+          aria-label={collapsed ? "Show script preview" : "Hide script preview"}
         >
           {collapsed ? "◀" : "▶"}
         </button>

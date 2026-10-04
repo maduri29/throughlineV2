@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { slugFor } from "../../data/fountain";
 import type { GraphNode } from "../../types";
 
@@ -22,22 +23,36 @@ export default function ScriptSequenceRail({
   onAddScene,
 }: ScriptSequenceRailProps) {
   return (
-    <aside className="tln-script__rail">
-      <div className="tln-script__railhead">SCRIPT ORDER</div>
-      {sequence.map(({ container, scene: sc }) => (
-        <button
-          key={sc.id}
-          className={`tln-script__item${sc.id === effectiveSceneId ? " tln-script__item--on" : ""}`}
-          onClick={() => onSelectScene(sc.id)}
-          title={slugFor(sc, locationBySceneId.get(sc.id) ?? null)}
-        >
-          <span className="tln-script__ep">{container ? container.title : "—"}</span>
-          <span className="tln-script__ttl">
-            {(sc.storyTime?.storyDay ?? 0) < 0 ? "⟲ " : ""}
-            {sc.title}
-          </span>
-        </button>
-      ))}
+    <aside className="tln-script__rail" aria-label="Script scenes order">
+      <div className="tln-script__railhead">SCRIPT ORDER ({sequence.length})</div>
+      {sequence.map(({ container, scene: sc }) => {
+        const isSelected = sc.id === effectiveSceneId;
+        const locTitle =
+          locationBySceneId.get(sc.id) ??
+          (sc.title &&
+          !sc.title.toLowerCase().startsWith("new scene") &&
+          sc.title.toLowerCase() !== "untitled scene"
+            ? sc.title
+            : null);
+        const itemSlug = slugFor(sc, locTitle);
+
+        return (
+          <button
+            key={sc.id}
+            type="button"
+            className={`tln-script__item${isSelected ? " tln-script__item--on" : ""}`}
+            onClick={() => onSelectScene(sc.id)}
+            title={itemSlug}
+            aria-current={isSelected ? "true" : undefined}
+          >
+            <span className="tln-script__ep">{container ? container.title : "—"}</span>
+            <span className="tln-script__ttl">
+              {(sc.storyTime?.storyDay ?? 0) < 0 ? "⟲ " : ""}
+              {sc.title}
+            </span>
+          </button>
+        );
+      })}
       {onAddScene && (
         <button
           type="button"
@@ -45,7 +60,8 @@ export default function ScriptSequenceRail({
           onClick={onAddScene}
           title="Add a new scene"
         >
-          + Add scene
+          <Plus size={13} aria-hidden="true" />
+          <span>Add scene</span>
         </button>
       )}
     </aside>

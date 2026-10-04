@@ -1,3 +1,4 @@
+import { Pencil } from "lucide-react";
 import type { GraphNode } from "../../types";
 
 interface SequenceSceneEditorProps {
@@ -37,7 +38,9 @@ export function SequenceSceneEditor({
     return (
       <aside className="sb-editor sb-editor--empty">
         <div>
-          <span className="sb-empty-icon">✎</span>
+          <span className="sb-empty-icon" aria-hidden="true">
+            <Pencil size={22} />
+          </span>
           <h3>Make every scene count</h3>
           <p>
             Select a scene to shape its outline, find its turning point, or move it in the story.
