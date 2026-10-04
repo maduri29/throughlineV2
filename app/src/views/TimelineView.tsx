@@ -5,12 +5,7 @@ import { useSequenceDragAndDrop } from "./timeline/useSequenceDragAndDrop";
 import { useSequenceWorkspace } from "./timeline/useSequenceWorkspace";
 import "./sequence-board.css";
 
-export default function TimelineView({
-  onScript,
-}: {
-  onDetails: () => void;
-  onScript: () => void;
-}) {
+export default function TimelineView({ onScript }: { onScript: () => void }) {
   const ws = useSequenceWorkspace();
   const dnd = useSequenceDragAndDrop();
   const state = useGraphStore.getState();

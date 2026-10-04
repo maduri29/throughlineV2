@@ -181,10 +181,7 @@ export default function App() {
                     </div>
                   }
                 >
-                  <TimelineView
-                    onDetails={() => setDetailsOpen(true)}
-                    onScript={() => setLens("script")}
-                  />
+                  <TimelineView onScript={() => setLens("script")} />
                 </Suspense>
               ) : null}
               {lens === "characters" ? (

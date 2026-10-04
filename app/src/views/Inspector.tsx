@@ -58,6 +58,7 @@ export default function Inspector() {
     k in draft ? (draft[k] as GraphNode[K]) : node[k];
 
   const edit = (patch: Partial<GraphNode>): void => setDraft((d) => ({ ...d, ...patch }));
+
   const save = (): void => {
     if (Object.keys(draft).length > 0) patchNode(nodeId, draft);
     setDraft({});
@@ -115,8 +116,9 @@ export default function Inspector() {
               <select
                 value={val("intExt") ?? ""}
                 onChange={(e) => {
-                  edit({ intExt: (e.target.value || undefined) as GraphNode["intExt"] });
-                  setTimeout(save, 0);
+                  const intExt = (e.target.value || undefined) as GraphNode["intExt"];
+                  edit({ intExt });
+                  patchNode(nodeId, { intExt });
                 }}
               >
                 <option value="">INT.</option>
@@ -147,8 +149,10 @@ export default function Inspector() {
               <select
                 value={st.tod ?? ""}
                 onChange={(e) => {
-                  edit({ storyTime: { ...st, tod: (e.target.value || null) as Tod | null } });
-                  setTimeout(save, 0);
+                  const tod = (e.target.value || null) as Tod | null;
+                  const nextStoryTime = { ...st, tod };
+                  edit({ storyTime: nextStoryTime });
+                  patchNode(nodeId, { storyTime: nextStoryTime });
                 }}
               >
                 <option value="">—</option>
