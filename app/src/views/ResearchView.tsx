@@ -24,9 +24,16 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { Effect } from "effect";
 import { beatProgress } from "../data/beats";
 import { BEAT_SHEETS, beatSheetRows } from "../data/beatsheets";
-import { describeSize, hasBytes, MAX_FILE_BYTES, openAttachment, putFile } from "../data/files";
+import {
+  checkAttachmentsPresenceEffect,
+  describeSize,
+  MAX_FILE_BYTES,
+  openAttachment,
+  putFile,
+} from "../data/files";
 import { GUIDES } from "../data/guides";
 import {
   SERIES_SPOTLIGHT,
@@ -37,7 +44,7 @@ import {
 } from "../data/teluguScripts";
 import type { SeriesSpotlight, ShelfBook, ShelfKind, TeluguScript } from "../data/teluguScripts";
 import { dbGetAll } from "../data/idb";
-import { scopeToProject } from "../data/scopes";
+import { scopedScenesByProjectEffect } from "../data/library";
 import { useGraphStore } from "../store";
 import type { Attachment, Beat, GraphEdge, GraphNode } from "../types";
 import BeatSheet from "./BeatSheet";
@@ -52,6 +59,26 @@ function newId(): string {
     ? crypto.randomUUID()
     : `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
+
+const SHELF_ITEMS: (TeluguScript | SeriesSpotlight | ShelfBook)[] = [
+  ...TELUGU_SCRIPTS,
+  ...SERIES_SPOTLIGHT,
+  ...SHELF_BOOKS,
+];
+
+const SHELF_KIND_OPTIONS = (["movie", "series", "book"] as const).map((kind) => ({
+  key: kind,
+  label: kind === "movie" ? "Movies" : kind === "series" ? "Web series" : "Books",
+  count: SHELF_ITEMS.filter((t) => shelfCategoryOf(t).kind === kind).length,
+}));
+
+const SHELF_LANG_OPTIONS = Array.from(new Set(SHELF_ITEMS.map((t) => shelfCategoryOf(t).lang))).map(
+  (lang) => ({
+    key: lang,
+    label: lang,
+    count: SHELF_ITEMS.filter((t) => shelfCategoryOf(t).lang === lang).length,
+  }),
+);
 
 export default function ResearchView() {
   const references = useGraphStore((s) => s.references);
@@ -104,33 +131,33 @@ export default function ResearchView() {
         dbGetAll<GraphNode>("nodes"),
         dbGetAll<GraphEdge>("edges"),
       ]);
-      const allNodes: Record<string, GraphNode> = {};
-      for (const n of nodesArr) allNodes[n.id] = n;
-      const allEdges: Record<string, GraphEdge> = {};
-      for (const e of edgesArr) allEdges[e.id] = e;
-      const next: Record<string, GraphNode[]> = {};
-      for (const p of projects) {
-        next[p.id] = Object.values(scopeToProject(allNodes, allEdges, p.id).nodes).filter(
-          (n) => n.type === "scene",
-        );
-      }
+      const next = await Effect.runPromise(
+        scopedScenesByProjectEffect(projects, nodesArr, edgesArr),
+      );
       if (live) setScenesByProject(next);
     })();
     return () => {
       live = false;
     };
-  }, [projects, references]);
+  }, [projects]);
 
   // Which attachments actually have bytes on this device. Recorded metadata
   // travels with the story; the file itself does not (data/files.ts).
   useEffect(() => {
     let live = true;
     void (async () => {
-      const next: Record<string, boolean> = {};
+      const attachmentIds: string[] = [];
       for (const r of references) {
-        for (const a of r.attachments ?? []) next[a.id] = await hasBytes(a.id);
+        if (r.attachments) {
+          for (const a of r.attachments) attachmentIds.push(a.id);
+        }
       }
-      if (live) setPresent(next);
+      if (attachmentIds.length === 0) {
+        if (live) setPresent({});
+        return;
+      }
+      const presence = await Effect.runPromise(checkAttachmentsPresenceEffect(attachmentIds));
+      if (live) setPresent(presence);
     })();
     return () => {
       live = false;
@@ -145,16 +172,25 @@ export default function ResearchView() {
     [references, scope],
   );
 
-  const counts = useMemo(
-    () => ({
+  const counts = useMemo(() => {
+    let beats = 0;
+    let notes = 0;
+    let links = 0;
+    let files = 0;
+    for (const r of inScope) {
+      if (r.beats) beats++;
+      else if (!r.url) notes++;
+      if (r.url) links++;
+      if ((r.attachments?.length ?? 0) > 0) files++;
+    }
+    return {
       all: inScope.length,
-      beats: inScope.filter((r) => !!r.beats).length,
-      notes: inScope.filter((r) => !r.beats && !r.url).length,
-      links: inScope.filter((r) => !!r.url).length,
-      files: inScope.filter((r) => (r.attachments?.length ?? 0) > 0).length,
-    }),
-    [inScope],
-  );
+      beats,
+      notes,
+      links,
+      files,
+    };
+  }, [inScope]);
 
   const shown = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -179,38 +215,41 @@ export default function ResearchView() {
     });
   }, [inScope, typeFilter, query]);
 
+  const projectTitleMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of projects) {
+      map.set(p.id, p.title);
+    }
+    return map;
+  }, [projects]);
+
   const titleOf = (id: string | undefined): string =>
-    projects.find((p) => p.id === id)?.title ?? "Shared";
+    (id ? projectTitleMap.get(id) : undefined) ?? "Shared";
 
   const activeGuide = GUIDES.find((g) => g.id === guideId) ?? null;
 
-  const shelfItems: (TeluguScript | SeriesSpotlight | ShelfBook)[] = [
-    ...TELUGU_SCRIPTS,
-    ...SERIES_SPOTLIGHT,
-    ...SHELF_BOOKS,
-  ];
-  const shelfKindOptions = (["movie", "series", "book"] as const).map((kind) => ({
-    key: kind,
-    label: kind === "movie" ? "Movies" : kind === "series" ? "Web series" : "Books",
-    count: shelfItems.filter((t) => shelfCategoryOf(t).kind === kind).length,
-  }));
-  const shelfLangOptions = Array.from(new Set(shelfItems.map((t) => shelfCategoryOf(t).lang))).map(
-    (lang) => ({
-      key: lang,
-      label: lang,
-      count: shelfItems.filter((t) => shelfCategoryOf(t).lang === lang).length,
-    }),
-  );
-  const inShelf = (t: TeluguScript | SeriesSpotlight | ShelfBook): boolean => {
-    const c = shelfCategoryOf(t);
-    return (
-      (shelfWhat === "all" || c.kind === shelfWhat) && (shelfLang === "all" || c.lang === shelfLang)
-    );
-  };
-  const shelfMovies = TELUGU_SCRIPTS.filter(inShelf);
-  const shelfSeries = SERIES_SPOTLIGHT.filter(inShelf);
-  const shelfBooks = SHELF_BOOKS.filter(inShelf);
-  const shelfVisible = shelfMovies.length + shelfSeries.length + shelfBooks.length;
+  const shelfItems = SHELF_ITEMS;
+  const shelfKindOptions = SHELF_KIND_OPTIONS;
+  const shelfLangOptions = SHELF_LANG_OPTIONS;
+
+  const { shelfMovies, shelfSeries, shelfBooks, shelfVisible } = useMemo(() => {
+    const inShelf = (t: TeluguScript | SeriesSpotlight | ShelfBook): boolean => {
+      const c = shelfCategoryOf(t);
+      return (
+        (shelfWhat === "all" || c.kind === shelfWhat) &&
+        (shelfLang === "all" || c.lang === shelfLang)
+      );
+    };
+    const movies = TELUGU_SCRIPTS.filter(inShelf);
+    const series = SERIES_SPOTLIGHT.filter(inShelf);
+    const books = SHELF_BOOKS.filter(inShelf);
+    return {
+      shelfMovies: movies,
+      shelfSeries: series,
+      shelfBooks: books,
+      shelfVisible: movies.length + series.length + books.length,
+    };
+  }, [shelfWhat, shelfLang]);
 
   const add = (): void => {
     const t = draft.trim();

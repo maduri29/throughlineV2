@@ -14,3 +14,4 @@ next-env.d.ts
 .throughline-accounts.db*
 .throughline-test-account.json
 .vscode/
+*.png

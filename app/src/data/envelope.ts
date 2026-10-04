@@ -321,25 +321,27 @@ export function parseEnvelopeEffect(text: string): Effect.Effect<Envelope, Envel
       return yield* Effect.fail(new EnvelopeError("edges is not an array."));
     }
 
-    const nodes: GraphNode[] = [];
-    for (const [i, n] of nodesRaw.entries()) {
-      const parsed = readNode(n, `nodes[${i}]`);
-      if (typeof parsed === "string") {
-        return yield* Effect.fail(new EnvelopeError(parsed));
-      }
-      nodes.push(parsed);
-    }
+    const nodes = yield* Effect.all(
+      nodesRaw.map((n, i) => {
+        const parsed = readNode(n, `nodes[${i}]`);
+        return typeof parsed === "string"
+          ? Effect.fail(new EnvelopeError(parsed))
+          : Effect.succeed(parsed);
+      }),
+      { concurrency: "unbounded" },
+    );
 
     const known = new Set<string>([projectRaw.id, ...nodes.map((n) => n.id)]);
-    const edges: GraphEdge[] = [];
-    for (const [i, e] of edgesRaw.entries()) {
-      const parsed = readEdge(e, `edges[${i}]`);
-      if (typeof parsed === "string") {
-        return yield* Effect.fail(new EnvelopeError(parsed));
-      }
-      if (!known.has(parsed.from) || !known.has(parsed.to)) continue; // dangling
-      edges.push(parsed);
-    }
+    const rawEdges = yield* Effect.all(
+      edgesRaw.map((e, i) => {
+        const parsed = readEdge(e, `edges[${i}]`);
+        return typeof parsed === "string"
+          ? Effect.fail(new EnvelopeError(parsed))
+          : Effect.succeed(parsed);
+      }),
+      { concurrency: "unbounded" },
+    );
+    const edges = rawEdges.filter((parsed) => known.has(parsed.from) && known.has(parsed.to));
 
     const exportedAt = raw["exportedAt"];
     const envelope: Envelope = {

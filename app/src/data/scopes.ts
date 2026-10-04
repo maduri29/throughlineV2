@@ -3,7 +3,7 @@ import type { GraphEdge, GraphNode } from "../types";
 
 export type ScopedMaps = { nodes: Record<string, GraphNode>; edges: Record<string, GraphEdge> };
 
-const CONTAINER_TYPES = new Set(["project", "episode", "scene"]);
+export const CONTAINER_TYPES = new Set(["project", "episode", "scene"]);
 
 /**
  * Keep-set = the parent-chain subtree of the project, grown outward through
@@ -52,46 +52,69 @@ export function scopeToProject(
     }
   }
 
+  // Pre-index edges by both endpoints for fast incident lookup:
+  const edgeList = Object.values(edges);
+  const edgesByNode = new Map<string, GraphEdge[]>();
+  for (const e of edgeList) {
+    let fromList = edgesByNode.get(e.from);
+    if (!fromList) {
+      fromList = [];
+      edgesByNode.set(e.from, fromList);
+    }
+    fromList.push(e);
+
+    let toList = edgesByNode.get(e.to);
+    if (!toList) {
+      toList = [];
+      edgesByNode.set(e.to, toList);
+    }
+    toList.push(e);
+  }
+
   const keep = new Set<string>([projectId]);
-  let grew = true;
-  while (grew) {
-    grew = false;
+  const queue: string[] = [projectId];
+  let head = 0;
+
+  while (head < queue.length) {
+    const curId = queue[head++];
+    if (!curId) continue;
+
     // Structural ownership first (deterministic priority).
-    for (const id of Array.from(keep)) {
-      const kids = childrenByParent.get(id);
-      if (kids) {
-        for (const kid of kids) {
-          if (!keep.has(kid)) {
-            keep.add(kid);
-            grew = true;
-          }
+    const kids = childrenByParent.get(curId);
+    if (kids) {
+      for (const kid of kids) {
+        if (!keep.has(kid)) {
+          keep.add(kid);
+          queue.push(kid);
         }
       }
     }
-    for (const e of Object.values(edges)) {
-      const a = nodes[e.from];
-      const b = nodes[e.to];
-      if (!a || !b) continue;
-      const aKept = keep.has(a.id);
-      const bKept = keep.has(b.id);
-      if (aKept === bKept) continue;
-      const kept = (aKept ? a : b) as GraphNode;
-      const cand = (aKept ? b : a) as GraphNode;
-      if (claimed.has(cand.id)) continue;
-      if (kept.type === "scene" && !CONTAINER_TYPES.has(cand.type)) {
-        keep.add(cand.id);
-        grew = true;
-      } else if (
-        e.type === "flashback_of" &&
-        kept.type === "scene" &&
-        cand.type === "scene" &&
-        !cand.parentId
-      ) {
-        keep.add(cand.id);
-        grew = true;
-      } else if (!CONTAINER_TYPES.has(kept.type) && !CONTAINER_TYPES.has(cand.type)) {
-        keep.add(cand.id);
-        grew = true;
+
+    const incident = edgesByNode.get(curId);
+    if (incident) {
+      const kept = nodes[curId];
+      if (!kept) continue;
+      for (const e of incident) {
+        const candId = e.from === curId ? e.to : e.from;
+        if (keep.has(candId) || claimed.has(candId)) continue;
+        const cand = nodes[candId];
+        if (!cand) continue;
+
+        if (kept.type === "scene" && !CONTAINER_TYPES.has(cand.type)) {
+          keep.add(candId);
+          queue.push(candId);
+        } else if (
+          e.type === "flashback_of" &&
+          kept.type === "scene" &&
+          cand.type === "scene" &&
+          !cand.parentId
+        ) {
+          keep.add(candId);
+          queue.push(candId);
+        } else if (!CONTAINER_TYPES.has(kept.type) && !CONTAINER_TYPES.has(cand.type)) {
+          keep.add(candId);
+          queue.push(candId);
+        }
       }
     }
   }
@@ -102,7 +125,7 @@ export function scopeToProject(
     if (keep.has(n.id)) outNodes[n.id] = n;
   }
   const outEdges: Record<string, GraphEdge> = {};
-  for (const e of Object.values(edges)) {
+  for (const e of edgeList) {
     if (keep.has(e.from) && keep.has(e.to)) outEdges[e.id] = e;
   }
   return { nodes: outNodes, edges: outEdges };
@@ -138,19 +161,43 @@ export function groupByDay(scenes: GraphNode[]): DayBucket[] {
  * a story whose Timeline is still one big "unscheduled" pile.
  */
 export function autoScheduleDays(nodes: GraphNode[]): Array<{ id: string; day: number }> {
-  const scenes = nodes.filter((n) => n.type === "scene");
+  const scenes: GraphNode[] = [];
+  const episodes: GraphNode[] = [];
+  const byId = new Map<string, GraphNode>();
   let day = 1;
-  for (const s of scenes) {
-    const d = s.storyTime?.storyDay;
-    if (d != null) day = Math.max(day, d + 1);
-  }
-  const byId = (id: string): GraphNode | undefined => nodes.find((n) => n.id === id);
-  const queued = (parentId: string): GraphNode[] => {
-    const kids = new Map<string, GraphNode>();
-    for (const s of scenes) {
-      if (s.parentId === parentId && s.storyTime?.storyDay == null) kids.set(s.id, s);
+
+  for (const n of nodes) {
+    byId.set(n.id, n);
+    if (n.type === "scene") {
+      scenes.push(n);
+      const d = n.storyTime?.storyDay;
+      if (d != null) day = Math.max(day, d + 1);
+    } else if (n.type === "episode") {
+      episodes.push(n);
     }
-    const ordered = (byId(parentId)?.order ?? [])
+  }
+
+  const unscheduledScenesByParent = new Map<string, GraphNode[]>();
+  for (const s of scenes) {
+    if (s.parentId && s.storyTime?.storyDay == null) {
+      let list = unscheduledScenesByParent.get(s.parentId);
+      if (!list) {
+        list = [];
+        unscheduledScenesByParent.set(s.parentId, list);
+      }
+      list.push(s);
+    }
+  }
+
+  const queued = (parentId: string): GraphNode[] => {
+    const kidsList = unscheduledScenesByParent.get(parentId);
+    if (!kidsList || kidsList.length === 0) return [];
+    const kids = new Map<string, GraphNode>();
+    for (const s of kidsList) {
+      kids.set(s.id, s);
+    }
+    const parentNode = byId.get(parentId);
+    const ordered = (parentNode?.order ?? [])
       .map((id) => kids.get(id))
       .filter((s): s is GraphNode => Boolean(s));
     for (const [, s] of kids) if (!ordered.includes(s)) ordered.push(s);
@@ -158,7 +205,7 @@ export function autoScheduleDays(nodes: GraphNode[]): Array<{ id: string; day: n
   };
   const out: Array<{ id: string; day: number }> = [];
   const placed = new Set<string>();
-  for (const ep of nodes.filter((n) => n.type === "episode")) {
+  for (const ep of episodes) {
     for (const s of queued(ep.id)) {
       out.push({ id: s.id, day: day++ });
       placed.add(s.id);

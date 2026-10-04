@@ -52,12 +52,19 @@ export default function CharactersView({ onOpenNode }: { onOpenNode: (id: string
     [nodes],
   );
   const fromGraph = selection.find((id) => nodes[id]?.type === "character");
-  const visibleCharacters = characters.filter((item) =>
-    [item.title, item.role, item.age, item.synopsis, item.traits]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase()
-      .includes(castQuery.trim().toLowerCase()),
+  const lowerCastQuery = useMemo(() => castQuery.trim().toLowerCase(), [castQuery]);
+  const visibleCharacters = useMemo(
+    () =>
+      characters.filter(
+        (item) =>
+          !lowerCastQuery ||
+          [item.title, item.role, item.age, item.synopsis, item.traits]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(lowerCastQuery),
+      ),
+    [characters, lowerCastQuery],
   );
   const activeId =
     fromGraph ??

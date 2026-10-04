@@ -8,6 +8,7 @@
 // The consequence is real and must not be hidden: a file does NOT follow you to
 // another device. It travels as a name and a size, and `hasBytes` is how the UI
 // tells the difference between "here" and "recorded but elsewhere".
+import { Effect } from "effect";
 import { dbDelete, dbGet, dbPut } from "./idb";
 import type { Attachment } from "../types";
 
@@ -31,6 +32,33 @@ export async function deleteFile(id: string): Promise<void> {
 
 export async function hasBytes(id: string): Promise<boolean> {
   return (await getFile(id)) !== null;
+}
+
+/**
+ * Concurrently check attachment presence in IndexedDB with fiber-bounded concurrency.
+ */
+export function checkAttachmentsPresenceEffect(
+  attachmentIds: string[],
+): Effect.Effect<Record<string, boolean>> {
+  return Effect.gen(function* () {
+    if (attachmentIds.length === 0) return {};
+    const results = yield* Effect.all(
+      attachmentIds.map((id) =>
+        Effect.tryPromise(async () => [id, await hasBytes(id)] as const).pipe(
+          Effect.catchAll(() => Effect.succeed([id, false] as const)),
+        ),
+      ),
+      { concurrency: 16 },
+    );
+    const presence: Record<string, boolean> = {};
+    for (let i = 0; i < results.length; i++) {
+      const entry = results[i];
+      if (entry) {
+        presence[entry[0]] = entry[1];
+      }
+    }
+    return presence;
+  });
 }
 
 /** Hand the file to the browser. Revoked on the next tick, not immediately. */

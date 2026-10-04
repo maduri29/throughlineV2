@@ -47,8 +47,11 @@ function detectFlowCycles(
   return Effect.sync(() => {
     const issues: DiagnosticIssue[] = [];
 
-    // Check for self loops
-    for (const e of Object.values(edges)) {
+    // Check for self loops and build directed graph of sequence flow
+    const adj = new Map<string, string[]>();
+    for (const id in edges) {
+      const e = edges[id];
+      if (!e) continue;
       if (e.from === e.to) {
         const node = nodes[e.from];
         issues.push({
@@ -60,15 +63,13 @@ function detectFlowCycles(
           message: `"${node?.title ?? e.from}" connects directly to itself with "${e.type}".`,
           nodeIds: [e.from],
         });
-      }
-    }
-
-    // Directed graph of sequence flow (precedes, parallels)
-    const adj = new Map<string, string[]>();
-    for (const e of Object.values(edges)) {
-      if (e.type === "precedes" && e.from !== e.to) {
-        if (!adj.has(e.from)) adj.set(e.from, []);
-        adj.get(e.from)!.push(e.to);
+      } else if (e.type === "precedes") {
+        let list = adj.get(e.from);
+        if (!list) {
+          list = [];
+          adj.set(e.from, list);
+        }
+        list.push(e.to);
       }
     }
 
@@ -136,8 +137,6 @@ function detectOrphans(
 }> {
   return Effect.sync(() => {
     const issues: DiagnosticIssue[] = [];
-    const edgeList = Object.values(edges);
-    const nodeList = Object.values(nodes);
 
     let totalScenes = 0;
     let connectedScenes = 0;
@@ -150,7 +149,9 @@ function detectOrphans(
     const locationScenes = new Map<string, number>();
     const themeEmbodiments = new Map<string, number>();
 
-    for (const e of edgeList) {
+    for (const id in edges) {
+      const e = edges[id];
+      if (!e) continue;
       nodeDegree.set(e.from, (nodeDegree.get(e.from) ?? 0) + 1);
       nodeDegree.set(e.to, (nodeDegree.get(e.to) ?? 0) + 1);
 
@@ -163,7 +164,9 @@ function detectOrphans(
       }
     }
 
-    for (const node of nodeList) {
+    for (const id in nodes) {
+      const node = nodes[id];
+      if (!node) continue;
       if (node.type === "scene") {
         totalScenes++;
         const degree = nodeDegree.get(node.id) ?? 0;
@@ -246,45 +249,55 @@ function detectTimelineAnomalies(
   return Effect.sync(() => {
     const issues: DiagnosticIssue[] = [];
 
-    // Set of flashback connections
+    // Set of flashback connections & precedes edges
     const flashbacks = new Set<string>();
-    for (const e of Object.values(edges)) {
+    const precedesEdges: GraphEdge[] = [];
+    for (const id in edges) {
+      const e = edges[id];
+      if (!e) continue;
       if (e.type === "flashback_of") {
         flashbacks.add(`${e.from}->${e.to}`);
         flashbacks.add(`${e.to}->${e.from}`);
+      } else if (e.type === "precedes") {
+        precedesEdges.push(e);
       }
     }
 
-    for (const e of Object.values(edges)) {
-      if (e.type === "precedes") {
-        const fromNode = nodes[e.from];
-        const toNode = nodes[e.to];
-        if (
-          fromNode?.type === "scene" &&
-          toNode?.type === "scene" &&
-          fromNode.storyTime?.storyDay != null &&
-          toNode.storyTime?.storyDay != null
-        ) {
-          const fromDay = fromNode.storyTime.storyDay;
-          const toDay = toNode.storyTime.storyDay;
-          if (fromDay > toDay && !flashbacks.has(`${fromNode.id}->${toNode.id}`)) {
-            issues.push({
-              id: `chronology-conflict-${e.id}`,
-              severity: "warning",
-              category: "timeline",
-              code: "CHRONOLOGY_INVERSION",
-              title: "Chronological Sequence Conflict",
-              message: `"${fromNode.title}" (Day ${fromDay}) precedes "${toNode.title}" (Day ${toDay}), traveling backwards in story time without a flashback edge.`,
-              nodeIds: [fromNode.id, toNode.id],
-            });
-          }
+    for (const e of precedesEdges) {
+      const fromNode = nodes[e.from];
+      const toNode = nodes[e.to];
+      if (
+        fromNode?.type === "scene" &&
+        toNode?.type === "scene" &&
+        fromNode.storyTime?.storyDay != null &&
+        toNode.storyTime?.storyDay != null
+      ) {
+        const fromDay = fromNode.storyTime.storyDay;
+        const toDay = toNode.storyTime.storyDay;
+        if (fromDay > toDay && !flashbacks.has(`${fromNode.id}->${toNode.id}`)) {
+          issues.push({
+            id: `chronology-conflict-${e.id}`,
+            severity: "warning",
+            category: "timeline",
+            code: "CHRONOLOGY_INVERSION",
+            title: "Chronological Sequence Conflict",
+            message: `"${fromNode.title}" (Day ${fromDay}) precedes "${toNode.title}" (Day ${toDay}), traveling backwards in story time without a flashback edge.`,
+            nodeIds: [fromNode.id, toNode.id],
+          });
         }
       }
     }
 
     // Flag scenes that lack story-time scheduling when others are scheduled
-    const sceneList = Object.values(nodes).filter((n) => n.type === "scene");
-    const anyDated = sceneList.some((n) => n.storyTime?.storyDay != null);
+    let anyDated = false;
+    const sceneList: GraphNode[] = [];
+    for (const id in nodes) {
+      const n = nodes[id];
+      if (n && n.type === "scene") {
+        sceneList.push(n);
+        if (n.storyTime?.storyDay != null) anyDated = true;
+      }
+    }
     if (anyDated) {
       for (const scene of sceneList) {
         if (scene.storyTime?.storyDay == null && scene.storyTime?.tod == null) {

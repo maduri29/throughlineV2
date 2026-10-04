@@ -64,20 +64,38 @@ function episodes(nodes: GraphNode[]): GraphNode[] {
   return nodes.filter((n) => n.type === "episode");
 }
 
+const RAIL_TYPES = new Set(["character", "location", "theme", "project", "seed"]);
+const EMPTY_ORDER: string[] = [];
+
 function layout(nodes: GraphNode[], orderFor: (id: string) => string[]): CardFlowNode[] {
   const out: CardFlowNode[] = [];
   const scenesOf = new Map<string, Map<string, GraphNode>>();
+  const eps: GraphNode[] = [];
+  const flashbacks: GraphNode[] = [];
+  const rails: GraphNode[] = [];
+
   for (const n of nodes) {
-    if (n.type !== "scene" || !n.parentId) continue;
-    let m = scenesOf.get(n.parentId);
-    if (!m) {
-      m = new Map<string, GraphNode>();
-      scenesOf.set(n.parentId, m);
+    if (n.type === "episode") {
+      eps.push(n);
+    } else if (n.type === "scene") {
+      if ((n.storyTime?.storyDay ?? 0) < 0) {
+        flashbacks.push(n);
+      }
+      if (n.parentId) {
+        let m = scenesOf.get(n.parentId);
+        if (!m) {
+          m = new Map<string, GraphNode>();
+          scenesOf.set(n.parentId, m);
+        }
+        m.set(n.id, n);
+      }
+    } else if (RAIL_TYPES.has(n.type)) {
+      rails.push(n);
     }
-    m.set(n.id, n);
   }
 
-  episodes(nodes).forEach((ep, ei) => {
+  let ei = 0;
+  for (const ep of eps) {
     out.push({
       id: ep.id,
       type: "card",
@@ -92,7 +110,8 @@ function layout(nodes: GraphNode[], orderFor: (id: string) => string[]): CardFlo
           .map((id) => epScenes.get(id))
           .filter((s): s is GraphNode => Boolean(s))
       : [];
-    for (const [si, sc] of ordered.entries()) {
+    let si = 0;
+    for (const sc of ordered) {
       const day = sc.storyTime?.storyDay ?? null;
       out.push({
         id: sc.id,
@@ -105,12 +124,14 @@ function layout(nodes: GraphNode[], orderFor: (id: string) => string[]): CardFlo
           synopsis: sc.synopsis,
         },
       });
+      si++;
     }
-  });
+    ei++;
+  }
 
   // Flashback lane on top.
-  const lane = nodes.filter((n) => n.type === "scene" && (n.storyTime?.storyDay ?? 0) < 0);
-  for (const [fi, fb] of lane.entries()) {
+  let fi = 0;
+  for (const fb of flashbacks) {
     out.push({
       id: fb.id,
       type: "card",
@@ -122,10 +143,11 @@ function layout(nodes: GraphNode[], orderFor: (id: string) => string[]): CardFlo
         synopsis: fb.synopsis,
       },
     });
+    fi++;
   }
 
-  const rail = new Set(["character", "location", "theme", "project", "seed"]);
-  for (const [oi, o] of nodes.filter((n) => rail.has(n.type)).entries()) {
+  let oi = 0;
+  for (const o of rails) {
     out.push({
       id: o.id,
       type: "card",
@@ -133,6 +155,7 @@ function layout(nodes: GraphNode[], orderFor: (id: string) => string[]): CardFlo
       data: { kind: "pill", nodeType: o.type, title: o.title },
       draggable: false,
     });
+    oi++;
   }
   return out;
 }
@@ -189,41 +212,45 @@ function MapInner() {
   }, [filters, projectId]);
 
   const graphNodes = useMemo(() => Object.values(nodeMap), [nodeMap]);
-  const orderFor = useMemo(() => (id: string) => nodeMap[id]?.order ?? [], [nodeMap]);
+  const orderFor = useMemo(() => (id: string) => nodeMap[id]?.order ?? EMPTY_ORDER, [nodeMap]);
   const visibleNodes = useMemo(
     () => graphNodes.filter((n) => chipOf(n) === null || filters[chipOf(n) as Chip]),
     [graphNodes, filters],
   );
   const visibleIds = useMemo(() => new Set(visibleNodes.map((n) => n.id)), [visibleNodes]);
 
+  const baseNodes = useMemo(() => layout(visibleNodes, orderFor), [visibleNodes, orderFor]);
+  const selectionSet = useMemo(() => new Set(selection), [selection]);
+
   const rfNodes = useMemo(
     () =>
-      layout(visibleNodes, orderFor).map((node) => ({
+      baseNodes.map((node) => ({
         ...node,
-        selected: selection.includes(node.id),
+        selected: selectionSet.has(node.id),
       })),
-    [visibleNodes, orderFor, selection],
+    [baseNodes, selectionSet],
   );
-  const rfEdges = useMemo<Edge[]>(
-    () =>
-      Object.values(edgeMap)
-        .filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to))
-        .map((e) => ({
-          id: e.id,
-          source: e.from,
-          target: e.to,
-          selected: selection.includes(e.id),
-          label: e.label,
-          style: {
-            stroke: EDGE_STROKE[e.type] ?? "#9aa3ba",
-            strokeWidth: 1.5,
-            ...(e.type === "flashback_of" || e.type === "sets_up"
-              ? { strokeDasharray: "5 4" }
-              : {}),
-          },
-        })),
-    [edgeMap, visibleIds, selection],
-  );
+  const rfEdges = useMemo<Edge[]>(() => {
+    const edgeList = Object.values(edgeMap);
+    const result: Edge[] = [];
+    for (let i = 0; i < edgeList.length; i++) {
+      const e = edgeList[i];
+      if (!e || !visibleIds.has(e.from) || !visibleIds.has(e.to)) continue;
+      result.push({
+        id: e.id,
+        source: e.from,
+        target: e.to,
+        selected: selectionSet.has(e.id),
+        label: e.label,
+        style: {
+          stroke: EDGE_STROKE[e.type] ?? "#9aa3ba",
+          strokeWidth: 1.5,
+          ...(e.type === "flashback_of" || e.type === "sets_up" ? { strokeDasharray: "5 4" } : {}),
+        },
+      });
+    }
+    return result;
+  }, [edgeMap, visibleIds, selectionSet]);
 
   const onSelectionChanges = useCallback(
     (changes: (NodeChange | EdgeChange)[]) => {

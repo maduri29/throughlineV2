@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArrowRight, BookOpen, Film, Plus, Search, ShieldCheck, Upload, X } from "lucide-react";
 import { describeUsage } from "../data/durability";
 import { selectStories, type StorySort } from "../data/library";
@@ -17,7 +17,10 @@ export default function LibraryView({ onOpen }: { onOpen: (id: string) => void }
   const importInput = useRef<HTMLInputElement>(null);
   const newStoryButton = useRef<HTMLButtonElement>(null);
   const empty = library.projects.length === 0;
-  const visible = selectStories(library.projects, query, sort, library.stats);
+  const visible = useMemo(
+    () => selectStories(library.projects, query, sort, library.stats),
+    [library.projects, query, sort, library.stats],
+  );
   function cancelCreate() {
     setNaming(false);
     newStoryButton.current?.focus();

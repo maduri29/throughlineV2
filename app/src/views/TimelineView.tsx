@@ -1,5 +1,5 @@
 import type { GraphNode } from "../types";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useGraphStore } from "../store";
 import { locationTitleFor, scriptSequence } from "../data/fountain";
 import "./sequence-board.css";
@@ -56,22 +56,43 @@ export default function TimelineView({
   const project = projectId ? nodes[projectId] : undefined;
   if (!project) return null;
   const state = useGraphStore.getState();
-  const sequence = scriptSequence(project, nodes, edges);
-  const groups = [
-    project,
-    ...(project.order ?? [])
-      .map((id) => nodes[id])
-      .filter((n): n is GraphNode => n?.type === "episode"),
-  ];
-  const groupFor = (container: GraphNode | null) =>
-    container?.type === "episode" ? container.id : project.id;
-  const visibleGroups = groups.filter(
-    (g) =>
-      g.id !== project.id ||
-      groups.length === 1 ||
-      sequence.some((item) => groupFor(item.container) === project.id),
+  const sequence = useMemo(
+    () => (project ? scriptSequence(project, nodes, edges) : []),
+    [project, nodes, edges],
   );
-  const drafted = sequence.filter((item) => item.scene.fountain?.trim()).length;
+  const groups = useMemo(
+    () =>
+      project
+        ? [
+            project,
+            ...(project.order ?? [])
+              .map((id) => nodes[id])
+              .filter((n): n is GraphNode => n?.type === "episode"),
+          ]
+        : [],
+    [project, nodes],
+  );
+  const groupFor = useCallback(
+    (container: GraphNode | null) => (container?.type === "episode" ? container.id : project.id),
+    [project.id],
+  );
+  const visibleGroups = useMemo(
+    () =>
+      groups.filter(
+        (g) =>
+          g.id !== project.id ||
+          groups.length === 1 ||
+          sequence.some((item) => groupFor(item.container) === project.id),
+      ),
+    [groups, project.id, sequence, groupFor],
+  );
+  const drafted = useMemo(() => {
+    let count = 0;
+    for (const item of sequence) {
+      if (item.scene.fountain?.trim()) count++;
+    }
+    return count;
+  }, [sequence]);
   const moveGroup = (id: string, direction: number) => {
     const ordered = groups.slice(1);
     const index = ordered.findIndex((g) => g.id === id);
@@ -84,18 +105,33 @@ export default function TimelineView({
     [order[a], order[b]] = [order[b]!, order[a]!];
     state.setOrder(project.id, order);
   };
-  const chosen = sequence.find((item) => selection.includes(item.scene.id));
+  const selectionSet = useMemo(() => new Set(selection), [selection]);
+  const chosen = useMemo(
+    () => sequence.find((item) => selectionSet.has(item.scene.id)),
+    [sequence, selectionSet],
+  );
   const selected = chosen?.scene;
   const selectedGroup = chosen ? groupFor(chosen.container) : project.id;
-  const siblings = sequence.filter((item) => groupFor(item.container) === selectedGroup);
-  const selectedIndex = siblings.findIndex((item) => item.scene.id === selected?.id);
-  const matching = sequence.filter(
-    (item) =>
-      (filter === "all" || groupFor(item.container) === filter) &&
-      `${item.scene.title} ${item.scene.synopsis ?? ""} ${item.scene.turningPoint ?? ""}`
-        .toLowerCase()
-        .includes(query.toLowerCase()),
+  const siblings = useMemo(
+    () => sequence.filter((item) => groupFor(item.container) === selectedGroup),
+    [sequence, groupFor, selectedGroup],
   );
+  const selectedIndex = selected ? siblings.findIndex((item) => item.scene.id === selected.id) : -1;
+  const lowerQuery = useMemo(() => query.trim().toLowerCase(), [query]);
+  const matching = useMemo(() => {
+    if (!sequence.length) return [];
+    const matchAll = filter === "all";
+    return sequence.filter((item) => {
+      if (!matchAll && groupFor(item.container) !== filter) return false;
+      if (!lowerQuery) return true;
+      const sc = item.scene;
+      return (
+        sc.title.toLowerCase().includes(lowerQuery) ||
+        Boolean(sc.synopsis && sc.synopsis.toLowerCase().includes(lowerQuery)) ||
+        Boolean(sc.turningPoint && sc.turningPoint.toLowerCase().includes(lowerQuery))
+      );
+    });
+  }, [sequence, filter, groupFor, lowerQuery]);
   const add = (groupId: string) => {
     setQuery("");
     setFilter("all");

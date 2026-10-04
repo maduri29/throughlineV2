@@ -113,10 +113,8 @@
   /* System fonts keep the workspace available without a font service. */
   --font-sans:
     "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-  --font-display:
-    "Cinzel", Georgia, "Palatino Linotype", Palatino, "Times New Roman", serif;
-  --font-cinzel:
-    "Cinzel", Georgia, serif;
+  --font-display: "Cinzel", Georgia, "Palatino Linotype", Palatino, "Times New Roman", serif;
+  --font-cinzel: "Cinzel", Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-script: "Courier New", Courier, monospace;
 }

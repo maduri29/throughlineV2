@@ -18,8 +18,9 @@ export function locationTitleFor(
   nodes: Record<string, GraphNode>,
   edges: Record<string, GraphEdge>,
 ): string | null {
-  for (const e of Object.values(edges)) {
-    if (e.type === "takes_place_at" && e.from === sceneId) return nodes[e.to]?.title ?? null;
+  for (const id in edges) {
+    const e = edges[id];
+    if (e && e.type === "takes_place_at" && e.from === sceneId) return nodes[e.to]?.title ?? null;
   }
   return null;
 }
@@ -267,6 +268,15 @@ function collectParagraph(lines: string[], start: number): string {
 export type LineKind = ElType | "boneyard" | "blank";
 export type LineSpan = { from: number; to: number; kind: LineKind };
 
+const SECTION_RE = /^#{1,6}\s*\S/;
+const PAGE_BREAK_RE = /^={3,}$/;
+const CENTERED_RE = /^>.*<$/;
+const FORCED_HEADING_RE = /^[.]([A-Za-z0-9])/;
+const TRANSITION_TO_RE = /^[A-Z0-9\s()'!,.-]+TO:\s*$/;
+const CUE_RE = /^[A-Z0-9\s().,'\u2019#\-/&"!?^]+$/;
+const HAS_UPPER_RE = /[A-Z]/;
+const PAREN_RE = /^\(.+\)$/;
+
 export function classifySceneLines(text: string): LineSpan[] {
   const lines = text.split("\n");
   const offsets: number[] = [];
@@ -308,11 +318,11 @@ export function classifySceneLines(text: string): LineSpan[] {
       continue;
     }
 
-    if (/^#{1,6}\s*\S/.test(raw)) {
+    if (SECTION_RE.test(raw)) {
       out.push(span(i, "section"));
       continue;
     }
-    if (/^={3,}$/.test(raw.trim())) {
+    if (PAGE_BREAK_RE.test(raw.trim())) {
       out.push(span(i, "page_break"));
       continue;
     }
@@ -324,11 +334,11 @@ export function classifySceneLines(text: string): LineSpan[] {
       out.push(span(i, "lyric"));
       continue;
     }
-    if (/^>.*<$/.test(raw.trim())) {
+    if (CENTERED_RE.test(raw.trim())) {
       out.push(span(i, "centered"));
       continue;
     }
-    if (/^[.]([A-Za-z0-9])/.test(raw)) {
+    if (FORCED_HEADING_RE.test(raw)) {
       out.push(span(i, "scene_heading"));
       dialogueMode = false;
       continue;
@@ -353,7 +363,7 @@ export function classifySceneLines(text: string): LineSpan[] {
       dialogueMode = false;
       continue;
     }
-    if (/^[A-Z0-9\s()'!,.-]+TO:\s*$/.test(raw) && blank(i - 1) && blank(i + 1)) {
+    if (TRANSITION_TO_RE.test(raw) && blank(i - 1) && blank(i + 1)) {
       out.push(span(i, "transition"));
       dialogueMode = false;
       continue;
@@ -361,17 +371,14 @@ export function classifySceneLines(text: string): LineSpan[] {
 
     const prevBlankExactlyOne = i === 0 || (blank(i - 1) && !blank(i - 2));
     const isCue =
-      /^[A-Z0-9\s().,'\u2019#\-/&"!?^]+$/.test(raw) &&
-      /[A-Z]/.test(raw) &&
-      prevBlankExactlyOne &&
-      !blank(i + 1);
+      CUE_RE.test(raw) && HAS_UPPER_RE.test(raw) && prevBlankExactlyOne && !blank(i + 1);
     if (isCue && !dialogueMode) {
       out.push(span(i, "character"));
       dialogueMode = true;
       continue;
     }
 
-    if (dialogueMode && /^\(.+\)$/.test(raw.trim())) {
+    if (dialogueMode && PAREN_RE.test(raw.trim())) {
       out.push(span(i, "parenthetical"));
       continue;
     }
@@ -446,15 +453,19 @@ export function scriptSequence(
 ): SequenceItem[] {
   const flashbackBefore = new Map<string, GraphNode[]>(); // targetSceneId → flashbacks
   const placedIds = new Set<string>();
-  for (const e of Object.values(edges)) {
-    if (e.type !== "flashback_of") continue;
+  for (const id in edges) {
+    const e = edges[id];
+    if (!e || e.type !== "flashback_of") continue;
     const fb = nodes[e.from];
     const targetParent = fb?.parentId ? nodes[fb.parentId] : undefined;
     // Only auto-place flashbacks that don't live in an ordered container already.
     if (fb && !targetParent?.order?.includes(fb.id)) {
-      const arr = flashbackBefore.get(e.to) ?? [];
+      let arr = flashbackBefore.get(e.to);
+      if (!arr) {
+        arr = [];
+        flashbackBefore.set(e.to, arr);
+      }
       arr.push(fb);
-      flashbackBefore.set(e.to, arr);
     }
   }
 
@@ -463,18 +474,44 @@ export function scriptSequence(
     .map((id) => nodes[id])
     .filter((c): c is GraphNode => c !== undefined && c.type === "episode");
 
+  // Pre-index scenes by parentId in one pass:
+  const scenesByParent = new Map<string, GraphNode[]>();
+  const allScenes: GraphNode[] = [];
+  for (const id in nodes) {
+    const n = nodes[id];
+    if (n && n.type === "scene") {
+      allScenes.push(n);
+      if (n.parentId) {
+        let list = scenesByParent.get(n.parentId);
+        if (!list) {
+          list = [];
+          scenesByParent.set(n.parentId, list);
+        }
+        list.push(n);
+      }
+    }
+  }
+
   const emitContainer = (container: GraphNode | null): void => {
     const ordered = container?.order ?? [];
-    const remaining = Object.values(nodes)
-      .filter((n) => n.type === "scene" && n.parentId === container?.id && !ordered.includes(n.id))
-      .map((n) => n.id);
-    for (const sid of [...ordered, ...remaining]) {
+    const orderedSet = new Set(ordered);
+    const parentScenes = container ? (scenesByParent.get(container.id) ?? []) : [];
+    const remaining: string[] = [];
+    for (const n of parentScenes) {
+      if (!orderedSet.has(n.id)) remaining.push(n.id);
+    }
+
+    const sceneOrder = [...ordered, ...remaining];
+    for (const sid of sceneOrder) {
       const sc = nodes[sid];
       if (!sc || sc.type !== "scene" || placedIds.has(sc.id)) continue;
-      for (const fb of flashbackBefore.get(sid) ?? []) {
-        if (!placedIds.has(fb.id)) {
-          placedIds.add(fb.id);
-          out.push({ container, scene: fb });
+      const fbs = flashbackBefore.get(sid);
+      if (fbs) {
+        for (const fb of fbs) {
+          if (!placedIds.has(fb.id)) {
+            placedIds.add(fb.id);
+            out.push({ container, scene: fb });
+          }
         }
       }
       placedIds.add(sc.id);
@@ -486,18 +523,25 @@ export function scriptSequence(
     ...project,
     order: (project.order ?? []).filter((id) => nodes[id]?.type === "scene"),
   });
-  for (const container of containers) emitContainer(container);
-  for (const scene of Object.values(nodes)) {
-    if (scene.type !== "scene" || placedIds.has(scene.id)) continue;
-    if (scene.parentId === project.id || containers.some((c) => c.id === scene.parentId)) {
+  for (const container of containers) {
+    emitContainer(container);
+  }
+
+  const containerIdSet = new Set([project.id]);
+  for (const c of containers) {
+    containerIdSet.add(c.id);
+  }
+
+  for (const scene of allScenes) {
+    if (placedIds.has(scene.id)) continue;
+    if (scene.parentId && containerIdSet.has(scene.parentId)) {
       placedIds.add(scene.id);
-      out.push({ container: scene.parentId ? (nodes[scene.parentId] ?? null) : null, scene });
+      out.push({ container: nodes[scene.parentId] ?? null, scene });
     }
   }
 
   // Any ordered-but-unplaced flashbacks trail their container's tail.
-  for (const [target, fbs] of flashbackBefore) {
-    void target;
+  for (const [, fbs] of flashbackBefore) {
     for (const fb of fbs) {
       if (!placedIds.has(fb.id)) {
         placedIds.add(fb.id);

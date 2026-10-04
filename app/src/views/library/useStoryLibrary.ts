@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { Effect } from "effect";
 import { useGraphStore } from "../../store";
 import { dbGetAll } from "../../data/idb";
-import { summarizeStories, type StoryStats } from "../../data/library";
+import { summarizeStoriesEffect, type StoryStats } from "../../data/library";
 import type { GraphEdge, GraphNode } from "../../types";
 
 export function useStoryLibrary(onOpen: (id: string) => void) {
@@ -22,8 +23,11 @@ export function useStoryLibrary(onOpen: (id: string) => void) {
           dbGetAll<GraphEdge>("edges"),
         ]);
         if (!cancelled) {
-          setStats(summarizeStories(projects, nodes, edges));
-          setStatsError(null);
+          const nextStats = await Effect.runPromise(summarizeStoriesEffect(projects, nodes, edges));
+          if (!cancelled) {
+            setStats(nextStats);
+            setStatsError(null);
+          }
         }
       } catch {
         if (!cancelled)

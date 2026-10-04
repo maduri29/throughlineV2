@@ -10,17 +10,17 @@ import { useShallow } from "zustand/react/shallow";
 import { useGraphStore } from "./store";
 import { checkTursoConfigured } from "./data/sync";
 import { getWorkspaceAccount } from "./data/account";
-import BoneyardView from "./views/BoneyardView";
 import Loader from "./views/Loader";
 import Logo from "./views/Logo";
-import ResearchView from "./views/ResearchView";
-import MapView from "./views/MapView";
-import TimelineView from "./views/TimelineView";
-import CharactersView from "./views/CharactersView";
 import LibraryView from "./views/LibraryView";
 import Inspector from "./views/Inspector";
 import ConnectionAdd from "./views/ConnectionAdd";
 
+const MapView = lazy(() => import("./views/MapView"));
+const TimelineView = lazy(() => import("./views/TimelineView"));
+const CharactersView = lazy(() => import("./views/CharactersView"));
+const BoneyardView = lazy(() => import("./views/BoneyardView"));
+const ResearchView = lazy(() => import("./views/ResearchView"));
 const ScriptView = lazy(() => import("./views/ScriptView"));
 const Palette = lazy(() => import("./views/Palette"));
 const StoryDiagnosticsModal = lazy(() => import("./views/StoryDiagnosticsModal"));
@@ -34,31 +34,20 @@ const SAVE_LABEL: Record<string, string> = {
 };
 
 export default function App() {
-  const {
-    status,
-    canUndo,
-    canRedo,
-    undo,
-    redo,
-    forceSave,
-    projectId,
-    bootError,
-    syncStatus,
-    syncMessage,
-  } = useGraphStore(
-    useShallow((s) => ({
-      status: s.status,
-      canUndo: s.canUndo,
-      canRedo: s.canRedo,
-      undo: s.undo,
-      redo: s.redo,
-      forceSave: s.forceSave,
-      projectId: s.projectId,
-      bootError: s.bootError,
-      syncStatus: s.syncStatus,
-      syncMessage: s.syncMessage,
-    })),
-  );
+  const { status, canUndo, canRedo, undo, redo, forceSave, bootError, syncStatus, syncMessage } =
+    useGraphStore(
+      useShallow((s) => ({
+        status: s.status,
+        canUndo: s.canUndo,
+        canRedo: s.canRedo,
+        undo: s.undo,
+        redo: s.redo,
+        forceSave: s.forceSave,
+        bootError: s.bootError,
+        syncStatus: s.syncStatus,
+        syncMessage: s.syncMessage,
+      })),
+    );
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [lens, setLens] = useState<Lens>("map");
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -170,7 +159,9 @@ export default function App() {
     return () => removeEventListener("keydown", onKey);
   }, [undo, redo, forceSave]);
 
-  const project = projectId ? useGraphStore.getState().nodes[projectId] : undefined;
+  const projectTitle = useGraphStore((s) =>
+    s.projectId ? s.nodes[s.projectId]?.title : undefined,
+  );
 
   return (
     <div className="tln-app" data-theme={theme}>
@@ -286,9 +277,25 @@ export default function App() {
       )}
 
       {section === "boneyard" ? (
-        <BoneyardView onGrown={(id) => router.push(`/stories/${id}`)} />
+        <Suspense
+          fallback={
+            <div className="tln-workspace">
+              <Loader kind="clap" label="Loading Boneyard…" />
+            </div>
+          }
+        >
+          <BoneyardView onGrown={(id) => router.push(`/stories/${id}`)} />
+        </Suspense>
       ) : section === "research" ? (
-        <ResearchView />
+        <Suspense
+          fallback={
+            <div className="tln-workspace">
+              <Loader kind="clap" label="Loading Study Shelf…" />
+            </div>
+          }
+        >
+          <ResearchView />
+        </Suspense>
       ) : level === "library" ? (
         <LibraryView onOpen={(id) => router.push(`/stories/${id}`)} />
       ) : (
@@ -302,8 +309,8 @@ export default function App() {
                 <span className="tln-story-bar__crumb-separator" aria-hidden="true">
                   /
                 </span>
-                <span className="tln-story-bar__title" title={project?.title ?? ""}>
-                  {project?.title ?? ""}
+                <span className="tln-story-bar__title" title={projectTitle ?? ""}>
+                  {projectTitle ?? ""}
                 </span>
               </nav>
 
@@ -443,21 +450,47 @@ export default function App() {
               </div>
             )}
             <div className="tln-workspace__lens">
-              {lens === "map" ? <MapView /> : null}
+              {lens === "map" ? (
+                <Suspense
+                  fallback={
+                    <div className="tln-workspace">
+                      <Loader kind="clap" label="Loading story map…" />
+                    </div>
+                  }
+                >
+                  <MapView />
+                </Suspense>
+              ) : null}
               {lens === "timeline" ? (
-                <TimelineView
-                  onDetails={() => setDetailsOpen(true)}
-                  onScript={() => setLens("script")}
-                />
+                <Suspense
+                  fallback={
+                    <div className="tln-workspace">
+                      <Loader kind="clap" label="Loading sequence board…" />
+                    </div>
+                  }
+                >
+                  <TimelineView
+                    onDetails={() => setDetailsOpen(true)}
+                    onScript={() => setLens("script")}
+                  />
+                </Suspense>
               ) : null}
               {lens === "characters" ? (
-                <CharactersView
-                  onOpenNode={(id) => {
-                    const type = useGraphStore.getState().nodes[id]?.type;
-                    setLens(type === "scene" ? "script" : "map");
-                    setDetailsOpen(type !== "scene");
-                  }}
-                />
+                <Suspense
+                  fallback={
+                    <div className="tln-workspace">
+                      <Loader kind="clap" label="Loading character dossiers…" />
+                    </div>
+                  }
+                >
+                  <CharactersView
+                    onOpenNode={(id) => {
+                      const type = useGraphStore.getState().nodes[id]?.type;
+                      setLens(type === "scene" ? "script" : "map");
+                      setDetailsOpen(type !== "scene");
+                    }}
+                  />
+                </Suspense>
               ) : null}
               {lens === "script" ? (
                 <Suspense

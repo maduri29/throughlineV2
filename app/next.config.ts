@@ -1,15 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  agentRules: false,
   reactStrictMode: true,
   poweredByHeader: false,
+  compress: true,
   // Allow verification builds to avoid OneDrive locks in the active dev output.
   distDir: process.env.STORY_LANE_BUILD_DIR ?? ".next",
+  serverExternalPackages: ["firebase-admin", "@libsql/client"],
   typescript: {
     // Typecheck is already enforced in the pre-commit/CI gate (`bun run check` / `tsc --noEmit`).
     // Skipping duplicate typechecking here shaves ~150-200ms off every build.
     ignoreBuildErrors: true,
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
   experimental: {
     optimizePackageImports: [
@@ -17,6 +21,9 @@ const nextConfig: NextConfig = {
       "@codemirror/view",
       "@codemirror/state",
       "@codemirror/commands",
+      "lucide-react",
+      "effect",
+      "idb-keyval",
     ],
   },
   // The route is a static shell (the editor mounts client-side), so the build

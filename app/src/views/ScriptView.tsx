@@ -7,7 +7,6 @@ import FountainEditor from "../editor/FountainEditor";
 import { useGraphStore } from "../store";
 import Loader from "./Loader";
 import {
-  locationTitleFor,
   parseFountain,
   renderPreview,
   scriptSequence,
@@ -168,7 +167,7 @@ export default function ScriptView() {
   const text =
     (effectiveSceneId ? buffers[effectiveSceneId] : undefined) ??
     (scene ? storedText || skeletonBody(scene) : "");
-  const slug = scene ? slugFor(scene, locationTitleFor(scene.id, nodeMap, edgeMap)) : "";
+  const slug = scene ? slugFor(scene, locationBySceneId.get(scene.id) ?? null) : "";
   const previewHtml = useMemo(() => renderPreview(parseFountain(text).els), [text]);
 
   const onImportFile = useCallback(async (file: File) => {

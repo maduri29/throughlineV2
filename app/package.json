@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": "24.x" },
   "scripts": {
     "dev": "next dev -p 4517",
     "build": "next build",
@@ -33,28 +32,31 @@
     "verify:accounts": "bun verify-account-api.ts"
   },
   "dependencies": {
-    "@codemirror/commands": "^6.11.0",
-    "@codemirror/state": "^6.7.2",
-    "@codemirror/view": "^6.43.10",
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.13",
     "@libsql/client": "^0.18.0",
-    "@xyflow/react": "^12.11.6",
+    "@xyflow/react": "^12.12.0",
+    "effect": "^3.22.2",
     "firebase": "^12.19.0",
     "firebase-admin": "13.6.0",
-    "effect": "^3.22.2",
     "idb-keyval": "^6.3.0",
-    "lucide-react": "^1.39.0",
-    "next": "^16.3.4",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "lucide-react": "^1.51.0",
+    "next": "^16.3.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.0",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.5",
-    "oxfmt": "^0.66.0",
-    "oxlint": "^1.81.0",
-    "playwright-core": "^1.62.1",
+    "@types/bun": "^1.4.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "oxfmt": "^0.71.0",
+    "oxlint": "^1.86.0",
+    "playwright-core": "^1.63.0",
     "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

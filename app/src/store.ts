@@ -104,8 +104,27 @@ let historyTimer: ReturnType<typeof setTimeout> | null = null;
 const HISTORY_CAP = 200;
 const FLUSH_MS = 800;
 
-function cloneMaps(s: State): NodeMaps {
-  return { nodes: { ...s.nodes }, edges: { ...s.edges } };
+function cloneMaps(s: State, touchesNodes = true, touchesEdges = true): NodeMaps {
+  return {
+    nodes: touchesNodes ? { ...s.nodes } : s.nodes,
+    edges: touchesEdges ? { ...s.edges } : s.edges,
+  };
+}
+
+function opsTouch(ops: Op[]): { touchesNodes: boolean; touchesEdges: boolean } {
+  let touchesNodes = false;
+  let touchesEdges = false;
+  for (const op of ops) {
+    if (op.t === "addNode" || op.t === "patchNode") {
+      touchesNodes = true;
+    } else if (op.t === "addEdge" || op.t === "patchEdge" || op.t === "deleteEdge") {
+      touchesEdges = true;
+    } else if (op.t === "deleteNodes") {
+      if (op.nodes.length > 0) touchesNodes = true;
+      if (op.edges.length > 0) touchesEdges = true;
+    }
+  }
+  return { touchesNodes, touchesEdges };
 }
 
 function collectIds(ops: Op[]): { nodeIds: string[]; edgeIds: string[] } {
@@ -208,7 +227,8 @@ function commit(
 ): void {
   const inverse = invertBatch(forward);
   const current = get();
-  const m = cloneMaps(current);
+  const { touchesNodes, touchesEdges } = opsTouch(forward);
+  const m = cloneMaps(current, touchesNodes, touchesEdges);
   applyBatch(m, forward);
   undoStack.push({ at: Date.now(), label, forward, inverse });
   if (undoStack.length > HISTORY_CAP) undoStack.shift();
@@ -220,12 +240,14 @@ function commit(
   // Only re-filter projects if an op actually touched a project node.
   // Preserving current.projects array identity prevents spurious re-renders
   // and cascade background sync/scoping calls in Library, Boneyard, Research & Palette.
-  const touchesProject = forward.some((op) => {
-    if (op.t === "addNode") return op.node.type === "project";
-    if (op.t === "patchNode") return current.nodes[op.id]?.type === "project";
-    if (op.t === "deleteNodes") return op.nodes.some((n) => n.type === "project");
-    return false;
-  });
+  const touchesProject =
+    touchesNodes &&
+    forward.some((op) => {
+      if (op.t === "addNode") return op.node.type === "project";
+      if (op.t === "patchNode") return current.nodes[op.id]?.type === "project";
+      if (op.t === "deleteNodes") return op.nodes.some((n) => n.type === "project");
+      return false;
+    });
 
   const nextProjects = touchesProject
     ? Object.values(m.nodes).filter((n) => n.type === "project")
@@ -808,17 +830,29 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
     const entry = undoStack[undoStack.length - 1];
     if (!entry) return;
     undoStack.pop();
-    const m = cloneMaps(get());
+    const current = get();
+    const { touchesNodes, touchesEdges } = opsTouch(entry.inverse);
+    const m = cloneMaps(current, touchesNodes, touchesEdges);
     applyBatch(m, entry.inverse);
     redoStack.push(entry);
     markDirty(entry.forward);
     markDirty(entry.inverse);
-    persistHistory(get().projectId);
+    persistHistory(current.projectId);
     scheduleFlush();
+    const touchesProject =
+      touchesNodes &&
+      entry.inverse.some((op) => {
+        if (op.t === "addNode") return op.node.type === "project";
+        if (op.t === "patchNode") return current.nodes[op.id]?.type === "project";
+        if (op.t === "deleteNodes") return op.nodes.some((n) => n.type === "project");
+        return false;
+      });
     set({
       nodes: m.nodes,
       edges: m.edges,
-      projects: Object.values(m.nodes).filter((n) => n.type === "project"),
+      projects: touchesProject
+        ? Object.values(m.nodes).filter((n) => n.type === "project")
+        : current.projects,
       canUndo: undoStack.length > 0,
       canRedo: true,
     });
@@ -828,16 +862,28 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
     const entry = redoStack[redoStack.length - 1];
     if (!entry) return;
     redoStack.pop();
-    const m = cloneMaps(get());
+    const current = get();
+    const { touchesNodes, touchesEdges } = opsTouch(entry.forward);
+    const m = cloneMaps(current, touchesNodes, touchesEdges);
     applyBatch(m, entry.forward);
     undoStack.push(entry);
     markDirty(entry.forward);
-    persistHistory(get().projectId);
+    persistHistory(current.projectId);
     scheduleFlush();
+    const touchesProject =
+      touchesNodes &&
+      entry.forward.some((op) => {
+        if (op.t === "addNode") return op.node.type === "project";
+        if (op.t === "patchNode") return current.nodes[op.id]?.type === "project";
+        if (op.t === "deleteNodes") return op.nodes.some((n) => n.type === "project");
+        return false;
+      });
     set({
       nodes: m.nodes,
       edges: m.edges,
-      projects: Object.values(m.nodes).filter((n) => n.type === "project"),
+      projects: touchesProject
+        ? Object.values(m.nodes).filter((n) => n.type === "project")
+        : current.projects,
       canUndo: true,
       canRedo: redoStack.length > 0,
     });

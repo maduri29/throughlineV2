@@ -37,9 +37,17 @@ export default function StoryDiagnosticsModal({ onClose, onNavigateToNode }: Pro
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  const errorCount = report.issues.filter((i) => i.severity === "error").length;
-  const warnCount = report.issues.filter((i) => i.severity === "warning").length;
-  const infoCount = report.issues.filter((i) => i.severity === "info").length;
+  const { errorCount, warnCount, infoCount } = useMemo(() => {
+    let errorCount = 0;
+    let warnCount = 0;
+    let infoCount = 0;
+    for (const issue of report.issues) {
+      if (issue.severity === "error") errorCount++;
+      else if (issue.severity === "warning") warnCount++;
+      else if (issue.severity === "info") infoCount++;
+    }
+    return { errorCount, warnCount, infoCount };
+  }, [report.issues]);
 
   const filteredIssues = useMemo(() => {
     if (filter === "all") return report.issues;
