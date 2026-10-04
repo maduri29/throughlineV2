@@ -1,0 +1,235 @@
+/**
+ * Inspector Dock & Connection Controls Styles
+ * Workspace split, dock container, property inspector, and connection adder.
+ */
+
+@layer views {
+  /* Workspace split: lens + inspector dock */
+  .tln-workspace {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  .tln-workspace__lens {
+    flex: 1;
+    display: flex;
+    min-width: 0;
+  }
+
+  /* Inspector Dock */
+  .tln-dock {
+    width: 270px;
+    border-left: 1px solid var(--line);
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .tln-dock .tln-inspector {
+    border-left: none;
+    width: auto;
+    flex: 1;
+  }
+
+  /* Inspector Panel */
+  .tln-inspector {
+    width: 270px;
+    border-left: 1px solid var(--line);
+    background: var(--panel);
+    padding: 14px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .tln-inspector--empty {
+    display: grid;
+    place-items: center;
+  }
+
+  .tln-inspector__hint {
+    color: var(--dim);
+    font-size: 12px;
+  }
+
+  .tln-inspector__type {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .tln-inspector__title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--line-strong);
+    padding: 3px 0 5px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .tln-inspector__title:focus {
+    border-bottom-color: var(--accent);
+  }
+
+  .tln-inspector__field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .tln-inspector__field input,
+  .tln-inspector__field textarea,
+  .tln-inspector__field select {
+    font-family: inherit;
+    font-size: 13px;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--ink);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 9px;
+    outline: none;
+    resize: vertical;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .tln-inspector__field input:focus,
+  .tln-inspector__field textarea:focus,
+  .tln-inspector__field select:focus {
+    border-color: var(--accent);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  .tln-inspector__row3 {
+    display: grid;
+    grid-template-columns: 1fr 64px 1fr;
+    gap: 6px;
+  }
+
+  .tln-inspector__edges {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .tln-inspector__edge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .tln-inspector__etype {
+    color: var(--dim);
+    min-width: 86px;
+  }
+
+  .tln-inspector__eother {
+    flex: 1;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tln-inspector__edel {
+    all: unset;
+    cursor: pointer;
+    color: var(--danger);
+    font-size: 10px;
+  }
+
+  .tln-inspector__none {
+    font-size: 11px;
+    color: #a8b1c9;
+  }
+
+  /* Add Connection Section */
+  .tln-conncadd {
+    border-top: 1px solid var(--line);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--panel);
+  }
+
+  .tln-conncadd select {
+    all: unset;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--card);
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--ink);
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+
+  .tln-conncadd select:focus {
+    border-color: var(--accent);
+  }
+
+  .tln-conncadd__row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .tln-conncadd__btn {
+    all: unset;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-2);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 12px;
+    text-align: center;
+    transition: all 0.15s ease;
+  }
+
+  .tln-conncadd__btn:hover:not(:disabled) {
+    background: var(--tint);
+    color: var(--ink);
+    border-color: var(--line-strong);
+  }
+
+  .tln-conncadd__btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .tln-conncadd__btn--primary {
+    color: var(--accent-fg, #0b0d13);
+    background: var(--accent);
+    border-color: var(--accent);
+    flex: 1;
+  }
+
+  .tln-conncadd__btn--primary:hover:not(:disabled) {
+    background: var(--accent-hover, var(--accent));
+    color: var(--accent-fg, #0b0d13);
+  }
+}

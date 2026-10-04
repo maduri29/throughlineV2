@@ -22,6 +22,7 @@ import {
 } from "./script/scriptTypography";
 import { useScriptBuffers } from "./script/useScriptBuffers";
 import { useSplitPane } from "./script/useSplitPane";
+import "./script/script.css";
 
 export default function ScriptView() {
   const nodeMap = useGraphStore((s) => s.nodes);

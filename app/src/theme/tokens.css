@@ -1,0 +1,130 @@
+/**
+ * Story Lane - Design Tokens & Theme Foundations
+ * Modern CSS @layer tokens architecture.
+ */
+
+@layer tokens {
+  @font-face {
+    font-family: "Cinzel";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/cinzel-regular.ttf") format("truetype");
+  }
+
+  @font-face {
+    font-family: "Cinzel";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/cinzel-semibold.ttf") format("truetype");
+  }
+
+  @font-face {
+    font-family: "Cinzel";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("/fonts/cinzel-bold.ttf") format("truetype");
+  }
+
+  :root,
+  [data-theme="dark"] {
+    color-scheme: dark;
+    /* Shadcn / Zinc Dark Theme */
+    --bg: #101214;
+    --panel: #15181b;
+    --card: #1c2024;
+    --card-elevated: #2b3035;
+    --ink: #fafafa;
+    --ink-2: #a1a1aa;
+    --dim: #71717a;
+    --line: #2b3035;
+    --line-strong: #3f3f46;
+    --line-focus: #8ddaaf;
+
+    /* Story Lane: mint from the selected Shot / Reverse Shot identity. */
+    --accent: #8ddaaf;
+    --accent-hover: #b0ebc9;
+    --accent-fg: #101214;
+    --tint: rgba(141, 218, 175, 0.1);
+    --glow: rgba(141, 218, 175, 0.2);
+
+    /* Graph Hues */
+    --scene: #38bdf8;
+    --flashback: #f97316;
+    --character: #f43f5e;
+    --location: #10b981;
+    --theme: #a855f7;
+    --episode: #06b6d4;
+
+    /* Status */
+    --ok: #10b981;
+    --warn: #c6a573;
+    --danger: #ef4444;
+
+    --fb: #f97316;
+
+    /* Shadows (Shadcn crisp subtle elevations) */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    --radius: 8px;
+  }
+
+  [data-theme="light"] {
+    color-scheme: light;
+    /* Shadcn / Zinc Light Theme */
+    --bg: #ffffff;
+    --panel: #f4f4f5;
+    --card: #ffffff;
+    --card-elevated: #fafafa;
+    --ink: #101214;
+    --ink-2: #52525b;
+    --dim: #71717a;
+    --line: #e4e4e7;
+    --line-strong: #d4d4d8;
+    --line-focus: #247454;
+
+    /* A deeper mint-family green keeps light-theme controls legible. */
+    --accent: #247454;
+    --accent-hover: #195a40;
+    --accent-fg: #ffffff;
+    --tint: rgba(36, 116, 84, 0.08);
+    --glow: rgba(36, 116, 84, 0.16);
+
+    /* Graph Hues */
+    --scene: #0284c7;
+    --flashback: #ea580c;
+    --character: #e11d48;
+    --location: #059669;
+    --theme: #7c3aed;
+    --episode: #0891b2;
+
+    /* Status */
+    --ok: #059669;
+    --warn: #d97706;
+    --danger: #dc2626;
+
+    --fb: #ea580c;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+    --radius: 8px;
+  }
+
+  :root {
+    /* System fonts keep the workspace available without a font service. */
+    --font-sans:
+      "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    --font-display: "Cinzel", Georgia, "Palatino Linotype", Palatino, "Times New Roman", serif;
+    --font-cinzel: "Cinzel", Georgia, serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --font-script: "Courier Prime", "Courier New", Courier, monospace;
+    --font-script-family: "Noto Sans Telugu", "Courier Prime", "Courier New", sans-serif;
+    --font-script-size: 15px;
+    --font-script-line-height: 1.65;
+  }
+}

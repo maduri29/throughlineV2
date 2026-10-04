@@ -1,0 +1,411 @@
+/**
+ * Map Lens Styles
+ * Canvas chrome, ReactFlow overrides, node cards, and toolbar controls.
+ */
+
+@layer views {
+  /* Map lens chrome (T5 contract) */
+  .tln-map {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .tln-chips {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 3px;
+    box-shadow: var(--shadow-md);
+  }
+
+  .tln-chip {
+    all: unset;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    height: 32px;
+    white-space: nowrap;
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--ink-2);
+    background: transparent;
+    transition: all 0.15s ease;
+  }
+
+  .tln-chip:hover {
+    color: var(--ink);
+    background: var(--card);
+  }
+
+  .tln-chip:active {
+    transform: scale(0.98);
+  }
+
+  .tln-chip--off {
+    opacity: 0.4;
+    text-decoration: line-through;
+  }
+
+  .tln-addmenu {
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .tln-addmenu__btn {
+    background: var(--tint);
+    color: var(--accent);
+    border: 1px solid var(--line);
+    font-weight: 600;
+  }
+
+  .tln-addmenu__list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 32;
+    background: var(--card);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    box-shadow: var(--shadow-lg);
+    padding: 5px;
+    min-width: 140px;
+    backdrop-filter: blur(12px);
+    animation: tln-pop 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .tln-addmenu__opt {
+    all: unset;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: var(--ink);
+    transition: all 0.12s ease;
+  }
+
+  .tln-addmenu__opt:hover {
+    background: var(--tint);
+    color: var(--accent);
+  }
+
+  .tln-picker-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+  }
+
+  .tln-picker {
+    position: fixed;
+    z-index: 31;
+    background: var(--card);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    box-shadow: var(--shadow-lg);
+    padding: 6px;
+    min-width: 180px;
+    transform: translateY(8px);
+    backdrop-filter: blur(12px);
+    animation: tln-pop 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes tln-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .tln-picker__title {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    padding: 4px 8px;
+  }
+
+  .tln-picker__opt {
+    all: unset;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: var(--ink);
+    transition: all 0.12s ease;
+  }
+
+  .tln-picker__opt:hover {
+    background: var(--tint);
+    color: var(--accent);
+  }
+
+  .tln-picker__none {
+    font-size: 11px;
+    color: var(--dim);
+    padding: 6px 10px;
+  }
+
+  .tln-picker__hint {
+    font-size: 9px;
+    color: var(--dim);
+    padding: 4px 8px 2px;
+  }
+
+  .tln-toast-wrap {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .tln-toast {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--card-elevated);
+    color: var(--ink);
+    border: 1px solid var(--line-strong);
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .tln-toast button {
+    all: unset;
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* React Flow Canvas Integration */
+  .tln-flow {
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
+    padding-top: 54px;
+  }
+
+  .tln-flow .react-flow__pane {
+    background: var(--bg);
+  }
+
+  .tln-flow .react-flow__handle {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: var(--accent);
+    border: 2px solid var(--card);
+    transition:
+      transform 0.15s ease,
+      background 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .tln-flow .react-flow__handle:hover {
+    transform: scale(1.35);
+    background: var(--accent-hover, var(--accent));
+    box-shadow: 0 0 8px var(--glow);
+  }
+
+  .tln-flow .react-flow__edge-path {
+    stroke: var(--line-strong);
+    stroke-width: 1.5;
+  }
+
+  .tln-flow .react-flow__edge.selected .react-flow__edge-path {
+    stroke: var(--accent);
+    stroke-width: 2.5;
+  }
+
+  .tln-flow .react-flow__controls {
+    background: var(--card) !important;
+    border: 1px solid var(--line-strong) !important;
+    border-radius: 8px !important;
+    box-shadow: var(--shadow-md) !important;
+    overflow: hidden;
+  }
+
+  .tln-flow .react-flow__controls-button {
+    background: var(--card) !important;
+    border-bottom: 1px solid var(--line) !important;
+    color: var(--ink-2) !important;
+    fill: var(--ink-2) !important;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .tln-flow .react-flow__controls-button:hover {
+    background: var(--tint) !important;
+    color: var(--accent) !important;
+    fill: var(--accent) !important;
+  }
+
+  .tln-flow .react-flow__controls-button svg {
+    fill: currentColor !important;
+  }
+
+  /* Beat-board Cards */
+  .tln-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    width: 228px;
+    font-size: 12px;
+    color: var(--ink);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    transition: all 0.15s ease;
+  }
+
+  .tln-card:hover {
+    border-color: var(--line-strong);
+    background: var(--card-elevated);
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+  }
+
+  .tln-card--flashback {
+    border-style: dashed;
+    border-color: var(--flashback);
+  }
+
+  .tln-card--pill {
+    width: auto;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+  }
+
+  .tln-card__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tln-card__title {
+    font-weight: 600;
+    color: var(--ink);
+    font-size: 12.5px;
+    letter-spacing: -0.01em;
+  }
+
+  .tln-card__badge {
+    margin-left: auto;
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--panel);
+    color: var(--ink-2);
+    border: 1px solid var(--line);
+  }
+
+  .tln-card--flashback .tln-card__badge {
+    background: color-mix(in srgb, var(--flashback) 15%, var(--card));
+    color: var(--flashback);
+    border-color: color-mix(in srgb, var(--flashback) 35%, var(--line));
+  }
+
+  /* One hue per story object. Local custom properties for generic pill references. */
+  .tln-card--t-scene {
+    --type: var(--scene);
+    --type-bg: color-mix(in srgb, var(--scene) 12%, var(--card));
+  }
+
+  .tln-card--t-episode {
+    --type: var(--episode);
+    --type-bg: color-mix(in srgb, var(--episode) 12%, var(--card));
+  }
+
+  .tln-card--t-character {
+    --type: var(--character);
+    --type-bg: color-mix(in srgb, var(--character) 12%, var(--card));
+  }
+
+  .tln-card--t-location {
+    --type: var(--location);
+    --type-bg: color-mix(in srgb, var(--location) 12%, var(--card));
+  }
+
+  .tln-card--t-theme {
+    --type: var(--theme);
+    --type-bg: color-mix(in srgb, var(--theme) 12%, var(--card));
+  }
+
+  .tln-card--t-project {
+    --type: var(--accent);
+    --type-bg: color-mix(in srgb, var(--accent) 12%, var(--card));
+  }
+
+  .tln-card--t-seed {
+    --type: var(--warn);
+    --type-bg: color-mix(in srgb, var(--warn) 12%, var(--card));
+  }
+
+  .tln-card--pill {
+    background: var(--type-bg, var(--card));
+    border: 1px solid var(--type, var(--line));
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .tln-card--pill .tln-card__title {
+    color: var(--type, var(--ink));
+  }
+
+  /* Scenes carry their hue as a top edge strip rather than a fill or side-tab */
+  .tln-card--scene {
+    border-top: 2px solid var(--scene);
+  }
+
+  .tln-card--flashback {
+    border-top: 2px solid var(--flashback);
+  }
+
+  .tln-card__syn {
+    margin-top: 6px;
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--dim);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

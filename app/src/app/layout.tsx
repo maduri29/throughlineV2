@@ -8,6 +8,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "@xyflow/react/dist/style.css";
+import "../theme/tokens.css";
 import "../styles.css";
 import "../views/library/library.css";
 import "../shell/shell.css";

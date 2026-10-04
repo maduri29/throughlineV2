@@ -544,3 +544,14 @@
 .tln-btn--danger:hover {
   background: #942b2b;
 }
+
+.tln-library__note {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.tln-library__error {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--danger);
+}

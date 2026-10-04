@@ -5,6 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { CHAR_ROLE_SUGGESTIONS, TODS } from "../types";
 import type { GraphNode, Tod } from "../types";
 import { useGraphStore } from "../store";
+import "./inspector.css";
 
 export default function Inspector() {
   const { nodeId, node, edges, nodes, patchNode, deleteEdge } = useGraphStore(

@@ -8,6 +8,7 @@ import MapConnectPicker from "./map/MapConnectPicker";
 import MapToastOverlay from "./map/MapToastOverlay";
 import MapToolbar from "./map/MapToolbar";
 import { useMapWorkspace } from "./map/useMapWorkspace";
+import "./map/map.css";
 
 const nodeTypes = { card: GraphCard } satisfies NodeTypes;
 
