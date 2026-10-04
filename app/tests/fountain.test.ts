@@ -7,6 +7,7 @@ import {
   skeletonBody,
   slugFor,
   splitSceneChunks,
+  kebab,
 } from "../src/data/fountain";
 import type { GraphEdge, GraphNode } from "../src/types";
 
@@ -219,5 +220,24 @@ describe("sequence board export order", () => {
     expect(new Set(scriptSequence(project, nodes, edges).map((item) => item.scene.id)).size).toBe(
       4,
     );
+  });
+});
+
+describe("kebab filename generation", () => {
+  test("generates clean hyphenated ASCII filenames", () => {
+    expect(kebab("My Screenplay Title")).toBe("my-screenplay-title");
+    expect(kebab("Action / Adventure - Part 1!")).toBe("action-adventure-part-1");
+  });
+
+  test("preserves Telugu script characters and vowel marks accurately", () => {
+    expect(kebab("మాయాబజార్")).toBe("మాయాబజార్");
+    expect(kebab("RRR - రౌద్రం రణం రుధిరం")).toBe("rrr-రౌద్రం-రణం-రుధిరం");
+    expect(kebab("బాహుబలి: ది బిగినింగ్")).toBe("బాహుబలి-ది-బిగినింగ్");
+  });
+
+  test("falls back to untitled on empty or punctuation-only strings", () => {
+    expect(kebab("")).toBe("untitled");
+    expect(kebab("   ")).toBe("untitled");
+    expect(kebab("---///!@#$%^&*()")).toBe("untitled");
   });
 });

@@ -554,12 +554,11 @@ export function scriptSequence(
 
 /* ---------------------------------- export -------------------------------- */
 
-function kebab(title: string): string {
+export function kebab(title: string): string {
   return (
     title
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^A-Za-z0-9]+/g, "-")
+      .trim()
+      .replace(/[^\p{L}\p{N}\p{M}]+/gu, "-")
       .replace(/^-+|-+$/g, "")
       .toLowerCase() || "untitled"
   );

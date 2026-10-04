@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildEnvelope, envelopeToJson, parseEnvelope } from "../src/data/envelope";
+import { buildEnvelope, envelopeToJson, parseEnvelope, kebab } from "../src/data/envelope";
 import { demoGraph } from "../src/demo";
 import type { GraphEdge, GraphNode } from "../src/types";
 
@@ -166,4 +166,10 @@ test("sequence board details survive a story backup round trip", () => {
   const restored = parsed.envelope.nodes.find((n) => n.id === scene.id)!;
   expect(restored.turningPoint).toBe(scene.turningPoint);
   expect(restored.needsWork).toBe(true);
+});
+
+test("backup envelope kebab filename preserves Telugu and international titles", () => {
+  expect(kebab("మాయాబజార్")).toBe("మాయాబజార్");
+  expect(kebab("Project Inception 2026")).toBe("project-inception-2026");
+  expect(kebab("   ")).toBe("untitled");
 });

@@ -146,6 +146,7 @@ function detectOrphans(
     // Build degree maps
     const nodeDegree = new Map<string, number>();
     const characterAppearances = new Map<string, number>();
+    const sceneCharacters = new Map<string, number>();
     const locationScenes = new Map<string, number>();
     const themeEmbodiments = new Map<string, number>();
 
@@ -157,6 +158,7 @@ function detectOrphans(
 
       if (e.type === "appears_in") {
         characterAppearances.set(e.from, (characterAppearances.get(e.from) ?? 0) + 1);
+        sceneCharacters.set(e.to, (sceneCharacters.get(e.to) ?? 0) + 1);
       } else if (e.type === "takes_place_at") {
         locationScenes.set(e.to, (locationScenes.get(e.to) ?? 0) + 1);
       } else if (e.type === "embodies") {
@@ -197,6 +199,20 @@ function detectOrphans(
             code: "CHARACTER_UNUSED",
             title: "Character With No Scene Appearances",
             message: `"${node.title}" has not been linked to appear in any scene yet.`,
+            nodeIds: [node.id],
+          });
+        }
+        const isMajor = ["protagonist", "antagonist", "mentor", "deuteragonist"].includes(
+          (node.role ?? "").trim().toLowerCase(),
+        );
+        if (isMajor && !node.motivation?.trim() && !node.conflict?.trim()) {
+          issues.push({
+            id: `char-craft-${node.id}`,
+            severity: "info",
+            category: "characters",
+            code: "CHARACTER_CRAFT_GAP",
+            title: "Major Character Needs Motivation / Conflict",
+            message: `"${node.title}" is designated as ${node.role}, but has neither motivation nor core conflict outlined in their dossier.`,
             nodeIds: [node.id],
           });
         }

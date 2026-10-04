@@ -233,6 +233,34 @@ export default function App() {
             onClose={() => setPaletteOpen(false)}
             onJump={jumpTo}
             onNavigate={(href) => router.push(href)}
+            onToggleTheme={toggleTheme}
+            onOpenDiagnostics={() => setDiagnosticsOpen(true)}
+            onSelectLens={(nextLens) => {
+              setLens(nextLens);
+              setDetailsOpen(false);
+            }}
+            onAddScene={() => {
+              const pid = useGraphStore.getState().projectId;
+              if (pid) {
+                const newId = useGraphStore.getState().addNode({
+                  type: "scene",
+                  title: "New Scene",
+                  parentId: pid,
+                });
+                jumpTo(newId, "scene");
+              }
+            }}
+            onAddCharacter={() => {
+              const pid = useGraphStore.getState().projectId;
+              if (pid) {
+                const newId = useGraphStore.getState().addNode({
+                  type: "character",
+                  title: "New Character",
+                  parentId: pid,
+                });
+                jumpTo(newId, "character");
+              }
+            }}
           />
         </Suspense>
       )}

@@ -151,4 +151,17 @@ describe("story diagnostics engine (Effect-powered)", () => {
     expect(report.metrics.totalBeats).toBe(2);
     expect(report.metrics.fulfilledBeats).toBe(1);
   });
+
+  test("flags major characters without motivation or core conflict as craft gap", () => {
+    const nodes: Record<string, GraphNode> = {
+      p1: { id: "p1", type: "project", title: "Project" },
+      c1: { id: "c1", type: "character", title: "Villain", role: "Antagonist" },
+    };
+
+    const report = analyzeStoryHealth(nodes, {});
+    const craftGap = report.issues.find((i) => i.code === "CHARACTER_CRAFT_GAP");
+    expect(craftGap).toBeDefined();
+    expect(craftGap?.severity).toBe("info");
+    expect(craftGap?.message).toContain("Villain");
+  });
 });
