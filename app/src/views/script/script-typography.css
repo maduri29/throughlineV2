@@ -17,6 +17,15 @@
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.tln-script-typo__btn--compact {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  justify-content: center;
 }
 
 .tln-script-typo__btn:hover {

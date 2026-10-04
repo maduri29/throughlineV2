@@ -84,9 +84,6 @@ export default function ScriptView() {
   const slug = scene ? slugFor(scene, locationTitle) : "";
   const previewHtml = useMemo(() => renderPreview(parseFountain(text).els), [text]);
 
-  const sceneIndex = sequence.findIndex((item) => item.scene.id === effectiveSceneId);
-  const sceneNumber = sceneIndex >= 0 ? sceneIndex + 1 : undefined;
-
   const handleInsertCueSnippet = () => {
     if (!scene) return;
     const addition = text.trim() ? "\n\n@పాత్ర పేరు\nసంభాషణ ఇక్కడ రాయండి…" : "@పాత్ర పేరు\nసంభాషణ ఇక్కడ రాయండి…";
@@ -190,9 +187,13 @@ export default function ScriptView() {
             typography={typography}
             onTypographyChange={handleTypographyChange}
             onInsertCueSnippet={handleInsertCueSnippet}
-            sceneNumber={sceneNumber}
-            totalScenes={sequence.length}
-            onOpenMobileScenes={() => setMobileTab("scenes")}
+            sequence={sequence}
+            effectiveSceneId={effectiveSceneId}
+            onSelectScene={(id) => {
+              setSceneId(id);
+              setMobileTab("edit");
+            }}
+            locationBySceneId={locationBySceneId}
           />
 
           {scene ? (

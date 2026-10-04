@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Type } from "lucide-react";
 import {
   FONT_SIZES,
   LINE_HEIGHTS,
@@ -15,9 +16,15 @@ type Props = {
   typography: ScriptTypographyState;
   onChange: (next: ScriptTypographyState) => void;
   onInsertCueSnippet?: () => void;
+  compact?: boolean;
 };
 
-export default function ScriptTypographyMenu({ typography, onChange, onInsertCueSnippet }: Props) {
+export default function ScriptTypographyMenu({
+  typography,
+  onChange,
+  onInsertCueSnippet,
+  compact,
+}: Props) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -57,14 +64,20 @@ export default function ScriptTypographyMenu({ typography, onChange, onInsertCue
     <div className="tln-script-typo" ref={containerRef}>
       <button
         type="button"
-        className="tln-script-typo__btn"
-        title="Screenplay Typography & Telugu Font Support"
+        className={`tln-script-typo__btn${compact ? " tln-script-typo__btn--compact" : ""}`}
+        title={`Screenplay Typography: ${currentFont.name} (${typography.fontSize}pt) · Telugu font support`}
+        aria-label="Screenplay typography and Telugu fonts"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
       >
-        <span>Font / అక్షరాలు</span>
-        <span className="tln-script-typo__badge">{currentFont.name}</span>
-        <span aria-hidden="true">▾</span>
+        <Type size={15} aria-hidden="true" />
+        {!compact && (
+          <>
+            <span>Font / అక్షరాలు</span>
+            <span className="tln-script-typo__badge">{currentFont.name}</span>
+            <span aria-hidden="true">▾</span>
+          </>
+        )}
       </button>
 
       {open && (

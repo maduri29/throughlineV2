@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { Download } from "lucide-react";
 import { useGraphStore } from "../store";
 import { assembleExport, downloadFountain, parseFountain, renderPreview } from "../data/fountain";
 import { getFontOption, type ScriptTypographyState } from "./script/scriptTypography";
@@ -12,9 +13,10 @@ const escape = (text: string) =>
 
 type ScriptDownloadsProps = {
   typography?: ScriptTypographyState;
+  iconOnly?: boolean;
 };
 
-export default function ScriptDownloads({ typography }: ScriptDownloadsProps) {
+export default function ScriptDownloads({ typography, iconOnly }: ScriptDownloadsProps) {
   const menu = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
@@ -82,8 +84,19 @@ export default function ScriptDownloads({ typography }: ScriptDownloadsProps) {
         if (event.key === "Escape" && menu.current) menu.current.open = false;
       }}
     >
-      <summary aria-haspopup="menu">
-        Download <span aria-hidden="true">▾</span>
+      <summary
+        aria-haspopup="menu"
+        className={`script-downloads__trigger${iconOnly ? " script-downloads__trigger--icon" : ""}`}
+        title="Download / Export screenplay (.fountain, PDF, JSON)"
+        aria-label="Export script"
+      >
+        <Download size={15} aria-hidden="true" />
+        {!iconOnly && (
+          <>
+            <span>Download</span>
+            <span aria-hidden="true">▾</span>
+          </>
+        )}
       </summary>
       <div
         className="script-downloads__scrim"

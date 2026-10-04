@@ -16,7 +16,16 @@
   user-select: none;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  box-sizing: border-box;
+}
+
+.script-downloads summary.script-downloads__trigger--icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  justify-content: center;
 }
 
 .script-downloads summary:hover {
