@@ -5,10 +5,13 @@ import { selectStories, type StorySort } from "../data/library";
 import { useStoryLibrary } from "./library/useStoryLibrary";
 import { StoryCard } from "./library/StoryCard";
 import { CreateStoryForm } from "./library/CreateStoryForm";
+import { DeleteStoryDialog } from "./library/DeleteStoryDialog";
+import type { GraphNode } from "../types";
 
 export default function LibraryView({ onOpen }: { onOpen: (id: string) => void }) {
   const library = useStoryLibrary(onOpen);
   const [naming, setNaming] = useState(false);
+  const [deleting, setDeleting] = useState<GraphNode | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<StorySort>("library");
   const importInput = useRef<HTMLInputElement>(null);
@@ -23,6 +26,17 @@ export default function LibraryView({ onOpen }: { onOpen: (id: string) => void }
   return (
     <main className="tln-library">
       <div className="tln-library__inner">
+        {deleting && (
+          <DeleteStoryDialog
+            title={deleting.title}
+            pending={library.pending}
+            onCancel={() => setDeleting(null)}
+            onConfirm={async () => {
+              if (await library.remove(deleting.id)) setDeleting(null);
+            }}
+            error={library.error}
+          />
+        )}
         <header className="tln-library__head">
           <div>
             <p className="tln-library__eyebrow">
@@ -159,6 +173,7 @@ export default function LibraryView({ onOpen }: { onOpen: (id: string) => void }
                     key={story.id}
                     story={story}
                     stats={library.stats[story.id]}
+                    onDelete={() => setDeleting(story)}
                     disabled={library.pending}
                     onOpen={() => void library.open(story.id)}
                   />

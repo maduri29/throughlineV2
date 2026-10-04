@@ -4,6 +4,23 @@ import type { GraphEdge, GraphNode } from "../types";
 export type StoryStats = { scenes: number; characters: number };
 export type StorySort = "library" | "title" | "scenes";
 
+/** Delete structural ownership only; shared research and linked entities survive. */
+export function projectDeletionIds(nodes: GraphNode[], projectId: string): Set<string> {
+  if (!nodes.some((node) => node.id === projectId && node.type === "project")) return new Set();
+  const ids = new Set([projectId]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const node of nodes) {
+      if (node.parentId && ids.has(node.parentId) && !ids.has(node.id)) {
+        ids.add(node.id);
+        grew = true;
+      }
+    }
+  }
+  return ids;
+}
+
 export function summarizeStories(
   projects: GraphNode[],
   nodes: GraphNode[],

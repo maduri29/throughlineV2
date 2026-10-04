@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { selectStories, summarizeStories } from "../src/data/library";
+import { projectDeletionIds, selectStories, summarizeStories } from "../src/data/library";
 import type { GraphNode } from "../src/types";
 
 const projects: GraphNode[] = [
@@ -12,6 +12,24 @@ const projects: GraphNode[] = [
   },
   { id: "a", type: "project", title: "Afterlight" },
 ];
+
+test("project deletion cascades ownership while preserving other stories and shared material", () => {
+  const nodes: GraphNode[] = [
+    ...projects,
+    { id: "episode", type: "episode", title: "Episode", parentId: "a" },
+    { id: "scene", type: "scene", title: "Scene", parentId: "episode" },
+    { id: "character", type: "character", title: "Character", parentId: "a" },
+    { id: "other", type: "scene", title: "Other", parentId: "b" },
+    { id: "shared", type: "reference", title: "Shared research" },
+  ];
+  expect([...projectDeletionIds(nodes, "a")].sort()).toEqual([
+    "a",
+    "character",
+    "episode",
+    "scene",
+  ]);
+  expect(projectDeletionIds(nodes, "scene").size).toBe(0);
+});
 
 test("library search matches title, author and synopsis without changing stored order", () => {
   for (const query of [" BLUE ", "mira", "DAWN"]) {

@@ -829,12 +829,31 @@ try {
   await secondPage.goto(base + "/stories");
   await secondPage.getByText("Newer remote edit", { exact: true }).waitFor();
   check("independent browser session downloads writing without a local workspace copy", true);
-  cloudRecords.set("nodes:cloud-story", {
-    kind: "nodes",
-    id: "cloud-story",
-    data: null,
-    version: 3,
-  });
+  await page.goto(base + "/stories");
+  await page.getByRole("button", { name: "Delete project Newer remote edit", exact: true }).click();
+  const deleteDialog = page.getByRole("dialog");
+  await deleteDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  check(
+    "cancel project deletion keeps the project",
+    await page.getByText("Newer remote edit", { exact: true }).isVisible(),
+  );
+  await page.getByRole("button", { name: "Delete project Newer remote edit", exact: true }).click();
+  const deletionSync = page.waitForResponse(
+    (response) => response.url().endsWith("/api/sync") && response.request().method() === "POST",
+  );
+  await deleteDialog.getByRole("button", { name: "Delete project", exact: true }).click();
+  await deleteDialog.waitFor({ state: "detached" });
+  await deletionSync;
+  check(
+    "project deletion sends a cloud tombstone",
+    cloudRecords.get("nodes:cloud-story")?.data === null,
+  );
+  await page.reload();
+  await page.getByRole("heading", { name: "Your stories", exact: true }).waitFor();
+  check(
+    "deleted project stays absent after reload",
+    (await page.getByText("Newer remote edit", { exact: true }).count()) === 0,
+  );
   await secondPage.reload();
   await secondPage.getByRole("heading", { name: "Your stories", exact: true }).waitFor();
   await secondPage.waitForFunction(async () => {

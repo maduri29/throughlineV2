@@ -60,6 +60,8 @@ export function useStoryLibrary(onOpen: (id: string) => void) {
     statsError,
     error,
     pending,
+    remove: (id: string) =>
+      run("Could not delete project", () => useGraphStore.getState().deleteProject(id)),
     create: (title: string) =>
       run("Could not create story", async () => {
         const id = await useGraphStore.getState().createProject(title.trim());

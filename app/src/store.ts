@@ -7,7 +7,8 @@ import { splitSceneChunks } from "./data/fountain";
 import { requestDurableStorage, type Durability } from "./data/durability";
 import { deleteFile } from "./data/files";
 import { buildEnvelope, downloadEnvelope, parseEnvelope } from "./data/envelope";
-import { dbDelete, dbGet, dbGetAll, dbPut, metaGet, metaSet } from "./data/idb";
+import { dbDelete, dbGet, dbGetAll, dbPut, dbTransaction, metaGet, metaSet } from "./data/idb";
+import { projectDeletionIds } from "./data/library";
 import { scopeToProject } from "./data/scopes";
 import { executeSync } from "./data/sync";
 import {
@@ -57,6 +58,7 @@ type Actions = {
   /** Split .fountain text into scene nodes under the project; returns scene count. */
   importFountain: (text: string) => number;
   switchProject: (id: string) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
   /** Resolves to the new project id so the caller can navigate to it. */
   createProject: (title: string) => Promise<string>;
   /** Add research material; `projectId` null keeps it shared across stories. */
@@ -91,6 +93,7 @@ type Actions = {
 
 let undoStack: HistoryEntry[] = [];
 let redoStack: HistoryEntry[] = [];
+let deletingProject = false;
 const dirtyNodes = new Set<string>();
 const dirtyEdges = new Set<string>();
 const deadNodes = new Set<string>();
@@ -301,6 +304,56 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   },
 
   /** Two-level shell (T4): swap the workspace to another story. */
+  deleteProject: async (id) => {
+    if (deletingProject || get().syncStatus === "syncing")
+      throw new Error("Cloud sync is in progress. Try deleting again in a moment.");
+    deletingProject = true;
+    try {
+      await get().forceSave();
+      if (get().status === "error")
+        throw new Error("Could not save current edits. Retry saving before deleting.");
+      const [allNodes, allEdges] = await Promise.all([
+        dbGetAll<GraphNode>("nodes"),
+        dbGetAll<GraphEdge>("edges"),
+      ]);
+      const ids = projectDeletionIds(allNodes, id);
+      if (!ids.size) return;
+      const edgeIds = allEdges
+        .filter((edge) => ids.has(edge.from) || ids.has(edge.to))
+        .map((edge) => edge.id);
+      await dbTransaction(["nodes", "edges", "history", "meta"], (tx) => {
+        for (const nodeId of ids) tx.objectStore("nodes").delete(nodeId);
+        for (const edgeId of edgeIds) tx.objectStore("edges").delete(edgeId);
+        tx.objectStore("history").delete(id);
+        if (get().projectId === id)
+          tx.objectStore("meta").put({ key: "lastProjectId", value: null });
+      });
+      if (get().projectId === id) {
+        undoStack = [];
+        redoStack = [];
+        set({
+          nodes: {},
+          edges: {},
+          projectId: null,
+          selection: [],
+          canUndo: false,
+          canRedo: false,
+          status: "saved",
+        });
+      }
+      set({
+        projects: get().projects.filter((project) => project.id !== id),
+        edges: Object.fromEntries(
+          Object.entries(get().edges).filter(([edgeId]) => !edgeIds.includes(edgeId)),
+        ),
+      });
+    } finally {
+      deletingProject = false;
+    }
+    // The account's existing sync baseline emits deletion tombstones on the next sync.
+    void get().syncNow();
+  },
+
   switchProject: async (id) => {
     if (get().projectId === id) return;
     // get().forceSave, not a bare forceSave: there is no module-level function of
@@ -799,7 +852,7 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   },
 
   syncNow: async () => {
-    if (get().syncStatus === "syncing") return;
+    if (deletingProject || get().syncStatus === "syncing") return;
     set({ syncStatus: "syncing", syncMessage: null });
     const res = await executeSync(() => get().forceSave());
     if (res.deleted || res.pulledNodes.length > 0 || res.pulledEdges.length > 0) {
