@@ -1,12 +1,22 @@
 import { useRef, useState } from "react";
 import ScriptDownloads from "../ScriptDownloads";
 import { useGraphStore } from "../../store";
+import ScriptTypographyMenu from "./ScriptTypographyMenu";
+import type { ScriptTypographyState } from "./scriptTypography";
 
 type ScriptToolbarProps = {
   slug: string;
+  typography: ScriptTypographyState;
+  onTypographyChange: (next: ScriptTypographyState) => void;
+  onInsertCueSnippet?: () => void;
 };
 
-export default function ScriptToolbar({ slug }: ScriptToolbarProps) {
+export default function ScriptToolbar({
+  slug,
+  typography,
+  onTypographyChange,
+  onInsertCueSnippet,
+}: ScriptToolbarProps) {
   const [importNote, setImportNote] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
 
@@ -22,6 +32,11 @@ export default function ScriptToolbar({ slug }: ScriptToolbarProps) {
       <div className="tln-slug" title="Graph-owned — edit in Inspector">
         {slug}
       </div>
+      <ScriptTypographyMenu
+        typography={typography}
+        onChange={onTypographyChange}
+        onInsertCueSnippet={onInsertCueSnippet}
+      />
       <button className="tln-btn" onClick={() => fileInput.current?.click()}>
         Import .fountain
       </button>
@@ -37,7 +52,7 @@ export default function ScriptToolbar({ slug }: ScriptToolbarProps) {
         }}
       />
       {importNote ? <span className="tln-script__note">{importNote}</span> : null}
-      <ScriptDownloads />
+      <ScriptDownloads typography={typography} />
     </div>
   );
 }

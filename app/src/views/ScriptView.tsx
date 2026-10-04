@@ -14,6 +14,12 @@ import { useGraphStore } from "../store";
 import Loader from "./Loader";
 import ScriptSequenceRail from "./script/ScriptSequenceRail";
 import ScriptToolbar from "./script/ScriptToolbar";
+import {
+  getFontOption,
+  loadScriptTypography,
+  saveScriptTypography,
+  type ScriptTypographyState,
+} from "./script/scriptTypography";
 import { useScriptBuffers } from "./script/useScriptBuffers";
 import { useSplitPane } from "./script/useSplitPane";
 
@@ -23,6 +29,12 @@ export default function ScriptView() {
   const projectId = useGraphStore((s) => s.projectId);
 
   const [sceneId, setSceneId] = useState<string | null>(null);
+  const [typography, setTypography] = useState<ScriptTypographyState>(() => loadScriptTypography());
+
+  const handleTypographyChange = (next: ScriptTypographyState) => {
+    setTypography(next);
+    saveScriptTypography(next);
+  };
 
   const project = projectId ? nodeMap[projectId] : undefined;
   const sequence = useMemo(
@@ -60,15 +72,28 @@ export default function ScriptView() {
   const slug = scene ? slugFor(scene, locationBySceneId.get(scene.id) ?? null) : "";
   const previewHtml = useMemo(() => renderPreview(parseFountain(text).els), [text]);
 
+  const handleInsertCueSnippet = () => {
+    if (!scene) return;
+    const addition = text.trim() ? "\n\n@పాత్ర పేరు\nసంభాషణ ఇక్కడ రాయండి…" : "@పాత్ర పేరు\nసంభాషణ ఇక్కడ రాయండి…";
+    scheduleScene(scene.id, text + addition);
+  };
+
+  const currentFont = getFontOption(typography.fontId);
+  const typoStyles = {
+    "--font-script-family": currentFont.cssFamily,
+    "--font-script-size": `${typography.fontSize}px`,
+    "--font-script-line-height": typography.lineHeight,
+  } as React.CSSProperties;
+
   if (!project)
     return (
-      <div className="tln-script">
+      <div className="tln-script" style={typoStyles}>
         <Loader label="Opening script" />
       </div>
     );
 
   return (
-    <div className="tln-script">
+    <div className="tln-script" style={typoStyles}>
       <ScriptSequenceRail
         sequence={sequence}
         effectiveSceneId={effectiveSceneId}
@@ -81,7 +106,12 @@ export default function ScriptView() {
           className="tln-script__edit"
           style={{ flexBasis: collapsed ? "100%" : `${splitPct}%` }}
         >
-          <ScriptToolbar slug={slug} />
+          <ScriptToolbar
+            slug={slug}
+            typography={typography}
+            onTypographyChange={handleTypographyChange}
+            onInsertCueSnippet={handleInsertCueSnippet}
+          />
 
           {scene ? (
             <FountainEditor

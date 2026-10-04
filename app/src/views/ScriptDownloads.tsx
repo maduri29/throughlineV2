@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useGraphStore } from "../store";
 import { assembleExport, downloadFountain, parseFountain, renderPreview } from "../data/fountain";
+import { getFontOption, type ScriptTypographyState } from "./script/scriptTypography";
 import "./script-downloads.css";
 
 const escape = (text: string) =>
@@ -9,7 +10,11 @@ const escape = (text: string) =>
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
   );
 
-export default function ScriptDownloads() {
+type ScriptDownloadsProps = {
+  typography?: ScriptTypographyState;
+};
+
+export default function ScriptDownloads({ typography }: ScriptDownloadsProps) {
   const menu = useRef<HTMLDetailsElement>(null);
   function exportAs(format: "fountain" | "pdf" | "json") {
     window.dispatchEvent(new Event("throughline:flush-script"));
@@ -26,10 +31,17 @@ export default function ScriptDownloads() {
     }
     popup.opener = null;
     const parsed = parseFountain(assembleExport(project, state.nodes, state.edges));
+    const font = getFontOption(typography?.fontId ?? "noto-sans");
+    const fontSize = typography?.fontSize ?? 12;
+    const lineHeight = typography?.lineHeight ?? 1.65;
     popup.document
-      .write(`<!doctype html><html><head><meta charset="utf-8"><title>${escape(project.title)}</title><style>
+      .write(`<!doctype html><html><head><meta charset="utf-8"><title>${escape(project.title)}</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=Mandali&family=Noto+Sans+Telugu:wght@400;500;600;700&family=Noto+Serif+Telugu:wght@400;600;700&family=Ramabhadra&family=Suranna&display=swap" rel="stylesheet">
+      <style>
       @page { size: letter; margin: 1in 1in 1in 1.5in; }
-      body { font: 12pt/1.2 Courier, "Courier New", monospace; color: #111; max-width: 6in; margin: 40px auto; padding: 24px; }
+      body { font: ${fontSize}pt/${lineHeight} ${font.cssFamily}; color: #111; max-width: 6in; margin: 40px auto; padding: 24px; text-rendering: optimizeLegibility; }
       .title-page { text-align: center; padding-top: 2in; min-height: 6in; break-after: page; }
       h1 { font: inherit; text-transform: uppercase; }
       .tln-f-action,.tln-f-dlg { white-space: pre-wrap; margin: 12pt 0; }

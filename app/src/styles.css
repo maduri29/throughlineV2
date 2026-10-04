@@ -116,7 +116,10 @@
   --font-display: "Cinzel", Georgia, "Palatino Linotype", Palatino, "Times New Roman", serif;
   --font-cinzel: "Cinzel", Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-script: "Courier New", Courier, monospace;
+  --font-script: "Courier Prime", "Courier New", Courier, monospace;
+  --font-script-family: "Noto Sans Telugu", "Courier Prime", "Courier New", sans-serif;
+  --font-script-size: 15px;
+  --font-script-line-height: 1.65;
 }
 
 button,
@@ -1291,6 +1294,7 @@ select option {
 }
 
 .tln-script__ttl {
+  font-family: var(--font-script-family, inherit);
   font-size: 12.5px;
   color: var(--ink);
   font-weight: 500;
@@ -1320,7 +1324,7 @@ select option {
 
 .tln-slug {
   flex: 1;
-  font-family: "Courier New", Courier, monospace;
+  font-family: var(--font-script-family, var(--font-script));
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.04em;
@@ -1337,10 +1341,14 @@ select option {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  font-family: "Courier New", Courier, monospace;
-  font-size: 14px;
-  line-height: 1.5;
+  font-family: var(--font-script-family, var(--font-script));
+  font-size: var(--font-script-size, 15px);
+  line-height: var(--font-script-line-height, 1.65);
   color: var(--ink);
+  text-rendering: optimizeLegibility;
+  font-feature-settings:
+    "kern" 1,
+    "liga" 1;
 }
 
 .tln-script__ta {
@@ -1480,11 +1488,15 @@ select option {
 }
 
 .tln-script__ta .cm-scroller {
-  font-family: "Courier New", Courier, monospace;
-  font-size: 14px;
-  line-height: 1.5;
+  font-family: var(--font-script-family, var(--font-script));
+  font-size: var(--font-script-size, 15px);
+  line-height: var(--font-script-line-height, 1.65);
   color: var(--ink);
   background: var(--bg);
+  text-rendering: optimizeLegibility;
+  font-feature-settings:
+    "kern" 1,
+    "liga" 1;
 }
 
 .tln-script__ta .cm-content {
