@@ -3,3 +3,7 @@
 # whatever stale bytes happen to sit in a local dist/ folder instead of the
 # fresh remote build (this actually happened — see commit history).
 app/dist/
+app/high-water-storycard.png
+app/high-water-workspace.png
+app/.throughline-*
+app/.env.local

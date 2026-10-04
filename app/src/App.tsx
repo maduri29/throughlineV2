@@ -5,7 +5,7 @@ import { useWorkspaceTheme } from "./shell/useWorkspaceTheme";
 import { usePathname, useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { Cloud, CloudCheck, Laptop, RefreshCw, Search, UserRound } from "lucide-react";
+import { Activity, Cloud, CloudCheck, Laptop, RefreshCw, Search, UserRound } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { useGraphStore } from "./store";
 import { checkTursoConfigured } from "./data/sync";
@@ -23,6 +23,7 @@ import ConnectionAdd from "./views/ConnectionAdd";
 
 const ScriptView = lazy(() => import("./views/ScriptView"));
 const Palette = lazy(() => import("./views/Palette"));
+const StoryDiagnosticsModal = lazy(() => import("./views/StoryDiagnosticsModal"));
 
 const SAVE_LABEL: Record<string, string> = {
   booting: "Loading…",
@@ -58,6 +59,7 @@ export default function App() {
       syncMessage: s.syncMessage,
     })),
   );
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [lens, setLens] = useState<Lens>("map");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const { theme, toggleTheme } = useWorkspaceTheme();
@@ -360,6 +362,15 @@ export default function App() {
                 <ScriptDownloads />
 
                 <button
+                  className="tln-tool"
+                  onClick={() => setDiagnosticsOpen(true)}
+                  title="Story Architecture & Health Diagnostics (powered by Effect)"
+                  aria-label="Story Health Diagnostics"
+                >
+                  <Activity size={15} />
+                </button>
+
+                <button
                   className="tln-status"
                   onClick={() => router.push("/profile#sync")}
                   title={
@@ -476,6 +487,14 @@ export default function App() {
             onClose={() => setPaletteOpen(false)}
             onJump={jumpTo}
             onNavigate={(href) => router.push(href)}
+          />
+        </Suspense>
+      )}
+      {diagnosticsOpen && (
+        <Suspense fallback={null}>
+          <StoryDiagnosticsModal
+            onClose={() => setDiagnosticsOpen(false)}
+            onNavigateToNode={jumpTo}
           />
         </Suspense>
       )}
