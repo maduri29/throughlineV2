@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { getInitialSlugDraft, parseSceneHeading } from "../src/views/script/scriptHeading";
+import {
+  applyPrefixToSlug,
+  applyTodToSlug,
+  getInitialSlugDraft,
+  parseSceneHeading,
+} from "../src/views/script/scriptHeading";
 import type { GraphNode } from "../src/types";
 
 describe("scriptHeading parser", () => {
@@ -67,5 +72,16 @@ describe("scriptHeading parser", () => {
     expect(getInitialSlugDraft("INT. UNTITLED", { ...baseScene, title: "New Scene" })).toBe(
       "INT. UNTITLED - DAY",
     );
+  });
+
+  test("applies prefix preset reliably without breaking existing location and time", () => {
+    expect(applyPrefixToSlug("INT. COFFEE SHOP - DAY", "EXT.")).toBe("EXT. COFFEE SHOP - DAY");
+    expect(applyPrefixToSlug("EXT. ROOFTOP - NIGHT", "INT./EXT.")).toBe("INT./EXT. ROOFTOP - NIGHT");
+    expect(applyPrefixToSlug("COFFEE SHOP", "INT.")).toBe("INT. COFFEE SHOP");
+  });
+
+  test("applies time-of-day preset reliably without breaking existing prefix and location", () => {
+    expect(applyTodToSlug("INT. COFFEE SHOP - DAY", "NIGHT")).toBe("INT. COFFEE SHOP - NIGHT");
+    expect(applyTodToSlug("EXT. ROOFTOP", "DAWN")).toBe("EXT. ROOFTOP - DAWN");
   });
 });

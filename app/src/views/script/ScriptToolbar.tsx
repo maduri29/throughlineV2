@@ -5,7 +5,12 @@ import { useGraphStore } from "../../store";
 import ScriptTypographyMenu from "./ScriptTypographyMenu";
 import type { ScriptTypographyState } from "./scriptTypography";
 import type { GraphNode } from "../../types";
-import { getInitialSlugDraft, parseSceneHeading } from "./scriptHeading";
+import {
+  applyPrefixToSlug,
+  applyTodToSlug,
+  getInitialSlugDraft,
+  parseSceneHeading,
+} from "./scriptHeading";
 import { slugFor } from "../../data/fountain";
 
 type SequenceItem = {
@@ -39,17 +44,17 @@ export default function ScriptToolbar({
   locationBySceneId,
 }: ScriptToolbarProps) {
   const [importNote, setImportNote] = useState<string | null>(null);
-  const [isEditingSlug, setIsEditingSlug] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
   const [slugDraft, setSlugDraft] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerQuery, setPickerQuery] = useState("");
 
   const fileInput = useRef<HTMLInputElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const editContainerRef = useRef<HTMLDivElement | null>(null);
   const pickerRef = useRef<HTMLDivElement | null>(null);
-  const isCancelingRef = useRef(false);
 
-  // Close scene picker popover on click outside
+  // Close scene picker on outside click
   useEffect(() => {
     if (!pickerOpen) return;
     const handleDown = (e: MouseEvent) => {
@@ -68,13 +73,28 @@ export default function ScriptToolbar({
     };
   }, [pickerOpen]);
 
+  // Close title/slug edit box on outside click
+  useEffect(() => {
+    if (!isEditing) return;
+    const handleDown = (e: MouseEvent) => {
+      if (editContainerRef.current && !editContainerRef.current.contains(e.target as Node)) {
+        setIsEditing(false);
+      }
+    };
+    window.addEventListener("mousedown", handleDown);
+    return () => {
+      window.removeEventListener("mousedown", handleDown);
+    };
+  }, [isEditing]);
+
   // Scene navigation math
   const currentIndex = sequence.findIndex((item) => item.scene.id === effectiveSceneId);
   const totalScenes = sequence.length;
   const currentItem = currentIndex >= 0 ? sequence[currentIndex] : undefined;
   const currentContainer = currentItem?.container;
   const prevScene = currentIndex > 0 ? sequence[currentIndex - 1]?.scene : undefined;
-  const nextScene = currentIndex >= 0 && currentIndex < totalScenes - 1 ? sequence[currentIndex + 1]?.scene : undefined;
+  const nextScene =
+    currentIndex >= 0 && currentIndex < totalScenes - 1 ? sequence[currentIndex + 1]?.scene : undefined;
 
   const onImportFile = async (file: File) => {
     const raw = await file.text();
@@ -83,62 +103,43 @@ export default function ScriptToolbar({
     setTimeout(() => setImportNote(null), 4000);
   };
 
-  const handleStartEditingSlug = () => {
+  const handleStartEditing = () => {
     if (!scene || !onPatchScene) return;
-    isCancelingRef.current = false;
-    const initialText = getInitialSlugDraft(slug, scene);
-    setSlugDraft(initialText);
-    setIsEditingSlug(true);
+    setTitleDraft(scene.title || "");
+    const initialSlug = getInitialSlugDraft(slug, scene);
+    setSlugDraft(initialSlug);
+    setIsEditing(true);
   };
 
-  const handleCancelSlug = () => {
-    isCancelingRef.current = true;
-    setIsEditingSlug(false);
+  const handleCancelEditing = () => {
+    setIsEditing(false);
   };
 
-  const handleSaveSlug = () => {
-    if (isCancelingRef.current) {
-      isCancelingRef.current = false;
-      return;
-    }
-    setIsEditingSlug(false);
-    const trimmed = slugDraft.trim();
-    if (!trimmed || !scene) return;
+  const handleSaveEditing = () => {
+    setIsEditing(false);
+    if (!scene || !onPatchScene) return;
 
-    const parsed = parseSceneHeading(trimmed, scene);
+    const trimmedTitle = titleDraft.trim();
+    const finalTitle = trimmedTitle || scene.title || "Untitled Scene";
+    const parsedSlug = parseSceneHeading(slugDraft, scene);
+
     const patch: Partial<GraphNode> = {
-      title: parsed.title,
+      title: finalTitle,
     };
-    if (parsed.intExt) {
-      patch.intExt = parsed.intExt;
+    if (parsedSlug.intExt) {
+      patch.intExt = parsedSlug.intExt;
     }
-    if (parsed.tod !== undefined) {
+    if (parsedSlug.tod !== undefined) {
       patch.storyTime = {
         ...(scene.storyTime ?? { storyDay: null, eraLabel: null }),
         storyDay: scene.storyTime?.storyDay ?? null,
         eraLabel: scene.storyTime?.eraLabel ?? null,
-        tod: parsed.tod,
+        tod: parsedSlug.tod,
       };
     }
 
-    onPatchScene?.(patch, parsed.location);
-  };
-
-  const applyPrefix = (prefix: "INT." | "EXT." | "INT./EXT.") => {
-    setSlugDraft((prev) => {
-      const cleaned = prev.replace(/^(I\/E\.?|INT\.?\/EXT\.?|INT\.?|EXT\.?|EST\.?)\s*/i, "");
-      return `${prefix} ${cleaned.trim()}`;
-    });
-    inputRef.current?.focus();
-  };
-
-  const applyTod = (tod: string) => {
-    setSlugDraft((prev) => {
-      const dash = prev.lastIndexOf(" - ");
-      const base = dash >= 0 ? prev.slice(0, dash).trim() : prev.trim();
-      return `${base} - ${tod}`;
-    });
-    inputRef.current?.focus();
+    const locationSync = parsedSlug.location || finalTitle;
+    onPatchScene(patch, locationSync);
   };
 
   // Grouped scenes for jump popover
@@ -180,13 +181,6 @@ export default function ScriptToolbar({
       items: data.items,
     }));
   }, [sequence, pickerQuery, locationBySceneId]);
-
-  const hasDistinctTitle = Boolean(
-    scene?.title &&
-      scene.title.toUpperCase() !== slug.toUpperCase() &&
-      !scene.title.toLowerCase().startsWith("new scene") &&
-      scene.title.toLowerCase() !== "untitled scene",
-  );
 
   return (
     <div className="tln-script__toolbar">
@@ -254,7 +248,9 @@ export default function ScriptToolbar({
                             }}
                           >
                             <span className="tln-script__picker-num">#{it.index + 1}</span>
-                            <span className="tln-script__picker-name">{it.scene.title || "Untitled"}</span>
+                            <span className="tln-script__picker-name">
+                              {it.scene.title || "Untitled"}
+                            </span>
                             <span className="tln-script__picker-slug">{it.slugText}</span>
                           </button>
                         );
@@ -279,90 +275,101 @@ export default function ScriptToolbar({
         </button>
       </div>
 
-      {/* 2. Scene Heading & Pencil Editor */}
-      <div className="tln-script__heading-slot">
-        {isEditingSlug ? (
+      {/* 2. Scene Title & Heading Slot */}
+      <div className="tln-script__heading-slot" ref={editContainerRef}>
+        {isEditing ? (
           <form
             className="tln-slug-edit-form"
             onSubmit={(e) => {
               e.preventDefault();
-              handleSaveSlug();
+              handleSaveEditing();
             }}
           >
-            <div className="tln-slug-edit__input-row">
-              <input
-                ref={inputRef}
-                autoFocus
-                aria-label="Scene heading"
-                placeholder="e.g. INT. COFFEE SHOP - DAY"
-                value={slugDraft}
-                onChange={(e) => setSlugDraft(e.target.value)}
-                onBlur={handleSaveSlug}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    handleCancelSlug();
-                  }
-                }}
-              />
-              <button
-                type="submit"
-                className="tln-slug-edit__btn tln-slug-edit__btn--save"
-                title="Save heading (Enter)"
-                aria-label="Save heading"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={handleSaveSlug}
-              >
-                <Check size={14} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="tln-slug-edit__btn tln-slug-edit__btn--cancel"
-                title="Cancel editing (Escape)"
-                aria-label="Cancel editing"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={handleCancelSlug}
-              >
-                <X size={14} aria-hidden="true" />
-              </button>
+            {/* Top row: Scene Title input & Action buttons */}
+            <div className="tln-slug-edit__inputs-grid">
+              <div className="tln-slug-edit__field">
+                <span className="tln-slug-edit__field-label">Scene Title</span>
+                <input
+                  autoFocus
+                  className="tln-slug-edit__input"
+                  aria-label="Scene Title"
+                  placeholder="Scene name (e.g. The Coffee Shop)"
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      handleCancelEditing();
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="tln-slug-edit__field">
+                <span className="tln-slug-edit__field-label">Scene Heading (Slugline)</span>
+                <input
+                  className="tln-slug-edit__input tln-slug-edit__input--slug"
+                  aria-label="Scene Heading"
+                  placeholder="e.g. INT. COFFEE SHOP - DAY"
+                  value={slugDraft}
+                  onChange={(e) => setSlugDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      handleCancelEditing();
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="tln-slug-edit__actions">
+                <button
+                  type="submit"
+                  className="tln-slug-edit__btn tln-slug-edit__btn--save"
+                  title="Save changes (Enter)"
+                  aria-label="Save changes"
+                >
+                  <Check size={14} aria-hidden="true" />
+                  <span>Save</span>
+                </button>
+                <button
+                  type="button"
+                  className="tln-slug-edit__btn tln-slug-edit__btn--cancel"
+                  title="Cancel editing (Escape)"
+                  aria-label="Cancel editing"
+                  onClick={handleCancelEditing}
+                >
+                  <X size={14} aria-hidden="true" />
+                  <span>Cancel</span>
+                </button>
+              </div>
             </div>
 
+            {/* Presets Chips: Prefix & Time of Day */}
             <div className="tln-slug-edit__chips" role="group" aria-label="Heading quick presets">
-              <span className="tln-slug-edit__chips-label">Presets:</span>
-              <button
-                type="button"
-                className="tln-slug-chip"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => applyPrefix("INT.")}
-              >
-                INT.
-              </button>
-              <button
-                type="button"
-                className="tln-slug-chip"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => applyPrefix("EXT.")}
-              >
-                EXT.
-              </button>
-              <button
-                type="button"
-                className="tln-slug-chip"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => applyPrefix("INT./EXT.")}
-              >
-                INT./EXT.
-              </button>
+              <span className="tln-slug-edit__chips-label">Prefix:</span>
+              {(["INT.", "EXT.", "INT./EXT."] as const).map((prefix) => (
+                <button
+                  key={prefix}
+                  type="button"
+                  className="tln-slug-chip"
+                  onClick={() => setSlugDraft((curr) => applyPrefixToSlug(curr, prefix))}
+                >
+                  {prefix}
+                </button>
+              ))}
+
               <span className="tln-slug-chip__sep" aria-hidden="true">
                 ·
               </span>
-              {["DAY", "NIGHT", "DAWN", "DUSK"].map((tod) => (
+
+              <span className="tln-slug-edit__chips-label">Time:</span>
+              {["DAY", "NIGHT", "DAWN", "DUSK", "CONTINUOUS"].map((tod) => (
                 <button
                   key={tod}
                   type="button"
                   className="tln-slug-chip"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => applyTod(tod)}
+                  onClick={() => setSlugDraft((curr) => applyTodToSlug(curr, tod))}
                 >
                   {tod}
                 </button>
@@ -373,24 +380,23 @@ export default function ScriptToolbar({
           <div className="tln-slug-box">
             <button
               type="button"
-              className="tln-slug tln-slug--interactive"
-              title={onPatchScene ? "Click to rename scene heading" : "Scene heading"}
-              onClick={handleStartEditingSlug}
+              className="tln-slug-btn"
+              title={onPatchScene ? "Click to rename scene title and heading" : "Scene heading"}
+              onClick={handleStartEditing}
             >
-              <span className="tln-slug__text">{slug || "UNTITLED SCENE"}</span>
-              {hasDistinctTitle && (
-                <span className="tln-slug__alias" title={`Outline title: ${scene?.title}`}>
-                  {scene?.title}
-                </span>
-              )}
+              <span className="tln-slug-btn__title">{scene?.title || "Untitled Scene"}</span>
+              <span className="tln-slug-btn__divider" aria-hidden="true">
+                ·
+              </span>
+              <span className="tln-slug-btn__slug">{slug || "INT. UNTITLED - DAY"}</span>
             </button>
             {onPatchScene && (
               <button
                 type="button"
                 className="tln-slug__pencil-btn"
-                title="Edit scene heading"
-                aria-label="Edit scene heading"
-                onClick={handleStartEditingSlug}
+                title="Edit scene title and heading"
+                aria-label="Edit scene title and heading"
+                onClick={handleStartEditing}
               >
                 <Pencil size={13} aria-hidden="true" />
               </button>

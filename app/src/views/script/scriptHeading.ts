@@ -83,6 +83,38 @@ export function parseSceneHeading(raw: string, currentScene?: GraphNode): Parsed
 }
 
 /**
+ * Applies a prefix preset (INT., EXT., INT./EXT.) to an existing slug string.
+ */
+export function applyPrefixToSlug(prev: string, prefix: "INT." | "EXT." | "INT./EXT."): string {
+  const trimmed = prev.trim();
+  if (!trimmed) {
+    return `${prefix} UNTITLED - DAY`;
+  }
+  const prefixMatch = /^(I\/E\.?|INT\.?\/EXT\.?|INT\.?|EXT\.?|EST\.?)\s*(.*)$/i.exec(trimmed);
+  if (prefixMatch) {
+    const rest = (prefixMatch[2] ?? "").trim();
+    return rest ? `${prefix} ${rest}` : `${prefix} UNTITLED - DAY`;
+  }
+  return `${prefix} ${trimmed}`;
+}
+
+/**
+ * Applies a time-of-day preset (DAY, NIGHT, DAWN, DUSK, etc.) to an existing slug string.
+ */
+export function applyTodToSlug(prev: string, tod: string): string {
+  const trimmed = prev.trim();
+  if (!trimmed) {
+    return `INT. UNTITLED - ${tod.toUpperCase()}`;
+  }
+  const dashIndex = trimmed.lastIndexOf(" - ");
+  if (dashIndex >= 0) {
+    const base = trimmed.slice(0, dashIndex).trim();
+    return `${base} - ${tod.toUpperCase()}`;
+  }
+  return `${trimmed} - ${tod.toUpperCase()}`;
+}
+
+/**
  * Builds the default draft text when entering slug edit mode.
  */
 export function getInitialSlugDraft(slug: string, scene?: GraphNode): string {
