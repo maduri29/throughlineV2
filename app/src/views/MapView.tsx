@@ -1,167 +1,15 @@
 // The Map lens per the T5 canvas contract: Beat×Storyline bands, filter chips,
 // drag-connect legality picker, context-aware double-click add, instant delete
 // with undo toast, marquee + shift-click multi-select, RF-default pan/zoom.
-import {
-  Background,
-  Controls,
-  ReactFlow,
-  ReactFlowProvider,
-  SelectionMode,
-  useReactFlow,
-} from "@xyflow/react";
-import type { Edge, EdgeChange, NodeChange, NodeTypes, OnConnectEnd } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import GraphCard, { type CardFlowNode } from "../GraphNode";
-import { metaGet, metaSet } from "../data/idb";
-import { legalEdgeTypes } from "../data/ops";
-import { useGraphStore } from "../store";
-import type { EdgeType, GraphNode } from "../types";
+import { Background, Controls, ReactFlow, ReactFlowProvider, SelectionMode } from "@xyflow/react";
+import type { NodeTypes } from "@xyflow/react";
+import GraphCard from "../GraphNode";
+import MapConnectPicker from "./map/MapConnectPicker";
+import MapToastOverlay from "./map/MapToastOverlay";
+import MapToolbar from "./map/MapToolbar";
+import { useMapWorkspace } from "./map/useMapWorkspace";
 
 const nodeTypes = { card: GraphCard } satisfies NodeTypes;
-
-const EDGE_STROKE: Record<string, string> = {
-  precedes: "#7c8aa8",
-  contains: "#c9d1e6",
-  flashback_of: "#e8912d",
-  sets_up: "#e5556f",
-  parallels: "#00a3b5",
-  appears_in: "#e0457b",
-  takes_place_at: "#12a074",
-  embodies: "#8b5cf6",
-  relates_to: "#9aa3ba",
-  foreshadows: "#d6336c",
-  grew_into: "#0ea5b7",
-  related_to: "#9aa3ba",
-};
-
-const CHIPS = ["scene", "character", "location", "theme", "flashback"] as const;
-type Chip = (typeof CHIPS)[number];
-type Filters = Record<Chip, boolean>;
-
-/** Entity types the "+" menu can create from the Map. */
-const ADDABLE = ["character", "location", "theme", "seed", "episode"] as const;
-
-const ALL_ON: Filters = {
-  scene: true,
-  character: true,
-  location: true,
-  theme: true,
-  flashback: true,
-};
-
-const COL_W = 300;
-const LANE_Y_MAX = 40;
-const BAND_TOP = 40;
-
-/** Which filter chip governs a node's visibility; null = always visible. */
-function chipOf(n: GraphNode): Chip | null {
-  if (n.type === "scene") return (n.storyTime?.storyDay ?? 0) < 0 ? "flashback" : "scene";
-  if (n.type === "character" || n.type === "location" || n.type === "theme") return n.type;
-  return null; // project/episode/seed always visible
-}
-
-function episodes(nodes: GraphNode[]): GraphNode[] {
-  return nodes.filter((n) => n.type === "episode");
-}
-
-const RAIL_TYPES = new Set(["character", "location", "theme", "project", "seed"]);
-const EMPTY_ORDER: string[] = [];
-
-function layout(nodes: GraphNode[], orderFor: (id: string) => string[]): CardFlowNode[] {
-  const out: CardFlowNode[] = [];
-  const scenesOf = new Map<string, Map<string, GraphNode>>();
-  const eps: GraphNode[] = [];
-  const flashbacks: GraphNode[] = [];
-  const rails: GraphNode[] = [];
-
-  for (const n of nodes) {
-    if (n.type === "episode") {
-      eps.push(n);
-    } else if (n.type === "scene") {
-      if ((n.storyTime?.storyDay ?? 0) < 0) {
-        flashbacks.push(n);
-      }
-      if (n.parentId) {
-        let m = scenesOf.get(n.parentId);
-        if (!m) {
-          m = new Map<string, GraphNode>();
-          scenesOf.set(n.parentId, m);
-        }
-        m.set(n.id, n);
-      }
-    } else if (RAIL_TYPES.has(n.type)) {
-      rails.push(n);
-    }
-  }
-
-  let ei = 0;
-  for (const ep of eps) {
-    out.push({
-      id: ep.id,
-      type: "card",
-      position: { x: ei * COL_W, y: BAND_TOP },
-      data: { kind: "pill", nodeType: "episode", title: ep.title },
-      draggable: false,
-      selectable: false,
-    });
-    const epScenes = scenesOf.get(ep.id);
-    const ordered = epScenes
-      ? orderFor(ep.id)
-          .map((id) => epScenes.get(id))
-          .filter((s): s is GraphNode => Boolean(s))
-      : [];
-    let si = 0;
-    for (const sc of ordered) {
-      const day = sc.storyTime?.storyDay ?? null;
-      out.push({
-        id: sc.id,
-        type: "card",
-        position: { x: ei * COL_W, y: 100 + si * 120 },
-        data: {
-          kind: day !== null && day < 0 ? "flashback" : "scene",
-          title: sc.title,
-          badge: day === null ? "unscheduled" : `D${day} · ${sc.storyTime?.tod ?? ""}`.trim(),
-          synopsis: sc.synopsis,
-        },
-      });
-      si++;
-    }
-    ei++;
-  }
-
-  // Flashback lane on top.
-  let fi = 0;
-  for (const fb of flashbacks) {
-    out.push({
-      id: fb.id,
-      type: "card",
-      position: { x: 60 + fi * COL_W, y: -80 },
-      data: {
-        kind: "flashback",
-        title: fb.title,
-        badge: `D${fb.storyTime?.storyDay}`,
-        synopsis: fb.synopsis,
-      },
-    });
-    fi++;
-  }
-
-  let oi = 0;
-  for (const o of rails) {
-    out.push({
-      id: o.id,
-      type: "card",
-      position: { x: -280, y: 20 + oi * 56 },
-      data: { kind: "pill", nodeType: o.type, title: o.title },
-      draggable: false,
-    });
-    oi++;
-  }
-  return out;
-}
-
-type Pending = { source: string; target: string; x: number; y: number };
-type Toast = { key: number; label: string };
 
 export default function MapView() {
   return (
@@ -172,233 +20,20 @@ export default function MapView() {
 }
 
 function MapInner() {
-  const nodeMap = useGraphStore((s) => s.nodes);
-  const edgeMap = useGraphStore((s) => s.edges);
-  const projectId = useGraphStore((s) => s.projectId);
-  const addScene = useGraphStore((s) => s.addScene);
-  const addNodeOfType = useGraphStore((s) => s.addNodeOfType);
-  const connect = useGraphStore((s) => s.connect);
-  const deleteSelection = useGraphStore((s) => s.deleteSelection);
-  const select = useGraphStore((s) => s.select);
-  const selection = useGraphStore((s) => s.selection);
-  const undo = useGraphStore((s) => s.undo);
-  const screenToFlow = useReactFlow().screenToFlowPosition;
-
-  const [filters, setFilters] = useState<Filters>(ALL_ON);
-  const [pending, setPending] = useState<Pending | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const toastSeq = useRef(1);
-
-  /* Filter chips persist locally per project (T5 §6). */
-  useEffect(() => {
-    if (!projectId) return;
-    let alive = true;
-    void metaGet<string>(`filters.${projectId}`).then((raw) => {
-      if (!alive || !raw) return;
-      try {
-        setFilters({ ...ALL_ON, ...(JSON.parse(raw) as Partial<Filters>) });
-      } catch {
-        /* keep defaults on corrupt state */
-      }
-    });
-    return () => {
-      alive = false;
-    };
-  }, [projectId]);
-  useEffect(() => {
-    if (!projectId) return;
-    void metaSet(`filters.${projectId}`, JSON.stringify(filters));
-  }, [filters, projectId]);
-
-  const graphNodes = useMemo(() => Object.values(nodeMap), [nodeMap]);
-  const orderFor = useMemo(() => (id: string) => nodeMap[id]?.order ?? EMPTY_ORDER, [nodeMap]);
-  const visibleNodes = useMemo(
-    () => graphNodes.filter((n) => chipOf(n) === null || filters[chipOf(n) as Chip]),
-    [graphNodes, filters],
-  );
-  const visibleIds = useMemo(() => new Set(visibleNodes.map((n) => n.id)), [visibleNodes]);
-
-  const baseNodes = useMemo(() => layout(visibleNodes, orderFor), [visibleNodes, orderFor]);
-  const selectionSet = useMemo(() => new Set(selection), [selection]);
-
-  const rfNodes = useMemo(
-    () =>
-      baseNodes.map((node) => ({
-        ...node,
-        selected: selectionSet.has(node.id),
-      })),
-    [baseNodes, selectionSet],
-  );
-  const rfEdges = useMemo<Edge[]>(() => {
-    const edgeList = Object.values(edgeMap);
-    const result: Edge[] = [];
-    for (let i = 0; i < edgeList.length; i++) {
-      const e = edgeList[i];
-      if (!e || !visibleIds.has(e.from) || !visibleIds.has(e.to)) continue;
-      result.push({
-        id: e.id,
-        source: e.from,
-        target: e.to,
-        selected: selectionSet.has(e.id),
-        label: e.label,
-        style: {
-          stroke: EDGE_STROKE[e.type] ?? "#9aa3ba",
-          strokeWidth: 1.5,
-          ...(e.type === "flashback_of" || e.type === "sets_up" ? { strokeDasharray: "5 4" } : {}),
-        },
-      });
-    }
-    return result;
-  }, [edgeMap, visibleIds, selectionSet]);
-
-  const onSelectionChanges = useCallback(
-    (changes: (NodeChange | EdgeChange)[]) => {
-      const selectionChanges = changes.filter((change) => change.type === "select");
-      if (!selectionChanges.length) return;
-      const current = useGraphStore.getState().selection;
-      const next = new Set(current);
-      for (const change of selectionChanges) {
-        if (change.selected) next.add(change.id);
-        else next.delete(change.id);
-      }
-      if (current.length !== next.size || !current.every((id) => next.has(id))) select([...next]);
-    },
-    [select],
-  );
-
-  const pushToast = useCallback((label: string) => {
-    const key = toastSeq.current++;
-    setToasts((t) => [...t, { key, label }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.key !== key)), 5000);
-  }, []);
-
-  /* Delete: instant removal + 5 s undo toast (T5 §5). */
-  const deleteWithToast = useCallback(() => {
-    const ids = useGraphStore.getState().selection.filter((id) => Boolean(nodeMap[id]));
-    if (ids.length === 0) return;
-    deleteSelection();
-    pushToast(ids.length > 1 ? `${ids.length} nodes deleted` : "Deleted");
-  }, [deleteSelection, pushToast, nodeMap]);
-
-  /* Keyboard: Delete / Esc / Tab-cycle across visible cards (T5 §1). */
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      if (e.key === "Delete") {
-        e.preventDefault();
-        deleteWithToast();
-      } else if (e.key === "Escape") {
-        setPending(null);
-        setAddOpen(false);
-        select([]);
-      } else if (e.key === "Tab") {
-        e.preventDefault();
-        const ids = rfNodes.filter((n) => n.selectable !== false).map((n) => n.id);
-        if (ids.length === 0) return;
-        const cur = useGraphStore.getState().selection;
-        const idx = cur.length > 0 ? ids.indexOf(cur[cur.length - 1] ?? "") : -1;
-        const next = e.shiftKey
-          ? ids[(idx - 1 + ids.length) % ids.length]
-          : ids[(idx + 1) % ids.length];
-        if (next) select([next]);
-      }
-    };
-    addEventListener("keydown", onKey);
-    return () => removeEventListener("keydown", onKey);
-  }, [rfNodes, deleteWithToast, select]);
-
-  /* Context-aware double-click add (T5 §7). */
-  const onDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
-      if ((e.target as HTMLElement).closest(".tln-card")) return;
-      if ((e.target as HTMLElement).closest(".tln-addmenu")) return;
-      const p = screenToFlow({ x: e.clientX, y: e.clientY });
-      const s = useGraphStore.getState();
-      if (p.y < LANE_Y_MAX) {
-        const project = s.projectId ? s.nodes[s.projectId] : undefined;
-        if (project) addScene(project.id, { flashback: true });
-        return;
-      }
-      const eps = episodes(graphNodes);
-      const col = Math.min(eps.length - 1, Math.max(0, Math.round(p.x / COL_W)));
-      const ep = eps[col];
-      if (ep && p.y >= BAND_TOP) addScene(ep.id);
-    },
-    [screenToFlow, graphNodes, addScene],
-  );
-
-  /* Drag-connect opens the legality picker (T5 §4); Esc or backdrop cancels. */
-  const onConnectEnd: OnConnectEnd = useCallback((event, state) => {
-    const from = state.fromNode?.id;
-    // React Flow 12 calls this `toNode`; `targetNode` does not exist on
-    // FinalConnectionState, so this was always undefined and the handler always
-    // returned early — drag-connect never opened the picker.
-    const to = state.toNode?.id;
-    if (!from || !to || from === to) return;
-    const ev = "clientX" in event ? event : event.changedTouches[0];
-    if (!ev) return;
-    setPending({ source: from, target: to, x: ev.clientX, y: ev.clientY });
-  }, []);
-
-  const pendingTypes: EdgeType[] = useMemo(() => {
-    if (!pending) return [];
-    const a = nodeMap[pending.source];
-    const b = nodeMap[pending.target];
-    return a && b ? legalEdgeTypes(a.type, b.type) : [];
-  }, [pending, nodeMap]);
-
-  const pickType = useCallback(
-    (t: EdgeType) => {
-      if (pending) connect(pending.source, pending.target, t);
-      setPending(null);
-    },
-    [pending, connect],
-  );
+  const ws = useMapWorkspace();
 
   return (
-    <div className="tln-map" onDoubleClick={onDoubleClick}>
-      <div className="tln-chips">
-        {CHIPS.map((c) => (
-          <button
-            key={c}
-            className={`tln-chip${filters[c] ? "" : " tln-chip--off"}`}
-            onClick={() => setFilters((f) => ({ ...f, [c]: !f[c] }))}
-          >
-            {c.charAt(0).toUpperCase() + c.slice(1)}
-          </button>
-        ))}
-        <div className="tln-addmenu">
-          <button
-            className="tln-chip tln-addmenu__btn"
-            title="Add entity"
-            onClick={() => setAddOpen((o) => !o)}
-          >
-            + Add
-          </button>
-          {addOpen ? (
-            <div className="tln-addmenu__list">
-              {ADDABLE.map((t) => (
-                <button
-                  key={t}
-                  className="tln-addmenu__opt"
-                  onClick={() => {
-                    addNodeOfType(t);
-                    setAddOpen(false);
-                  }}
-                >
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </div>
+    <div className="tln-map" onDoubleClick={ws.onDoubleClick}>
+      <MapToolbar
+        filters={ws.filters}
+        onToggleFilter={ws.toggleFilter}
+        onAddNodeType={ws.addNodeOfType}
+      />
+
       <div className="tln-flow">
         <ReactFlow
-          nodes={rfNodes}
-          edges={rfEdges}
+          nodes={ws.rfNodes}
+          edges={ws.rfEdges}
           nodeTypes={nodeTypes}
           fitView
           minZoom={0.25}
@@ -407,50 +42,26 @@ function MapInner() {
           panOnDrag={[1, 2]}
           selectionMode={SelectionMode.Partial}
           proOptions={{ hideAttribution: true }}
-          onNodesChange={onSelectionChanges}
-          onEdgesChange={onSelectionChanges}
-          onPaneClick={() => select([])}
-          onConnectEnd={onConnectEnd}
+          onNodesChange={ws.onSelectionChanges}
+          onEdgesChange={ws.onSelectionChanges}
+          onPaneClick={ws.onPaneClick}
+          onConnectEnd={ws.onConnectEnd}
         >
           <Background color="var(--line)" gap={20} size={1} />
           <Controls />
         </ReactFlow>
       </div>
 
-      {pending ? (
-        <>
-          <div className="tln-picker-backdrop" onClick={() => setPending(null)} />
-          <div className="tln-picker" style={{ left: pending.x, top: pending.y }}>
-            <div className="tln-picker__title">Connection type</div>
-            {pendingTypes.length === 0 ? (
-              <div className="tln-picker__none">No legal connection for this pair</div>
-            ) : (
-              pendingTypes.map((t) => (
-                <button key={t} className="tln-picker__opt" onClick={() => pickType(t)}>
-                  {t}
-                </button>
-              ))
-            )}
-            <div className="tln-picker__hint">Esc to cancel</div>
-          </div>
-        </>
+      {ws.pending ? (
+        <MapConnectPicker
+          pending={ws.pending}
+          allowedTypes={ws.pendingTypes}
+          onPick={ws.pickType}
+          onCancel={ws.cancelPending}
+        />
       ) : null}
 
-      <div className="tln-toast-wrap">
-        {toasts.map((t) => (
-          <div key={t.key} className="tln-toast">
-            <span>{t.label}</span>
-            <button
-              onClick={() => {
-                undo();
-                setToasts((all) => all.filter((x) => x.key !== t.key));
-              }}
-            >
-              Undo
-            </button>
-          </div>
-        ))}
-      </div>
+      <MapToastOverlay toasts={ws.toasts} onUndo={ws.handleUndo} />
     </div>
   );
 }
