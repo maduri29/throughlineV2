@@ -460,10 +460,16 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  overflow: hidden;
 }
 .tln-storycard-wrap > .tln-storycard {
   width: 100%;
   flex: 1;
+  border: 0;
+  border-radius: 0;
 }
 .tln-storycard-delete {
   align-self: flex-end;
@@ -475,11 +481,16 @@
   color: var(--dim);
   font: inherit;
   font-size: 11px;
-  padding: 10px 3px;
+  margin: 0 18px 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
   cursor: pointer;
 }
 .tln-storycard-delete:hover {
   color: #c64242;
+  border-color: #c6424266;
+  background: #c6424208;
 }
 .tln-storycard-delete:focus-visible {
   outline: 2px solid var(--accent);
