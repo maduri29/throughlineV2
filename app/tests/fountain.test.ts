@@ -195,3 +195,29 @@ describe("splitSceneChunks (import)", () => {
     expect(splitSceneChunks("Just some action.\nAnd more.").length).toBe(0);
   });
 });
+
+describe("sequence board export order", () => {
+  test("loose scenes and sequences are both exported; explicit flashback order wins", () => {
+    const project = N("p", "project", { order: ["a", "g"] });
+    const nodes = {
+      p: project,
+      a: N("a", "scene", { parentId: "p" }),
+      g: N("g", "episode", { parentId: "p", order: ["b", "f"] }),
+      b: N("b", "scene", { parentId: "g" }),
+      f: N("f", "scene", { parentId: "g" }),
+      orphan: N("orphan", "scene", { parentId: "g" }),
+    };
+    const edges: Record<string, GraphEdge> = {
+      e: { id: "e", type: "flashback_of", from: "f", to: "b" },
+    };
+    expect(scriptSequence(project, nodes, edges).map((item) => item.scene.id)).toEqual([
+      "a",
+      "b",
+      "f",
+      "orphan",
+    ]);
+    expect(new Set(scriptSequence(project, nodes, edges).map((item) => item.scene.id)).size).toBe(
+      4,
+    );
+  });
+});

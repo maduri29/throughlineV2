@@ -91,6 +91,23 @@ export default function Inspector() {
 
       {node.type === "scene" ? (
         <>
+          <label className="tln-inspector__field">
+            What changes by the end?
+            <textarea
+              value={val("turningPoint") ?? ""}
+              rows={2}
+              onChange={(e) => edit({ turningPoint: e.target.value })}
+              onBlur={save}
+            />
+          </label>
+          <label className="tln-inspector__field">
+            <span>Needs work</span>
+            <input
+              type="checkbox"
+              checked={node.needsWork ?? false}
+              onChange={(e) => patchNode(nodeId, { needsWork: e.target.checked })}
+            />
+          </label>
           <div className="tln-inspector__row3">
             <label className="tln-inspector__field">
               INT/EXT

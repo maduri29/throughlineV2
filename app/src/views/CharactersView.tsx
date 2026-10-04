@@ -1,44 +1,49 @@
-// Characters lens: roster cards over derived graph data — scenes in narrative
-// order with first/last appearance, labeled relation chips, embodied themes,
-// and locations reached through the scenes' takes_place_at. A card expands
-// into an inline editor (name/role/synopsis/backstory) committing on blur via
-// patchNode so each blur is one undo entry (ADR-0003), like the Inspector.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { CHAR_ROLE_SUGGESTIONS } from "../types";
-import type { GraphNode } from "../types";
 import { useGraphStore } from "../store";
-import { characterDetails, type CharacterDetail } from "../data/characters";
+import { characterDetails } from "../data/characters";
+import "./characters.css";
 
-export default function CharactersView() {
+type Field =
+  | "title"
+  | "age"
+  | "role"
+  | "synopsis"
+  | "traits"
+  | "motivation"
+  | "conflict"
+  | "appearance"
+  | "posterImage"
+  | "backstory"
+  | "relationships";
+type Draft = { id: string; values: Record<Field, string> } | null;
+const fields: Field[] = [
+  "title",
+  "age",
+  "role",
+  "synopsis",
+  "traits",
+  "motivation",
+  "conflict",
+  "appearance",
+  "posterImage",
+  "backstory",
+  "relationships",
+];
+
+export default function CharactersView({ onOpenNode }: { onOpenNode: (id: string) => void }) {
   const nodes = useGraphStore((s) => s.nodes);
   const edges = useGraphStore((s) => s.edges);
   const projectId = useGraphStore((s) => s.projectId);
+  const selection = useGraphStore((s) => s.selection);
   const select = useGraphStore((s) => s.select);
   const addNodeOfType = useGraphStore((s) => s.addNodeOfType);
   const patchNode = useGraphStore((s) => s.patchNode);
-  const selection = useGraphStore((s) => s.selection);
-  const selectedCharacter = selection.find((id) => nodes[id]?.type === "character") ?? null;
-  const selectedCard = useRef<HTMLDivElement>(null);
-
-  const [expandedId, setExpandedId] = useState<string | null>(selectedCharacter);
-  const [previousSelection, setPreviousSelection] = useState(selection);
-  if (selection !== previousSelection) {
-    setPreviousSelection(selection);
-    if (selectedCharacter) setExpandedId(selectedCharacter);
-  }
-  useEffect(() => {
-    selectedCard.current?.scrollIntoView({ block: "nearest" });
-  }, [selection]);
-  const [draft, setDraft] = useState<Partial<GraphNode>>({});
-
-  // Reset stale edits when the expanded card changes — derive-during-render.
-  const [prevExpanded, setPrevExpanded] = useState(expandedId);
-  if (prevExpanded !== expandedId) {
-    setPrevExpanded(expandedId);
-    setDraft({});
-  }
-
-  const project = projectId ? nodes[projectId] : undefined;
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft>(null);
+  const [imageError, setImageError] = useState("");
+  const [imageBusy, setImageBusy] = useState(false);
+  const [castQuery, setCastQuery] = useState("");
   const characters = useMemo(
     () =>
       Object.values(nodes)
@@ -46,184 +51,512 @@ export default function CharactersView() {
         .sort((a, b) => a.title.localeCompare(b.title)),
     [nodes],
   );
+  const fromGraph = selection.find((id) => nodes[id]?.type === "character");
+  const visibleCharacters = characters.filter((item) =>
+    [item.title, item.role, item.age, item.synopsis, item.traits]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(castQuery.trim().toLowerCase()),
+  );
+  const activeId =
+    fromGraph ??
+    (chosenId && nodes[chosenId]?.type === "character" ? chosenId : null) ??
+    characters[0]?.id;
+  const character = activeId ? nodes[activeId] : undefined;
+  const project = projectId ? nodes[projectId] : undefined;
   const details = useMemo(
-    // Typed fallback: a bare `new Map()` is Map<any, any>, which widened the
-    // whole memo to any and silently erased types through every card below.
-    () => (project ? characterDetails(project, nodes, edges) : new Map<string, CharacterDetail>()),
+    () => (project ? characterDetails(project, nodes, edges) : null),
     [project, nodes, edges],
   );
+  const context = activeId ? details?.get(activeId) : undefined;
 
-  if (characters.length === 0) {
-    return (
-      <div className="tln-chars tln-chars--empty">
-        No characters yet.
-        <button
-          className="tln-newcard tln-newcard--solo"
-          onClick={() => {
-            const id = addNodeOfType("character");
-            if (id) setExpandedId(id);
-          }}
-        >
-          + New character
-        </button>
-      </div>
+  function edit(id = character?.id) {
+    setImageError("");
+    const source = id ? useGraphStore.getState().nodes[id] : undefined;
+    if (!id || !source) return;
+    const values = Object.fromEntries(fields.map((key) => [key, source[key] ?? ""])) as Record<
+      Field,
+      string
+    >;
+    setDraft({ id, values });
+  }
+  function save() {
+    if (imageBusy) return;
+    if (!draft || !nodes[draft.id]) return;
+    const patch = Object.fromEntries(
+      fields
+        .filter((key) => nodes[draft.id]?.[key] !== draft.values[key])
+        .map((key) => [key, draft.values[key]]),
+    );
+    if (Object.keys(patch).length) patchNode(draft.id, patch);
+    setDraft(null);
+  }
+  function choose(id: string) {
+    if (id === activeId || draft) return;
+    setDraft(null);
+    setChosenId(id);
+    select([id]);
+  }
+  function create() {
+    if (draft) return;
+    setDraft(null);
+    const id = addNodeOfType("character");
+    if (id) {
+      setChosenId(id);
+      select([id]);
+      edit(id);
+    }
+  }
+  function value(key: Field) {
+    return draft && draft.id === character?.id ? draft.values[key] : (character?.[key] ?? "");
+  }
+  function change(key: Field, next: string) {
+    setDraft((current) =>
+      current ? { ...current, values: { ...current.values, [key]: next } } : current,
     );
   }
-
-  const toggle = (id: string): void => {
-    setExpandedId((cur) => (cur === id ? null : id));
-    if (expandedId !== id) select([id]);
-  };
-
+  async function uploadPoster(file?: File) {
+    if (!file || !draft) return;
+    const draftId = draft.id;
+    setImageError("");
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size > 10 * 1024 * 1024) {
+      setImageError("Choose a JPG, PNG or WebP image under 10 MB.");
+      return;
+    }
+    setImageBusy(true);
+    try {
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement("canvas");
+      canvas.width = 480;
+      canvas.height = 640;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Image processing unavailable");
+      const scale = Math.max(480 / bitmap.width, 640 / bitmap.height);
+      ctx.drawImage(
+        bitmap,
+        (480 - bitmap.width * scale) / 2,
+        (640 - bitmap.height * scale) / 2,
+        bitmap.width * scale,
+        bitmap.height * scale,
+      );
+      bitmap.close();
+      const data = canvas.toDataURL("image/webp", 0.8);
+      setDraft((current) =>
+        current?.id === draftId
+          ? { ...current, values: { ...current.values, posterImage: data } }
+          : current,
+      );
+    } catch {
+      setImageError("This image could not be opened. Try another image.");
+    } finally {
+      setImageBusy(false);
+    }
+  }
+  function poster(title: string, id: string, src?: string) {
+    const hue = [...id].reduce((sum, letter) => sum + letter.charCodeAt(0), 0) % 360;
+    return (
+      <span className="character-poster" style={{ "--poster-hue": hue } as React.CSSProperties}>
+        {src ? (
+          <img src={src} alt={`${title} poster`} />
+        ) : (
+          <>
+            <svg viewBox="0 0 240 320" aria-hidden="true">
+              <circle cx="120" cy="113" r="43" />
+              <path d="M30 320v-48c0-62 40-101 90-101s90 39 90 101v48Z" />
+            </svg>
+            <span className="character-poster__monogram" aria-hidden="true">
+              {title
+                .split(/\s+/)
+                .map((part) => part[0])
+                .slice(0, 2)
+                .join("") || "?"}
+            </span>
+          </>
+        )}
+      </span>
+    );
+  }
+  function field(label: string, key: Field, placeholder: string, rows = 0, list?: string) {
+    const props = {
+      "aria-label": label,
+      value: value(key),
+      placeholder,
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+        change(key, e.target.value),
+    };
+    return (
+      <label className="character-dossier__field">
+        <span>{label}</span>
+        {rows ? <textarea {...props} rows={rows} /> : <input {...props} list={list} />}
+      </label>
+    );
+  }
+  function links(ids: string[], empty: string) {
+    return ids.length ? (
+      ids.map((id) => (
+        <button
+          key={id}
+          className="character-dossier__link"
+          onClick={() => {
+            setDraft(null);
+            select([id]);
+            onOpenNode(id);
+          }}
+        >
+          {nodes[id]?.title ?? id}
+        </button>
+      ))
+    ) : (
+      <span className="character-dossier__muted">{empty}</span>
+    );
+  }
   return (
-    <div className="tln-chars">
-      {characters.map((c) => {
-        const d = details.get(c.id);
-        const scenes = d?.sceneIds ?? [];
-        const isExpanded = expandedId === c.id;
-
-        const val = <K extends keyof GraphNode>(k: K): GraphNode[K] =>
-          k in draft ? (draft[k] as GraphNode[K]) : c[k];
-        const edit = (patch: Partial<GraphNode>): void => setDraft((p) => ({ ...p, ...patch }));
-        const save = (): void => {
-          if (Object.keys(draft).length > 0) patchNode(c.id, draft);
-          setDraft({});
-        };
-
-        const sceneChip = (sid: string, cls: string) => (
-          <button key={sid} className={cls} onClick={() => select([sid])}>
-            {nodes[sid]?.title ?? sid}
-          </button>
-        );
-
-        return (
-          <div
-            key={c.id}
-            ref={selectedCharacter === c.id ? selectedCard : undefined}
-            className={`tln-charcard${isExpanded ? " tln-charcard--open" : ""}`}
+    <div className="characters-workspace">
+      <aside className="characters-roster" aria-label="Character roster">
+        <div className="characters-roster__heading">
+          <div>
+            <span className="characters-roster__eyebrow">Your cast</span>
+            <h2>
+              Characters <small>{characters.length}</small>
+            </h2>
+          </div>
+          <button
+            className="characters-roster__add"
+            onClick={create}
+            disabled={Boolean(draft)}
+            title={draft ? "Save or cancel this profile first" : undefined}
           >
-            <div className="tln-charcard__head">
-              <span className="tln-charcard__name">{val("title") || c.title}</span>
-              {!isExpanded && c.role ? <span className="tln-charcard__badge">{c.role}</span> : null}
-              <button
-                className="tln-charcard__toggle"
-                onClick={() => toggle(c.id)}
-                title={isExpanded ? "Collapse" : "Edit details"}
-              >
-                {isExpanded ? "▴" : "✎"}
-              </button>
-            </div>
-
-            {isExpanded ? (
-              <div className="tln-charcard__form">
-                <label className="tln-charcard__field">
-                  Role
-                  <input
-                    list="tln-role-suggestions"
-                    placeholder="Protagonist…"
-                    value={val("role") ?? ""}
-                    onChange={(e) => edit({ role: e.target.value })}
-                    onBlur={save}
-                  />
-                </label>
-                <label className="tln-charcard__field">
-                  Synopsis
-                  <textarea
-                    rows={2}
-                    value={val("synopsis") ?? ""}
-                    onChange={(e) => edit({ synopsis: e.target.value })}
-                    onBlur={save}
-                  />
-                </label>
-                <label className="tln-charcard__field">
-                  Backstory
-                  <textarea
-                    rows={4}
-                    value={val("backstory") ?? ""}
-                    onChange={(e) => edit({ backstory: e.target.value })}
-                    onBlur={save}
-                  />
-                </label>
-                <datalist id="tln-role-suggestions">
-                  {CHAR_ROLE_SUGGESTIONS.map((r) => (
-                    <option key={r} value={r} />
-                  ))}
-                </datalist>
+            + Add
+          </button>
+        </div>
+        <div className="characters-roster__search">
+          <label>
+            <span aria-hidden="true">⌕</span>
+            <input
+              aria-label="Find a character"
+              placeholder="Find a character…"
+              value={castQuery}
+              onChange={(event) => setCastQuery(event.target.value)}
+            />
+          </label>
+          {castQuery && (
+            <button
+              type="button"
+              aria-label="Clear character search"
+              onClick={() => setCastQuery("")}
+            >
+              ×
+            </button>
+          )}
+        </div>
+        <div className="characters-roster__list">
+          {visibleCharacters.map((item) => (
+            <button
+              key={item.id}
+              className={`characters-roster__item${item.id === activeId ? " is-selected" : ""}`}
+              aria-current={item.id === activeId ? "true" : undefined}
+              disabled={Boolean(draft && item.id !== activeId)}
+              title={
+                draft && item.id !== activeId ? "Save or cancel this profile first" : undefined
+              }
+              onClick={() => choose(item.id)}
+            >
+              {poster(item.title, item.id, item.posterImage)}
+              {item.id === activeId && (
+                <span className="characters-roster__selected" aria-hidden="true">
+                  Viewing
+                </span>
+              )}
+              <span className="characters-roster__copy">
+                <strong>{item.title || "Untitled character"}</strong>
+                <small>
+                  {[item.role, item.age].filter(Boolean).join(" · ") || "Add character details"}
+                </small>
+                <span className="characters-roster__meta">
+                  {details?.get(item.id)?.sceneIds.length ?? 0} scenes
+                </span>
+                {item.synopsis && <span className="characters-roster__intro">{item.synopsis}</span>}
+              </span>
+            </button>
+          ))}
+          {!characters.length && <p className="characters-roster__empty">The cast starts here.</p>}
+          {!!characters.length && !visibleCharacters.length && (
+            <p className="characters-roster__empty" role="status">
+              No characters match “{castQuery}”. Try a name, role or trait.
+            </p>
+          )}
+        </div>
+      </aside>
+      <main className="character-dossier" aria-label="Character dossier">
+        {character ? (
+          <div className="character-dossier__inner" key={character.id}>
+            <header className="character-dossier__header">
+              <div>
+                <span className="character-dossier__eyebrow">Character dossier</span>
+                <h2>{character.title || "Untitled character"}</h2>
               </div>
-            ) : (
-              <>
-                {c.synopsis ? <div className="tln-charcard__syn">{c.synopsis}</div> : null}
-                {d && (d.sceneIds.length > 0 || d.firstSceneId) ? (
-                  <div className="tln-charcard__stats">
-                    <span>{scenes.length === 1 ? "1 scene" : `${scenes.length} scenes`}</span>
-                    {d.firstSceneId ? sceneChip(d.firstSceneId, "tln-charcard__stat") : null}
-                    {d.lastSceneId && d.lastSceneId !== d.firstSceneId
-                      ? sceneChip(d.lastSceneId, "tln-charcard__stat tln-charcard__stat--last")
-                      : null}
+              <div className="character-dossier__actions">
+                {draft?.id === character.id ? (
+                  <>
+                    <button
+                      type="button"
+                      className="character-dossier__cancel"
+                      onClick={() => setDraft(null)}
+                    >
+                      Cancel
+                    </button>
+                    <button type="button" className="character-dossier__edit" onClick={save}>
+                      Save changes
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="character-dossier__edit" onClick={() => edit()}>
+                    Edit profile
+                  </button>
+                )}
+              </div>
+            </header>
+            <div className="character-identity">
+              {poster(character.title, character.id, value("posterImage"))}
+              <div>
+                <span className="character-dossier__eyebrow">At a glance</span>
+                <p>
+                  {[character.role, character.age].filter(Boolean).join(" · ") ||
+                    "Character profile"}
+                </p>
+                <span className="character-identity__scenes">
+                  {context?.sceneIds.length ?? 0} scenes in this story
+                </span>
+                {draft?.id === character.id && (
+                  <div className="character-poster__controls">
+                    <label className="character-poster__upload">
+                      {imageBusy ? "Preparing image…" : "Upload poster"}
+                      <input
+                        aria-label="Upload character poster"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        disabled={imageBusy}
+                        onChange={(event) => {
+                          void uploadPoster(event.target.files?.[0]);
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {value("posterImage") && (
+                      <button type="button" onClick={() => change("posterImage", "")}>
+                        Remove image
+                      </button>
+                    )}
+                    <small>JPG, PNG or WebP · cropped to portrait</small>
+                    {imageError && <span role="alert">{imageError}</span>}
                   </div>
-                ) : null}
-                <div className="tln-charcard__sec">Scenes ({scenes.length})</div>
-                <div className="tln-charcard__scenes">
-                  {scenes.map((sid) => sceneChip(sid, "tln-charcard__scene"))}
-                  {scenes.length === 0 ? (
-                    <span className="tln-charcard__none">None linked</span>
-                  ) : null}
-                </div>
-                {(d?.relations.length ?? 0) > 0 ? (
-                  <>
-                    <div className="tln-charcard__sec">Relations</div>
-                    <div className="tln-charcard__rels">
-                      {(d?.relations ?? []).map((r) => (
-                        <span
-                          key={`${c.id}-${r.otherId}`}
-                          className="tln-charcard__rel"
-                          title={r.label ?? undefined}
-                        >
-                          {nodes[r.otherId]?.title ?? r.otherId}
-                          {r.label ? <em> · {r.label}</em> : null}
-                        </span>
-                      ))}
-                    </div>
-                  </>
-                ) : null}
-                {(d?.themeIds.length ?? 0) > 0 ? (
-                  <>
-                    <div className="tln-charcard__sec">Themes</div>
-                    <div className="tln-charcard__rels">
-                      {(d?.themeIds ?? []).map((tid) => (
-                        <span key={tid} className="tln-charcard__theme">
-                          {nodes[tid]?.title ?? tid}
-                        </span>
-                      ))}
-                    </div>
-                  </>
-                ) : null}
-                {(d?.locationIds.length ?? 0) > 0 ? (
-                  <>
-                    <div className="tln-charcard__sec">Locations</div>
-                    <div className="tln-charcard__rels">
-                      {(d?.locationIds ?? []).map((lid) => (
-                        <span key={lid} className="tln-charcard__loc">
-                          {nodes[lid]?.title ?? lid}
-                        </span>
-                      ))}
-                    </div>
-                  </>
+                )}
+              </div>
+            </div>
+            {draft?.id !== character.id ? (
+              <>
+                {character.synopsis ? (
+                  <p className="character-dossier__summary">{character.synopsis}</p>
+                ) : (
+                  <p className="character-dossier__summary character-dossier__summary--empty">
+                    Add an introduction to bring this character into focus.
+                  </p>
+                )}
+                {(
+                  [
+                    "traits",
+                    "motivation",
+                    "conflict",
+                    "appearance",
+                    "backstory",
+                    "relationships",
+                  ] as Field[]
+                ).some((key) => Boolean(character[key]?.trim())) ? (
+                  <section className="character-dossier__read" aria-label="Character details">
+                    {(
+                      [
+                        ["Personality & motives", ["traits", "motivation", "conflict"]],
+                        ["Appearance & style", ["appearance"]],
+                        ["Backstory", ["backstory"]],
+                        ["Relationship notes", ["relationships"]],
+                      ] as [string, Field[]][]
+                    ).map(
+                      ([heading, keys]) =>
+                        keys.some((key) => character[key]?.trim()) && (
+                          <div className="character-dossier__read-group" key={heading}>
+                            <h3>{heading}</h3>
+                            {keys
+                              .filter((key) => character[key]?.trim())
+                              .map((key) => (
+                                <div className="character-dossier__read-item" key={key}>
+                                  <strong>
+                                    {
+                                      (
+                                        {
+                                          traits: "Traits & voice",
+                                          motivation: "Motivation",
+                                          conflict: "Inner conflict or flaw",
+                                          appearance: "Appearance",
+                                          backstory: "Backstory",
+                                          relationships: "Relationship notes",
+                                        } as Partial<Record<Field, string>>
+                                      )[key]
+                                    }
+                                  </strong>
+                                  <p>{character[key]}</p>
+                                </div>
+                              ))}
+                          </div>
+                        ),
+                    )}
+                  </section>
                 ) : null}
               </>
+            ) : (
+              <>
+                <section className="character-dossier__section" aria-label="Essentials">
+                  <div className="character-dossier__section-heading">
+                    <span>01</span>
+                    <h3>Essentials</h3>
+                  </div>
+                  <div className="character-dossier__grid">
+                    {field("Name", "title", "Character name")}
+                    {field("Age", "age", "e.g. late 30s, unknown")}
+                    {field(
+                      "Story role",
+                      "role",
+                      "Protagonist, foil…",
+                      0,
+                      "character-role-suggestions",
+                    )}
+                    <div className="character-dossier__wide">
+                      {field("Short summary", "synopsis", "Who are they in this story?", 2)}
+                    </div>
+                  </div>
+                </section>
+                <details
+                  className="character-dossier__fold"
+                  open={Boolean(character.traits || character.motivation || character.conflict)}
+                >
+                  <summary>
+                    <span>02</span>
+                    <strong>Personality & motives</strong>
+                    <small>What drives them</small>
+                  </summary>
+                  <div className="character-dossier__fold-body">
+                    {field("Traits & voice", "traits", "How do they think, speak, or behave?", 2)}
+                    {field("Motivation", "motivation", "What do they want?", 2)}
+                    {field("Inner conflict or flaw", "conflict", "What gets in their way?", 2)}
+                  </div>
+                </details>
+                <details className="character-dossier__fold" open={Boolean(character.appearance)}>
+                  <summary>
+                    <span>03</span>
+                    <strong>Appearance & style</strong>
+                    <small>How they present</small>
+                  </summary>
+                  <div className="character-dossier__fold-body">
+                    {field(
+                      "Appearance & style",
+                      "appearance",
+                      "Distinctive details, movement, clothing…",
+                      3,
+                    )}
+                  </div>
+                </details>
+                <details className="character-dossier__fold" open={Boolean(character.backstory)}>
+                  <summary>
+                    <span>04</span>
+                    <strong>Backstory</strong>
+                    <small>What shaped them</small>
+                  </summary>
+                  <div className="character-dossier__fold-body">
+                    {field("Backstory", "backstory", "The history that matters to this story…", 4)}
+                  </div>
+                </details>
+                <details
+                  className="character-dossier__fold"
+                  open={Boolean(character.relationships)}
+                >
+                  <summary>
+                    <span>05</span>
+                    <strong>Relationship notes</strong>
+                    <small>Private notes on connections</small>
+                  </summary>
+                  <div className="character-dossier__fold-body">
+                    {field(
+                      "Relationship notes",
+                      "relationships",
+                      "Tensions, loyalties, secrets…",
+                      3,
+                    )}
+                  </div>
+                </details>
+              </>
             )}
+            <section className="character-dossier__context" aria-label="Story context">
+              <div className="character-dossier__section-heading">
+                <span>↗</span>
+                <h3>In the story</h3>
+              </div>
+              <div className="character-dossier__context-row">
+                <strong>
+                  Scenes <em>{context?.sceneIds.length ?? 0}</em>
+                </strong>
+                <div>{links(context?.sceneIds ?? [], "No scenes linked yet")}</div>
+              </div>
+              {context?.firstSceneId && (
+                <p className="character-dossier__first-last">
+                  First: {nodes[context.firstSceneId]?.title}
+                  {context.lastSceneId && context.lastSceneId !== context.firstSceneId
+                    ? ` · Last: ${nodes[context.lastSceneId]?.title}`
+                    : ""}
+                </p>
+              )}
+              <div className="character-dossier__context-row">
+                <strong>Relations</strong>
+                <div>
+                  {context?.relations.length ? (
+                    context.relations.map((r) => (
+                      <button
+                        key={r.otherId}
+                        className="character-dossier__link"
+                        onClick={() => choose(r.otherId)}
+                      >
+                        {nodes[r.otherId]?.title ?? r.otherId}
+                        {r.label ? <em> · {r.label}</em> : null}
+                      </button>
+                    ))
+                  ) : (
+                    <span className="character-dossier__muted">No relations linked yet</span>
+                  )}
+                </div>
+              </div>
+              <div className="character-dossier__context-row">
+                <strong>Themes</strong>
+                <div>{links(context?.themeIds ?? [], "None linked")}</div>
+              </div>
+              <div className="character-dossier__context-row">
+                <strong>Locations</strong>
+                <div>{links(context?.locationIds ?? [], "None linked")}</div>
+              </div>
+            </section>
+            <datalist id="character-role-suggestions">
+              {CHAR_ROLE_SUGGESTIONS.map((role) => (
+                <option key={role} value={role} />
+              ))}
+            </datalist>
           </div>
-        );
-      })}
-      <button
-        className="tln-newcard"
-        onClick={() => {
-          const id = addNodeOfType("character");
-          if (id) setExpandedId(id);
-        }}
-      >
-        + New character
-      </button>
+        ) : (
+          <div className="character-dossier__start">
+            <span aria-hidden="true">✦</span>
+            <h2>Meet your cast</h2>
+            <p>Add a character to start building their story.</p>
+            <button onClick={create}>+ New character</button>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

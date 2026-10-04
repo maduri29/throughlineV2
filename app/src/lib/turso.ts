@@ -21,22 +21,24 @@ export function getTursoClient(): Client | null {
 export async function ensureTursoSchema(client: Client): Promise<void> {
   if (initialized) return;
   await client.batch([
-    `CREATE TABLE IF NOT EXISTS sync_nodes (
-      id TEXT PRIMARY KEY,
+    `CREATE TABLE IF NOT EXISTS account_sync_nodes (
+      id TEXT NOT NULL,
       sync_key TEXT NOT NULL,
       type TEXT NOT NULL,
       data TEXT NOT NULL,
-      updated_at INTEGER NOT NULL
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (sync_key, id)
     );`,
-    `CREATE INDEX IF NOT EXISTS idx_sync_nodes_key ON sync_nodes (sync_key, updated_at);`,
-    `CREATE TABLE IF NOT EXISTS sync_edges (
-      id TEXT PRIMARY KEY,
+    `CREATE INDEX IF NOT EXISTS idx_account_sync_nodes_key ON account_sync_nodes (sync_key, updated_at);`,
+    `CREATE TABLE IF NOT EXISTS account_sync_edges (
+      id TEXT NOT NULL,
       sync_key TEXT NOT NULL,
       type TEXT NOT NULL,
       data TEXT NOT NULL,
-      updated_at INTEGER NOT NULL
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (sync_key, id)
     );`,
-    `CREATE INDEX IF NOT EXISTS idx_sync_edges_key ON sync_edges (sync_key, updated_at);`,
+    `CREATE INDEX IF NOT EXISTS idx_account_sync_edges_key ON account_sync_edges (sync_key, updated_at);`,
   ]);
   initialized = true;
 }

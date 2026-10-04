@@ -1,7 +1,7 @@
 // Normalized IndexedDB access for ADR-0001 (build-phase adapter that replaces the
 // scaffold's idb-keyval blob). Five object stores, one database.
 // Keep the original storage namespace: the Story Lane rename must preserve existing work.
-const DB_NAME = "throughline.v1";
+import { workspaceDatabaseName } from "./account";
 const VERSION = 3;
 
 export type StoreName = "nodes" | "edges" | "meta" | "history" | "files" | "boneyard";
@@ -51,7 +51,8 @@ function watch(db: IDBDatabase): IDBDatabase {
 /** Open at `version`, or at whatever exists when null. */
 function request(version: number | undefined): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = version === undefined ? indexedDB.open(DB_NAME) : indexedDB.open(DB_NAME, version);
+    const name = workspaceDatabaseName();
+    const req = version === undefined ? indexedDB.open(name) : indexedDB.open(name, version);
     req.onupgradeneeded = () => createStores(req.result);
     // An upgrade cannot proceed while another tab holds the old version open,
     // and the default is to wait forever in silence — the app never finishes

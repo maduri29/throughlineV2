@@ -27,7 +27,9 @@
     "check": "bun run fmt:check && bun run lint && bun run typecheck && bun test",
     "start": "next start -p 4517",
     "deploy": "bunx vercel --prod --yes --cwd ..",
-    "deploy:prod": "bunx vercel --prod --yes --cwd .."
+    "deploy:prod": "bunx vercel --prod --yes --cwd ..",
+    "verify:login": "bun verify-login.ts",
+    "verify:accounts": "bun verify-account-api.ts"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.0",
@@ -35,6 +37,8 @@
     "@codemirror/view": "^6.43.10",
     "@libsql/client": "^0.18.0",
     "@xyflow/react": "^12.11.6",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
     "idb-keyval": "^6.3.0",
     "lucide-react": "^1.39.0",
     "next": "^16.3.4",

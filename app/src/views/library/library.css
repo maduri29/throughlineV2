@@ -270,9 +270,13 @@
   opacity: 0.6;
 }
 .tln-storycard__title {
-  font: 600 24px/1.25 var(--font-sans);
+  font-family: var(--font-cinzel);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.05em;
+  color: var(--ink);
   overflow-wrap: anywhere;
-  letter-spacing: -0.025em;
 }
 .tln-storycard__by {
   font-size: 11px;

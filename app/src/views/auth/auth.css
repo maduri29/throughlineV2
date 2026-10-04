@@ -1,0 +1,142 @@
+.auth-page,
+.auth-page * {
+  box-sizing: border-box;
+}
+.auth-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background: radial-gradient(ellipse at 20% 0%, #263129 0%, transparent 60%), #101214;
+  color: #ece9df;
+}
+.auth-card {
+  width: min(100%, 430px);
+  padding: 36px;
+  border: 1px solid #ffffff18;
+  border-radius: 24px;
+  background: #171b1be8;
+  box-shadow: 0 24px 80px #0005;
+}
+.auth-mark {
+  display: block;
+  margin-bottom: 20px;
+}
+.auth-eyebrow {
+  display: block;
+  color: #b5c49c;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  font-weight: 600;
+}
+.auth-card h1 {
+  font-family: Georgia, serif;
+  font-weight: 400;
+  font-size: 36px;
+  line-height: 1.13;
+  margin: 14px 0;
+}
+.auth-card p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #b9beb4;
+}
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 28px;
+}
+.auth-card label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 6px;
+}
+.auth-card input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  background: #101414;
+  border: 1px solid #6f7767;
+  border-radius: 10px;
+  color: #f4f1e9;
+  font: inherit;
+}
+.auth-card input:focus-visible {
+  outline: 2px solid #c9dca9;
+  outline-offset: 3px;
+}
+.auth-submit {
+  margin-top: 14px;
+  min-height: 48px;
+}
+.auth-card .auth-help {
+  font-size: 12px;
+  margin-top: 24px;
+  color: #929c91;
+}
+.auth-card .auth-error {
+  color: #ffb9ac;
+  margin: 6px 0;
+}
+.auth-workspace {
+  height: 100%;
+  position: relative;
+}
+.profile-card {
+  width: min(100%, 680px);
+}
+.profile-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+.profile-nav a,
+.profile-link {
+  color: #c9dca9;
+  text-underline-offset: 4px;
+}
+.profile-details {
+  margin: 28px 0;
+}
+.profile-details div {
+  padding: 16px 0;
+  border-bottom: 1px solid #ffffff18;
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 20px;
+}
+.profile-details dt {
+  color: #929c91;
+  font-size: 13px;
+}
+.profile-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.profile-section {
+  padding: 22px 0;
+  border-top: 1px solid #ffffff18;
+}
+.profile-section h2 {
+  font-size: 17px;
+  margin: 0 0 8px;
+}
+.profile-card a.tln-btn {
+  display: inline-flex;
+  text-decoration: none;
+}
+@media (max-width: 600px) {
+  .auth-card {
+    padding: 26px;
+  }
+  .auth-card h1 {
+    font-size: 32px;
+  }
+  .profile-details div {
+    grid-template-columns: 85px 1fr;
+    gap: 12px;
+  }
+}

@@ -50,9 +50,10 @@ type Actions = {
   patchEdge: (id: string, patch: Partial<GraphEdge>) => void;
   deleteEdge: (id: string) => void;
   setOrder: (containerId: string, order: string[]) => void;
+  moveScene: (sceneId: string, containerId: string, beforeId?: string) => void;
   addScene: (parentId: string, opts?: { flashback?: boolean }) => string;
   /** Create any entity type with sensible defaults; episodes nest under the project. */
-  addNodeOfType: (type: Exclude<NodeType, "project">) => string;
+  addNodeOfType: (type: Exclude<NodeType, "project">, title?: string) => string;
   /** Split .fountain text into scene nodes under the project; returns scene count. */
   importFountain: (text: string) => number;
   switchProject: (id: string) => Promise<void>;
@@ -503,9 +504,9 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
     return node.id;
   },
 
-  addNodeOfType: (type) => {
+  addNodeOfType: (type, requestedTitle) => {
     const s = get();
-    const title = `New ${type}`;
+    const title = requestedTitle?.trim() || `New ${type}`;
     if (type === "episode") {
       if (!s.projectId || !s.nodes[s.projectId]) return "";
       const project = s.nodes[s.projectId] as GraphNode;
@@ -672,6 +673,51 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
     ]);
   },
 
+  moveScene: (sceneId, containerId, beforeId) => {
+    const s = get();
+    const scene = s.nodes[sceneId];
+    const target = s.nodes[containerId];
+    if (
+      !scene ||
+      scene.type !== "scene" ||
+      !target ||
+      !["project", "episode"].includes(target.type) ||
+      beforeId === sceneId
+    )
+      return;
+    if (containerId !== s.projectId && target.parentId !== s.projectId) return;
+    const ops: Op[] = [];
+    for (const container of Object.values(s.nodes)) {
+      if (!container.order?.includes(sceneId) || container.id === containerId) continue;
+      ops.push({
+        t: "patchNode",
+        id: container.id,
+        patch: { order: container.order.filter((id) => id !== sceneId) },
+        prev: { order: container.order },
+      });
+    }
+    const order = (target.order ?? []).filter((id) => id !== sceneId);
+    const index = beforeId ? order.indexOf(beforeId) : -1;
+    order.splice(index < 0 ? order.length : index, 0, sceneId);
+    ops.push({ t: "patchNode", id: containerId, patch: { order }, prev: { order: target.order } });
+    if (scene.parentId !== containerId) {
+      ops.push({
+        t: "patchNode",
+        id: sceneId,
+        patch: { parentId: containerId },
+        prev: { parentId: scene.parentId },
+      });
+      for (const edge of Object.values(s.edges)) {
+        if (edge.type === "contains" && edge.to === sceneId) ops.push({ t: "deleteEdge", edge });
+      }
+      ops.push({
+        t: "addEdge",
+        edge: { id: uuidv7(), type: "contains", from: containerId, to: sceneId },
+      });
+    }
+    commit(set, get, "Move scene", ops);
+  },
+
   /** Context-aware add (T5 §7): one atomic batch — node + contains edge + order append. */
   addScene: (parentId, opts) => {
     const parent = get().nodes[parentId];
@@ -753,9 +799,10 @@ export const useGraphStore = create<State & Actions>()((set, get) => ({
   },
 
   syncNow: async () => {
+    if (get().syncStatus === "syncing") return;
     set({ syncStatus: "syncing", syncMessage: null });
-    const res = await executeSync();
-    if (res.pulledNodes.length > 0 || res.pulledEdges.length > 0) {
+    const res = await executeSync(() => get().forceSave());
+    if (res.deleted || res.pulledNodes.length > 0 || res.pulledEdges.length > 0) {
       const [nodesArr, edgesArr] = await Promise.all([
         dbGetAll<GraphNode>("nodes"),
         dbGetAll<GraphEdge>("edges"),

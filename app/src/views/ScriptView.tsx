@@ -1,3 +1,4 @@
+import ScriptDownloads from "./ScriptDownloads";
 // Script lens (T6 contract): split textarea + live preview, draggable 15–85%
 // divider, collapsible preview, graph-owned locked slug, full-template
 // skeletons with bracketed hints, whole-project .fountain export.
@@ -6,7 +7,6 @@ import FountainEditor from "../editor/FountainEditor";
 import { useGraphStore } from "../store";
 import Loader from "./Loader";
 import {
-  downloadFountain,
   locationTitleFor,
   parseFountain,
   renderPreview,
@@ -54,7 +54,12 @@ export default function ScriptView() {
   }, [nodeMap, edgeMap]);
 
   // Derived initial pick — no setState-in-effect cascade.
-  const effectiveSceneId = sceneId ?? sequence[0]?.scene.id ?? null;
+  const selectedId = useGraphStore((s) => s.selection[0]);
+  const effectiveSceneId =
+    sceneId ??
+    (sequence.some((item) => item.scene.id === selectedId) ? selectedId : undefined) ??
+    sequence[0]?.scene.id ??
+    null;
 
   const patchNode = useCallback(
     (id: string, text: string) => useGraphStore.getState().patchNode(id, { fountain: text }),
@@ -85,6 +90,7 @@ export default function ScriptView() {
 
   const scheduleScene = useCallback(
     (id: string, text: string) => {
+      buffersRef.current = { ...buffersRef.current, [id]: text };
       setBuffers((b) => ({ ...b, [id]: text }));
       const prev = timers.current.get(id);
       if (prev) clearTimeout(prev);
@@ -106,6 +112,14 @@ export default function ScriptView() {
     },
     [patchNode],
   );
+
+  useEffect(() => {
+    const flush = () => {
+      for (const id of Object.keys(buffersRef.current)) flushScene(id);
+    };
+    window.addEventListener("throughline:flush-script", flush);
+    return () => window.removeEventListener("throughline:flush-script", flush);
+  }, [flushScene]);
 
   // Flush pending edits when switching scenes or unmounting (ref-stable).
   const flushRef = useRef(flushScene);
@@ -215,12 +229,7 @@ export default function ScriptView() {
               }}
             />
             {importNote ? <span className="tln-script__note">{importNote}</span> : null}
-            <button
-              className="tln-btn"
-              onClick={() => void downloadFountain(project, nodeMap, edgeMap)}
-            >
-              Export .fountain
-            </button>
+            <ScriptDownloads />
           </div>
           {scene ? (
             <FountainEditor

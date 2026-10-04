@@ -1,7 +1,10 @@
 import { getTursoClient } from "../../../lib/turso";
 import { parseRevisions, validateHistory } from "../../../data/boneyard/validation";
+import { requireIdentity } from "../../../lib/auth-server";
 
 export async function POST(request: Request) {
+  const identity = await requireIdentity(request);
+  if (identity instanceof Response) return identity;
   const client = getTursoClient();
   if (!client) return Response.json({ error: "Cloud sync is not configured." }, { status: 503 });
   try {
@@ -12,24 +15,17 @@ export async function POST(request: Request) {
         { status: 413 },
       );
     const body: unknown = JSON.parse(text);
-    if (
-      !body ||
-      typeof body !== "object" ||
-      !("syncKey" in body) ||
-      typeof body.syncKey !== "string" ||
-      body.syncKey.trim().length < 3 ||
-      !("revisions" in body)
-    )
+    if (!body || typeof body !== "object" || !("revisions" in body))
       return Response.json({ error: "Invalid Boneyard sync request." }, { status: 400 });
     const revisions = parseRevisions(body.revisions);
-    const key = body.syncKey.trim();
+    const key = identity.syncKey;
     await client.execute(
-      "CREATE TABLE IF NOT EXISTS sync_boneyard (sync_key TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (sync_key, id))",
+      "CREATE TABLE IF NOT EXISTS account_sync_boneyard (sync_key TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (sync_key, id))",
     );
     const tx = await client.transaction("write");
     try {
       const rows = await tx.execute({
-        sql: "SELECT id, data FROM sync_boneyard WHERE sync_key = ?",
+        sql: "SELECT id, data FROM account_sync_boneyard WHERE sync_key = ?",
         args: [key],
       });
       const existing = new Map(rows.rows.map((r) => [String(r.id), String(r.data)]));
@@ -45,7 +41,7 @@ export async function POST(request: Request) {
         }
         if (!prior)
           await tx.execute({
-            sql: "INSERT INTO sync_boneyard (sync_key, id, data) VALUES (?, ?, ?)",
+            sql: "INSERT INTO account_sync_boneyard (sync_key, id, data) VALUES (?, ?, ?)",
             args: [key, revision.id, encoded],
           });
         existing.set(revision.id, encoded);

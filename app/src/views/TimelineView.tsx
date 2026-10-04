@@ -1,181 +1,518 @@
-// Timeline lens: chronology by storyDay against the Map's storyline bands.
-// Flashbacks (negative days) render in the upper lane. New scenes arrive
-// unscheduled, so the lens opens with a summary and a one-click
-// auto-schedule (Map order, continuing after the last dated day) rather
-// than a bare unscheduled pile. Scene cards drag horizontally to
-// reschedule: drop-x picks the day column and one patchNode commits the
-// move (undoable like any edit).
-import { Background, Controls, ReactFlow, ReactFlowProvider } from "@xyflow/react";
-import type { Edge, NodeTypes } from "@xyflow/react";
-import { useCallback, useMemo } from "react";
-import GraphCard, { type CardFlowNode } from "../GraphNode";
-import { autoScheduleDays, groupByDay, type DayBucket } from "../data/scopes";
+import type { GraphNode } from "../types";
+import { useEffect, useState } from "react";
 import { useGraphStore } from "../store";
+import { locationTitleFor, scriptSequence } from "../data/fountain";
+import "./sequence-board.css";
 
-const nodeTypes = { card: GraphCard } satisfies NodeTypes;
-const COL_W = 240;
-
-function TimelineInner() {
+export default function TimelineView({
+  onScript,
+}: {
+  onDetails: () => void;
+  onScript: () => void;
+}) {
   const nodes = useGraphStore((s) => s.nodes);
   const edges = useGraphStore((s) => s.edges);
-  const select = useGraphStore((s) => s.select);
-  const patchNode = useGraphStore((s) => s.patchNode);
-  const scheduleScenes = useGraphStore((s) => s.scheduleScenes);
-
-  const buckets = useMemo<DayBucket[]>(
-    () => groupByDay(Object.values(nodes).filter((n) => n.type === "scene")),
-    [nodes],
+  const projectId = useGraphStore((s) => s.projectId);
+  const selection = useGraphStore((s) => s.selection);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [groupName, setGroupName] = useState("");
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [collapsed, setCollapsed] = useState<string[]>([]);
+  useEffect(() => {
+    if (!dragging) return;
+    const move = (event: PointerEvent) => {
+      const card = document
+        .elementFromPoint(event.clientX, event.clientY)
+        ?.closest<HTMLElement>("[data-scene-id]");
+      setDropTarget(card?.dataset.sceneId ?? null);
+    };
+    const finish = (event: PointerEvent) => {
+      const element = document.elementFromPoint(event.clientX, event.clientY);
+      const card = element?.closest<HTMLElement>("[data-scene-id]");
+      const section = element?.closest<HTMLElement>("[data-sequence-id]");
+      if (section?.dataset.sequenceId)
+        useGraphStore
+          .getState()
+          .moveScene(dragging, section.dataset.sequenceId, card?.dataset.sceneId);
+      setDragging(null);
+      setDropTarget(null);
+    };
+    const cancel = () => {
+      setDragging(null);
+      setDropTarget(null);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", cancel);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", cancel);
+    };
+  }, [dragging]);
+  const project = projectId ? nodes[projectId] : undefined;
+  if (!project) return null;
+  const state = useGraphStore.getState();
+  const sequence = scriptSequence(project, nodes, edges);
+  const groups = [
+    project,
+    ...(project.order ?? [])
+      .map((id) => nodes[id])
+      .filter((n): n is GraphNode => n?.type === "episode"),
+  ];
+  const groupFor = (container: GraphNode | null) =>
+    container?.type === "episode" ? container.id : project.id;
+  const visibleGroups = groups.filter(
+    (g) =>
+      g.id !== project.id ||
+      groups.length === 1 ||
+      sequence.some((item) => groupFor(item.container) === project.id),
   );
-
-  const dated = buckets.filter((b) => b.day !== null);
-  const undatedCount = buckets.find((b) => b.day === null)?.scenes.length ?? 0;
-  const sceneCount = buckets.reduce((n, b) => n + b.scenes.length, 0);
-  const firstDay = dated[0]?.day;
-  const lastDay = dated.length > 0 ? dated[dated.length - 1]?.day : undefined;
-  const span = firstDay != null && lastDay != null ? `Days ${firstDay}–${lastDay}` : null;
-
-  /** One click, one undo: date everything dateless in Map order. */
-  const autoSchedule = useCallback(() => {
-    scheduleScenes(autoScheduleDays(Object.values(nodes)));
-  }, [nodes, scheduleScenes]);
-
-  /** Drop-x decides the column; the column decides the new storyDay. */
-  const onNodeDragStop = useCallback(
-    (_: unknown, n: { id: string; position: { x: number } }) => {
-      if (n.id.startsWith("day-")) return;
-      const col = Math.min(buckets.length - 1, Math.max(0, Math.round(n.position.x / COL_W)));
-      const target = buckets[col];
-      if (!target) return;
-      const cur = useGraphStore.getState().nodes[n.id];
-      if (!cur || cur.type !== "scene") return;
-      const st = cur.storyTime ?? { storyDay: null, tod: null, eraLabel: null };
-      if (st.storyDay === target.day) return;
-      patchNode(cur.id, { storyTime: { ...st, storyDay: target.day } });
-    },
-    [buckets, patchNode],
+  const drafted = sequence.filter((item) => item.scene.fountain?.trim()).length;
+  const moveGroup = (id: string, direction: number) => {
+    const ordered = groups.slice(1);
+    const index = ordered.findIndex((g) => g.id === id);
+    if (index < 0) return;
+    const other = ordered[index + direction];
+    if (!other) return;
+    const order = [...(project.order ?? [])];
+    const a = order.indexOf(id),
+      b = order.indexOf(other.id);
+    [order[a], order[b]] = [order[b]!, order[a]!];
+    state.setOrder(project.id, order);
+  };
+  const chosen = sequence.find((item) => selection.includes(item.scene.id));
+  const selected = chosen?.scene;
+  const selectedGroup = chosen ? groupFor(chosen.container) : project.id;
+  const siblings = sequence.filter((item) => groupFor(item.container) === selectedGroup);
+  const selectedIndex = siblings.findIndex((item) => item.scene.id === selected?.id);
+  const matching = sequence.filter(
+    (item) =>
+      (filter === "all" || groupFor(item.container) === filter) &&
+      `${item.scene.title} ${item.scene.synopsis ?? ""} ${item.scene.turningPoint ?? ""}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
   );
-
-  const rfNodes = useMemo<CardFlowNode[]>(() => {
-    const out: CardFlowNode[] = [];
-    for (const [bi, b] of buckets.entries()) {
-      const isFlashLane = b.day !== null && b.day < 0;
-      const x = bi * COL_W;
-      const y0 = isFlashLane ? -40 : 120;
-      out.push({
-        id: `day-${b.day ?? "null"}`,
-        type: "card",
-        position: { x, y: isFlashLane ? -110 : 40 },
-        data: {
-          kind: "pill",
-          title:
-            b.day === null
-              ? `Unscheduled · ${b.scenes.length}`
-              : `Day ${b.day} · ${b.scenes.length}`,
-        },
-        draggable: false,
-        selectable: false,
-      });
-      for (const [si, sc] of b.scenes.entries()) {
-        out.push({
-          id: sc.id,
-          type: "card",
-          position: { x, y: y0 + si * 110 },
-          data: {
-            kind: isFlashLane ? "flashback" : "scene",
-            title: sc.title,
-            badge: sc.storyTime?.tod ?? "",
-            synopsis: sc.synopsis,
-          },
-        });
-      }
-    }
-    return out;
-  }, [buckets]);
-
-  const rfEdges = useMemo<Edge[]>(
-    () =>
-      Object.values(edges)
-        .filter(
-          (e) =>
-            (e.type === "precedes" || e.type === "flashback_of" || e.type === "parallels") &&
-            rfNodes.some((n) => n.id === e.from) &&
-            rfNodes.some((n) => n.id === e.to),
-        )
-        .map((e) => ({
-          id: e.id,
-          source: e.from,
-          target: e.to,
-          style: {
-            stroke: e.type === "flashback_of" ? "#e8912d" : "#7c8aa8",
-            strokeDasharray: e.type === "precedes" ? undefined : "5 4",
-          },
-        })),
-    [edges, rfNodes],
-  );
-
+  const add = (groupId: string) => {
+    setQuery("");
+    setFilter("all");
+    setCollapsed((v) => v.filter((id) => id !== groupId));
+    state.addScene(groupId);
+  };
   return (
-    <div className="tln-timeline">
-      <div className="tln-timeline__bar" aria-live="polite">
-        {sceneCount === 0 ? (
-          <span className="tln-timeline__summary">No scenes yet</span>
-        ) : (
-          <span className="tln-timeline__summary">
-            <strong>{sceneCount}</strong> {sceneCount === 1 ? "scene" : "scenes"}
-            {span ? <> · {span}</> : null}
-            {undatedCount > 0 ? (
-              <>
-                {" "}
-                · <strong>{undatedCount}</strong> unscheduled
-              </>
-            ) : null}
-          </span>
-        )}
-        {undatedCount > 0 ? (
-          <button
-            className="tln-btn tln-btn--accent tln-timeline__auto"
-            onClick={autoSchedule}
-            title="Date every unscheduled scene in Map order, continuing after the last dated day"
-          >
-            Auto-schedule {undatedCount}
-          </button>
-        ) : null}
-      </div>
-      <div className="tln-timeline__canvas">
-        <ReactFlow
-          nodes={rfNodes}
-          edges={rfEdges}
-          nodeTypes={nodeTypes}
-          fitView
-          minZoom={0.25}
-          maxZoom={2.5}
-          proOptions={{ hideAttribution: true }}
-          onNodeClick={(_, n) => select([n.id])}
-          onPaneClick={() => select([])}
-          onNodeDragStop={onNodeDragStop}
-          nodesDraggable
+    <section
+      className={`sequence-board${selected ? " has-editor" : ""}`}
+      aria-label="Sequence board"
+    >
+      <header className="sequence-board__header">
+        <div>
+          <span className="sequence-board__eyebrow">PLAN YOUR STORY</span>
+          <h2>
+            Scene by scene<span>{sequence.length}</span>
+          </h2>
+          <p>Shape the order. Find the turning points.</p>
+        </div>
+        <button
+          className="sb-primary"
+          onClick={() =>
+            add(selectedGroup === project.id ? (visibleGroups[0]?.id ?? project.id) : selectedGroup)
+          }
         >
-          <Background color="#dfe4f4" gap={18} />
-          <Controls />
-        </ReactFlow>
-        {sceneCount === 0 ? (
-          <div className="tln-timeline__empty">
-            <p>
-              <strong>Nothing on the timeline yet.</strong>
-              <br />
-              Add scenes on the Map — then schedule them here by dragging, or date them in the
-              Inspector.
-            </p>
-          </div>
-        ) : null}
+          + Add scene
+        </button>
+      </header>
+      <div className="sb-toolbar">
+        <label className="sb-search">
+          <span aria-hidden="true">⌕</span>
+          <input
+            aria-label="Find a scene"
+            placeholder="Find a scene…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          {query && (
+            <button aria-label="Clear scene search" onClick={() => setQuery("")}>
+              ×
+            </button>
+          )}
+        </label>
+        <button
+          className="sb-quiet"
+          onClick={() => setAddingGroup(!addingGroup)}
+          aria-expanded={addingGroup}
+        >
+          + New sequence
+        </button>
       </div>
-    </div>
-  );
-}
-
-export default function TimelineView() {
-  return (
-    <ReactFlowProvider>
-      <TimelineInner />
-    </ReactFlowProvider>
+      {addingGroup && (
+        <form
+          className="sequence-board__new"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!groupName.trim()) return;
+            state.addNodeOfType("episode", groupName.trim());
+            setGroupName("");
+            setAddingGroup(false);
+            setFilter("all");
+          }}
+        >
+          <input
+            autoFocus
+            aria-label="New sequence name"
+            placeholder="e.g. The discovery"
+            value={groupName}
+            onChange={(event) => setGroupName(event.target.value)}
+            required
+            maxLength={100}
+          />
+          <button className="sb-primary">Add sequence</button>
+          <button type="button" className="sb-quiet" onClick={() => setAddingGroup(false)}>
+            Cancel
+          </button>
+        </form>
+      )}
+      <nav className="sb-filters" aria-label="Filter sequences">
+        <button aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
+          All scenes <span>{sequence.length}</span>
+        </button>
+        {visibleGroups
+          .filter((g) => g.id !== project.id)
+          .map((g) => (
+            <button key={g.id} aria-pressed={filter === g.id} onClick={() => setFilter(g.id)}>
+              {g.title}
+              <span>{sequence.filter((item) => groupFor(item.container) === g.id).length}</span>
+            </button>
+          ))}
+      </nav>
+      <div className="sb-workspace">
+        <div className="sb-list">
+          <div className="sb-list-caption">
+            <span>STORY ORDER</span>
+            <span>
+              {drafted} of {sequence.length} scenes drafted
+            </span>
+          </div>
+          {matching.length === 0 && sequence.length > 0 && (query || filter !== "all") && (
+            <div className="sb-empty">
+              <h3>No matching scenes</h3>
+              <p>Try a different title or a few words from the outline.</p>
+              <button
+                className="sb-quiet"
+                onClick={() => {
+                  setQuery("");
+                  setFilter("all");
+                }}
+              >
+                Show all scenes
+              </button>
+            </div>
+          )}
+          <div className="sequence-board__groups">
+            {visibleGroups
+              .filter((g) => filter === "all" || filter === g.id)
+              .map((group, groupIndex) => {
+                const items = matching.filter((item) => groupFor(item.container) === group.id);
+                if (query && !items.length) return null;
+                const shut = collapsed.includes(group.id) && !query;
+                return (
+                  <section
+                    className="sequence-board__group"
+                    data-sequence-id={group.id}
+                    key={group.id}
+                    aria-label={group.id === project.id ? "Ungrouped scenes" : group.title}
+                    style={
+                      {
+                        "--sequence-color": ["#54958b", "#af8860", "#8c82b7", "#5b8faf"][
+                          groupIndex % 4
+                        ],
+                      } as React.CSSProperties
+                    }
+                  >
+                    <header>
+                      <button
+                        className="sb-collapse"
+                        aria-label={`${shut ? "Expand" : "Collapse"} ${group.title}`}
+                        aria-expanded={!shut}
+                        onClick={() =>
+                          setCollapsed((v) =>
+                            shut ? v.filter((id) => id !== group.id) : [...v, group.id],
+                          )
+                        }
+                      >
+                        {shut ? "▸" : "▾"}
+                      </button>
+                      {group.id === project.id ? (
+                        <h3>{groups.length === 1 ? "Your scenes" : "Ungrouped"}</h3>
+                      ) : (
+                        <input
+                          aria-label={`Sequence name: ${group.title}`}
+                          value={group.title}
+                          onChange={(event) =>
+                            state.patchNode(group.id, { title: event.target.value })
+                          }
+                        />
+                      )}
+                      <span>{items.length}</span>
+                      <details className="sb-sequence-menu">
+                        <summary aria-label={`Options for ${group.title}`}>···</summary>
+                        <div>
+                          <button
+                            disabled={groups.indexOf(group) <= 1}
+                            onClick={() => moveGroup(group.id, -1)}
+                          >
+                            Move sequence earlier
+                          </button>
+                          <button
+                            disabled={groups.indexOf(group) === groups.length - 1}
+                            onClick={() => moveGroup(group.id, 1)}
+                          >
+                            Move sequence later
+                          </button>
+                        </div>
+                      </details>
+                    </header>
+                    {!shut && (
+                      <>
+                        <ol>
+                          {items.map(({ scene }) => {
+                            const number =
+                              sequence.findIndex((item) => item.scene.id === scene.id) + 1;
+                            const location = [
+                              locationTitleFor(scene.id, nodes, edges),
+                              scene.storyTime?.tod,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ");
+                            return (
+                              <li
+                                className={`sequence-board__card${selected?.id === scene.id ? " is-selected" : ""}${dragging === scene.id ? " is-dragging" : ""}${dropTarget === scene.id && dragging !== scene.id ? " is-drop-target" : ""}`}
+                                key={scene.id}
+                                data-scene-id={scene.id}
+                              >
+                                <span
+                                  className="sequence-board__number"
+                                  title="Drag to reorder"
+                                  onPointerDown={(event) => {
+                                    if (event.button !== 0 || query) return;
+                                    event.preventDefault();
+                                    setDragging(scene.id);
+                                  }}
+                                >
+                                  <span aria-hidden="true">⠿</span>
+                                  {String(number).padStart(2, "0")}
+                                </span>
+                                <button
+                                  className="sb-scene"
+                                  aria-label={scene.title}
+                                  aria-pressed={selected?.id === scene.id}
+                                  onClick={() => state.select([scene.id])}
+                                >
+                                  <span className="sb-scene-top">
+                                    <strong className="sequence-board__title">{scene.title}</strong>
+                                    <span
+                                      className={`sb-status${scene.needsWork ? " needs-work" : scene.fountain?.trim() ? " drafted" : ""}`}
+                                    >
+                                      {scene.needsWork
+                                        ? "Needs work"
+                                        : scene.fountain?.trim()
+                                          ? "Drafted"
+                                          : "Outline"}
+                                    </span>
+                                  </span>
+                                  <span
+                                    className={`sequence-board__synopsis${scene.synopsis ? "" : " is-empty"}`}
+                                  >
+                                    {scene.synopsis || "Add what happens in this scene"}
+                                  </span>
+                                  {scene.turningPoint && (
+                                    <span className="sequence-board__turn">
+                                      ↳ {scene.turningPoint}
+                                    </span>
+                                  )}
+                                  {location && (
+                                    <span className="sequence-board__location">{location}</span>
+                                  )}
+                                </button>
+                                <span className="sb-chevron" aria-hidden="true">
+                                  ›
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                        <button className="sequence-board__add" onClick={() => add(group.id)}>
+                          + Add scene
+                        </button>
+                        {!items.length && (
+                          <p className="sb-empty-sequence">
+                            Start with a moment, a conflict, or a discovery.
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </section>
+                );
+              })}
+          </div>
+        </div>
+        {selected ? (
+          <aside
+            className="sb-editor"
+            aria-label="Scene editor"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") state.select([]);
+            }}
+            key={selected.id}
+          >
+            <header>
+              <div>
+                <span className="sequence-board__eyebrow">
+                  SCENE{" "}
+                  {String(sequence.findIndex((item) => item.scene.id === selected.id) + 1).padStart(
+                    2,
+                    "0",
+                  )}
+                </span>
+                <h3>Shape this scene</h3>
+              </div>
+              <button
+                className="sb-close"
+                aria-label="Close scene editor"
+                onClick={() => state.select([])}
+              >
+                ×
+              </button>
+            </header>
+            <div className="sb-editor-body">
+              <label>
+                Scene title
+                <input
+                  id="tln-inspector-title"
+                  defaultValue={selected.title}
+                  onBlur={(event) => {
+                    if (event.target.value !== selected.title)
+                      state.patchNode(selected.id, { title: event.target.value });
+                  }}
+                />
+              </label>
+              <label>
+                What happens?
+                <textarea
+                  aria-label={`Outline for ${selected.title}`}
+                  defaultValue={selected.synopsis ?? ""}
+                  placeholder="The action, discovery or conflict that drives this scene."
+                  rows={5}
+                  onBlur={(event) => {
+                    if (event.target.value !== (selected.synopsis ?? ""))
+                      state.patchNode(selected.id, { synopsis: event.target.value });
+                  }}
+                />
+              </label>
+              <label>
+                What changes?
+                <span className="sb-field-help">Give the scene a reason to be here.</span>
+                <textarea
+                  aria-label={`Turning point for ${selected.title}`}
+                  defaultValue={selected.turningPoint ?? ""}
+                  placeholder="By the end of this scene…"
+                  rows={3}
+                  onBlur={(event) => {
+                    if (event.target.value !== (selected.turningPoint ?? ""))
+                      state.patchNode(selected.id, { turningPoint: event.target.value });
+                  }}
+                />
+              </label>
+              <div className="sb-placement">
+                <label>
+                  Sequence
+                  <select
+                    aria-label={`Sequence for ${selected.title}`}
+                    value={selectedGroup}
+                    onChange={(event) => {
+                      state.moveScene(selected.id, event.target.value);
+                      setFilter("all");
+                    }}
+                  >
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.id === project.id ? "Ungrouped" : g.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="sb-move">
+                  <span>Position</span>
+                  <button
+                    disabled={selectedIndex === 0}
+                    aria-label={`Move ${selected.title} earlier`}
+                    onClick={() =>
+                      state.moveScene(
+                        selected.id,
+                        selectedGroup,
+                        siblings[selectedIndex - 1]?.scene.id,
+                      )
+                    }
+                  >
+                    ↑ Earlier
+                  </button>
+                  <button
+                    disabled={selectedIndex === siblings.length - 1}
+                    aria-label={`Move ${selected.title} later`}
+                    onClick={() =>
+                      state.moveScene(
+                        selected.id,
+                        selectedGroup,
+                        siblings[selectedIndex + 2]?.scene.id,
+                      )
+                    }
+                  >
+                    ↓ Later
+                  </button>
+                </div>
+              </div>
+              <label className="sb-check">
+                <input
+                  type="checkbox"
+                  checked={selected.needsWork ?? false}
+                  onChange={(event) =>
+                    state.patchNode(selected.id, { needsWork: event.target.checked })
+                  }
+                />
+                Mark for another pass
+              </label>
+            </div>
+            <footer>
+              <button
+                className="sb-quiet"
+                onClick={() => {
+                  void state.forceSave();
+                  state.select([]);
+                }}
+              >
+                Save scene
+              </button>
+              <button className="sb-primary" onClick={onScript}>
+                Open script ↗
+              </button>
+            </footer>
+          </aside>
+        ) : (
+          <aside className="sb-editor sb-editor--empty">
+            <div>
+              <span className="sb-empty-icon">✎</span>
+              <h3>Make every scene count</h3>
+              <p>
+                Select a scene to shape its outline, find its turning point, or move it in the
+                story.
+              </p>
+              <span>Drag the numbered grip to reorder.</span>
+            </div>
+          </aside>
+        )}
+      </div>
+    </section>
   );
 }

@@ -14,6 +14,39 @@ function maps() {
 }
 
 describe("envelope round-trip", () => {
+  test("keeps optional character dossier notes and drops malformed values", () => {
+    const { project, nodes, edges } = maps();
+    const character = Object.values(nodes).find((node) => node.type === "character")!;
+    Object.assign(character, {
+      age: "late 30s",
+      traits: "Dry wit",
+      motivation: "Protect home",
+      conflict: "Hides the truth",
+      appearance: "Salt-stained coat",
+      relationships: "Trusts the captain",
+    });
+    const json = envelopeToJson(buildEnvelope(project, nodes, edges));
+    const back = parseEnvelope(json);
+    if (!back.ok) throw new Error(back.error);
+    expect(back.envelope.nodes.find((node) => node.id === character.id)).toMatchObject({
+      age: "late 30s",
+      traits: "Dry wit",
+      motivation: "Protect home",
+      conflict: "Hides the truth",
+      appearance: "Salt-stained coat",
+      relationships: "Trusts the captain",
+    });
+    const malformed = parseEnvelope(
+      JSON.stringify({
+        ...JSON.parse(json),
+        nodes: JSON.parse(json).nodes.map((node: GraphNode) =>
+          node.id === character.id ? { ...node, age: 40 } : node,
+        ),
+      }),
+    );
+    if (!malformed.ok) throw new Error(malformed.error);
+    expect(malformed.envelope.nodes.find((node) => node.id === character.id)?.age).toBeUndefined();
+  });
   test("survives export -> JSON -> import with nothing lost", () => {
     const { project, nodes, edges } = maps();
     const out = parseEnvelope(envelopeToJson(buildEnvelope(project, nodes, edges)));
@@ -121,4 +154,16 @@ test("malformed attachment entries are dropped, not imported", () => {
   expect(atts[0]?.id).toBe("f2");
   // Absent size/mime become defaults rather than undefined holes downstream.
   expect(atts[0]?.size).toBe(0);
+});
+
+test("sequence board details survive a story backup round trip", () => {
+  const { project, nodes, edges } = maps();
+  const scene = Object.values(nodes).find((n) => n.type === "scene")!;
+  scene.turningPoint = "The detective loses the only witness.";
+  scene.needsWork = true;
+  const parsed = parseEnvelope(envelopeToJson(buildEnvelope(project, nodes, edges)));
+  if (!parsed.ok) throw new Error(parsed.error);
+  const restored = parsed.envelope.nodes.find((n) => n.id === scene.id)!;
+  expect(restored.turningPoint).toBe(scene.turningPoint);
+  expect(restored.needsWork).toBe(true);
 });

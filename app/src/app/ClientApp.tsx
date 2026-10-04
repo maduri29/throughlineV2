@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Loader from "../views/Loader";
+import AuthGate from "../views/auth/AuthGate";
 
 // Loaded with ssr:false on purpose, and this is the crux of the migration.
 //
@@ -19,5 +20,9 @@ const App = dynamic(() => import("../App"), {
 });
 
 export default function ClientApp() {
-  return <App />;
+  return (
+    <AuthGate>
+      <App />
+    </AuthGate>
+  );
 }

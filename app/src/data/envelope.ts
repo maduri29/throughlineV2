@@ -99,6 +99,7 @@ function readNode(v: unknown, where: string): GraphNode | string {
   };
   for (const k of [
     "synopsis",
+    "turningPoint",
     "parentId",
     "fountain",
     "intExt",
@@ -106,11 +107,19 @@ function readNode(v: unknown, where: string): GraphNode | string {
     "contact",
     "role",
     "backstory",
+    "age",
+    "traits",
+    "motivation",
+    "conflict",
+    "appearance",
+    "posterImage",
+    "relationships",
     "url",
     "sparkType",
   ]) {
     str(k);
   }
+  if (typeof v["needsWork"] === "boolean") node.needsWork = v["needsWork"];
   const order = v["order"];
   if (Array.isArray(order) && order.every((x) => typeof x === "string")) node.order = order;
   const pos = v["pos"];

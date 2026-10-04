@@ -1,11 +1,15 @@
+import ScriptDownloads from "./views/ScriptDownloads";
 import { LENSES, SECTIONS, type Lens } from "./shell/navigation";
 import { StoryOrigins } from "./views/boneyard/StoryOrigins";
 import { useWorkspaceTheme } from "./shell/useWorkspaceTheme";
 import { usePathname, useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Cloud, CloudCheck, Laptop, RefreshCw, Search } from "lucide-react";
+import Link from "next/link";
+import { Cloud, CloudCheck, Laptop, RefreshCw, Search, UserRound } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { useGraphStore } from "./store";
+import { checkTursoConfigured } from "./data/sync";
+import { getWorkspaceAccount } from "./data/account";
 import BoneyardView from "./views/BoneyardView";
 import Loader from "./views/Loader";
 import Logo from "./views/Logo";
@@ -19,7 +23,6 @@ import ConnectionAdd from "./views/ConnectionAdd";
 
 const ScriptView = lazy(() => import("./views/ScriptView"));
 const Palette = lazy(() => import("./views/Palette"));
-const SyncModal = lazy(() => import("./views/SyncModal"));
 
 const SAVE_LABEL: Record<string, string> = {
   booting: "Loading…",
@@ -37,7 +40,6 @@ export default function App() {
     undo,
     redo,
     forceSave,
-    exportProject,
     projectId,
     bootError,
     syncStatus,
@@ -50,14 +52,12 @@ export default function App() {
       undo: s.undo,
       redo: s.redo,
       forceSave: s.forceSave,
-      exportProject: s.exportProject,
       projectId: s.projectId,
       bootError: s.bootError,
       syncStatus: s.syncStatus,
       syncMessage: s.syncMessage,
     })),
   );
-  const [syncOpen, setSyncOpen] = useState(false);
   const [lens, setLens] = useState<Lens>("map");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const { theme, toggleTheme } = useWorkspaceTheme();
@@ -110,7 +110,31 @@ export default function App() {
   };
 
   useEffect(() => {
-    void useGraphStore.getState().boot();
+    let stopped = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const sync = async () => {
+      const state = useGraphStore.getState();
+      if (
+        stopped ||
+        document.visibilityState !== "visible" ||
+        state.syncStatus === "syncing" ||
+        state.status === "booting"
+      )
+        return;
+      await state.forceSave();
+      if (useGraphStore.getState().status !== "saved") return;
+      await state.syncNow();
+    };
+    void (async () => {
+      await useGraphStore.getState().boot();
+      if (!getWorkspaceAccount() || stopped || !(await checkTursoConfigured())) return;
+      await sync();
+      if (!stopped) timer = setInterval(() => void sync(), 60_000);
+    })();
+    return () => {
+      stopped = true;
+      if (timer) clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -190,25 +214,6 @@ export default function App() {
             <kbd>⌘ / Ctrl K</kbd>
           </button>
 
-          {level !== "workspace" && (
-            <button
-              className="tln-sync-btn"
-              onClick={() => setSyncOpen(true)}
-              title={syncMessage ?? "Cross-device cloud sync (Turso)"}
-              aria-label="Cloud sync"
-            >
-              <span className={`tln-sync-icon tln-sync-icon--${syncStatus}`}>
-                {syncStatus === "syncing" ? (
-                  <RefreshCw size={13} className="tln-spin" />
-                ) : syncStatus === "synced" ? (
-                  <CloudCheck size={14} />
-                ) : (
-                  <Cloud size={14} />
-                )}
-              </span>
-            </button>
-          )}
-
           <button
             className="tln-tool tln-tool--theme"
             onClick={toggleTheme}
@@ -252,6 +257,14 @@ export default function App() {
               </svg>
             )}
           </button>
+          <Link
+            href="/profile"
+            className="tln-tool tln-tool--account"
+            aria-label="Account"
+            title="Your profile"
+          >
+            <UserRound size={16} aria-hidden="true" />
+          </Link>
         </div>
       </header>
 
@@ -344,36 +357,14 @@ export default function App() {
                   </button>
                 </span>
 
-                <button
-                  className="tln-tool tln-tool--lone"
-                  onClick={exportProject}
-                  title="Download a lossless backup of this story"
-                  aria-label="Download backup"
-                >
-                  <svg
-                    className="tln-tool__icon"
-                    viewBox="0 0 16 16"
-                    width="15"
-                    height="15"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M8 2.5V10" />
-                    <path d="m4.75 7 3.25 3 3.25-3" />
-                    <path d="M2.75 11.25v.75a1.5 1.5 0 0 0 1.5 1.5h7.5a1.5 1.5 0 0 0 1.5-1.5v-.75" />
-                  </svg>
-                </button>
+                <ScriptDownloads />
 
                 <button
                   className="tln-status"
-                  onClick={() => setSyncOpen(true)}
+                  onClick={() => router.push("/profile#sync")}
                   title={
                     syncMessage ??
-                    `${SAVE_LABEL[status] ?? "Saved"} • Cloud: ${syncStatus}. Click to configure cloud sync.`
+                    `${SAVE_LABEL[status] ?? "Saved"} • Cloud: ${syncStatus}. View save and sync status in your profile.`
                   }
                   aria-label={
                     syncMessage ??
@@ -428,7 +419,7 @@ export default function App() {
             <StoryOrigins
               onOpen={(id) => router.push(`/boneyard?idea=${encodeURIComponent(id)}`)}
             />
-            {lens !== "script" && lens !== "characters" && (
+            {lens !== "script" && lens !== "characters" && lens !== "timeline" && (
               <div className="tln-mobile-details-bar">
                 <button
                   className="tln-btn"
@@ -442,8 +433,21 @@ export default function App() {
             )}
             <div className="tln-workspace__lens">
               {lens === "map" ? <MapView /> : null}
-              {lens === "timeline" ? <TimelineView /> : null}
-              {lens === "characters" ? <CharactersView /> : null}
+              {lens === "timeline" ? (
+                <TimelineView
+                  onDetails={() => setDetailsOpen(true)}
+                  onScript={() => setLens("script")}
+                />
+              ) : null}
+              {lens === "characters" ? (
+                <CharactersView
+                  onOpenNode={(id) => {
+                    const type = useGraphStore.getState().nodes[id]?.type;
+                    setLens(type === "scene" ? "script" : "map");
+                    setDetailsOpen(type !== "scene");
+                  }}
+                />
+              ) : null}
               {lens === "script" ? (
                 <Suspense
                   fallback={
@@ -456,7 +460,7 @@ export default function App() {
                 </Suspense>
               ) : null}
             </div>
-            {lens !== "script" && lens !== "characters" ? (
+            {lens !== "script" && lens !== "characters" && lens !== "timeline" ? (
               <div id="story-details" className={`tln-dock${detailsOpen ? " tln-dock--open" : ""}`}>
                 <Inspector />
                 <ConnectionAdd />
@@ -473,11 +477,6 @@ export default function App() {
             onJump={jumpTo}
             onNavigate={(href) => router.push(href)}
           />
-        </Suspense>
-      )}
-      {syncOpen && (
-        <Suspense fallback={null}>
-          <SyncModal onClose={() => setSyncOpen(false)} />
         </Suspense>
       )}
     </div>

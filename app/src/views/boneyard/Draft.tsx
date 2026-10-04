@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { accountStorageKey } from "../../data/account";
 export const date = (timestamp: number | null) =>
   timestamp
     ? new Date(timestamp).toLocaleDateString(undefined, {
@@ -15,13 +16,14 @@ function readDraft(key: string, fallback: string) {
   }
 }
 export function useDraft(key: string, fallback = "") {
-  const [text, updateText] = useState(() => readDraft(key, fallback));
+  const storageKey = accountStorageKey(key);
+  const [text, updateText] = useState(() => readDraft(storageKey, fallback));
   const [draftError, setDraftError] = useState(false);
   function setText(value: string) {
     updateText(value);
     try {
-      if (value) localStorage.setItem(key, value);
-      else localStorage.removeItem(key);
+      if (value) localStorage.setItem(storageKey, value);
+      else localStorage.removeItem(storageKey);
       setDraftError(false);
     } catch {
       setDraftError(true);
@@ -29,7 +31,7 @@ export function useDraft(key: string, fallback = "") {
   }
   function markSaved() {
     try {
-      localStorage.removeItem(key);
+      localStorage.removeItem(storageKey);
     } catch {
       /* Persisted content is already safe in IndexedDB. */
     }

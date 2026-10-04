@@ -68,7 +68,7 @@
   align-items: center;
   gap: 8px;
 }
-.tln-header__actions :is(.tln-sync-btn, .tln-tool--theme) {
+.tln-header__actions :is(.tln-sync-btn, .tln-tool--theme, .tln-tool--account) {
   display: grid;
   place-items: center;
   width: 36px;
@@ -116,4 +116,9 @@
     margin-left: 0;
     justify-content: center;
   }
+}
+
+.tln-tool--account {
+  color: var(--text);
+  text-decoration: none;
 }

@@ -65,6 +65,8 @@ export type GraphNode = {
   title: string;
   sparkType?: SparkType;
   synopsis?: string;
+  turningPoint?: string;
+  needsWork?: boolean;
   storyTime?: StoryTime;
   parentId?: string;
   /** Container ordering of child scenes (episode/project). */
@@ -82,6 +84,15 @@ export type GraphNode = {
   role?: string;
   /** Character-node off-screen history; longer form than synopsis. */
   backstory?: string;
+  /** Optional character dossier notes. Age stays free text for ranges and unknowns. */
+  age?: string;
+  traits?: string;
+  motivation?: string;
+  conflict?: string;
+  appearance?: string;
+  /** Compressed poster image, embedded so it travels with the private profile. */
+  posterImage?: string;
+  relationships?: string;
   /** Reference-node source link. */
   url?: string;
   /**

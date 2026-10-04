@@ -96,7 +96,7 @@ export default function Palette({
         (node) =>
           node.type !== "project" &&
           node.type !== "reference" &&
-          `${node.title} ${node.synopsis ?? ""} ${node.type} ${node.fountain ?? ""} ${node.backstory ?? ""}`
+          `${node.title} ${node.synopsis ?? ""} ${node.type} ${node.fountain ?? ""} ${node.backstory ?? ""} ${node.role ?? ""} ${node.age ?? ""} ${node.traits ?? ""} ${node.motivation ?? ""} ${node.conflict ?? ""} ${node.appearance ?? ""} ${node.relationships ?? ""}`
             .toLowerCase()
             .includes(q),
       )

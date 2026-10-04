@@ -225,25 +225,27 @@ try {
     .locator(".tln-palette__label")
     .innerText();
   await sampleSearch.press("Enter");
-  await sample.locator(".tln-charcard--open").waitFor();
+  await sample.getByRole("main", { name: "Character dossier" }).waitFor();
   check(
     "choosing a character opens its details",
-    (await sample.locator(".tln-charcard--open .tln-charcard__name").innerText()) ===
-      characterTitle,
+    (await sample.locator(".character-dossier__header h2").innerText()) === characterTitle,
   );
-  await sample.getByTitle("Collapse", { exact: true }).click();
+  const otherCharacter = sample
+    .locator(".characters-roster__item")
+    .filter({ hasNotText: characterTitle })
+    .first();
+  await otherCharacter.click();
   check(
-    "a search-selected character can still collapse",
-    (await sample.locator(".tln-charcard--open").count()) === 0,
+    "a search-selected character can switch to another profile",
+    (await sample.locator(".character-dossier__header h2").innerText()) !== characterTitle,
   );
   await sample.getByRole("button", { name: "Quick search", exact: true }).click();
   await sampleSearch.fill("charters");
   await sampleSearch.press("Enter");
-  await sample.locator(".tln-charcard--open").waitFor();
+  await sample.getByRole("main", { name: "Character dossier" }).waitFor();
   check(
     "search can reopen the same character",
-    (await sample.locator(".tln-charcard--open .tln-charcard__name").innerText()) ===
-      characterTitle,
+    (await sample.locator(".character-dossier__header h2").innerText()) === characterTitle,
   );
   await sample.setViewportSize({ width: 390, height: 844 });
   await sample.getByRole("button", { name: "Quick search", exact: true }).click();

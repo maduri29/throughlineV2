@@ -451,7 +451,7 @@ export function scriptSequence(
     const fb = nodes[e.from];
     const targetParent = fb?.parentId ? nodes[fb.parentId] : undefined;
     // Only auto-place flashbacks that don't live in an ordered container already.
-    if (fb && targetParent?.type !== "episode") {
+    if (fb && !targetParent?.order?.includes(fb.id)) {
       const arr = flashbackBefore.get(e.to) ?? [];
       arr.push(fb);
       flashbackBefore.set(e.to, arr);
@@ -464,9 +464,13 @@ export function scriptSequence(
     .filter((c): c is GraphNode => c !== undefined && c.type === "episode");
 
   const emitContainer = (container: GraphNode | null): void => {
-    for (const sid of container?.order ?? []) {
+    const ordered = container?.order ?? [];
+    const remaining = Object.values(nodes)
+      .filter((n) => n.type === "scene" && n.parentId === container?.id && !ordered.includes(n.id))
+      .map((n) => n.id);
+    for (const sid of [...ordered, ...remaining]) {
       const sc = nodes[sid];
-      if (!sc || sc.type !== "scene") continue;
+      if (!sc || sc.type !== "scene" || placedIds.has(sc.id)) continue;
       for (const fb of flashbackBefore.get(sid) ?? []) {
         if (!placedIds.has(fb.id)) {
           placedIds.add(fb.id);
@@ -478,10 +482,17 @@ export function scriptSequence(
     }
   };
 
-  if (containers.length > 0) {
-    for (const c of containers) emitContainer(c);
-  } else {
-    emitContainer(project); // feature mode: project.order holds scenes directly
+  emitContainer({
+    ...project,
+    order: (project.order ?? []).filter((id) => nodes[id]?.type === "scene"),
+  });
+  for (const container of containers) emitContainer(container);
+  for (const scene of Object.values(nodes)) {
+    if (scene.type !== "scene" || placedIds.has(scene.id)) continue;
+    if (scene.parentId === project.id || containers.some((c) => c.id === scene.parentId)) {
+      placedIds.add(scene.id);
+      out.push({ container: scene.parentId ? (nodes[scene.parentId] ?? null) : null, scene });
+    }
   }
 
   // Any ordered-but-unplaced flashbacks trail their container's tail.
