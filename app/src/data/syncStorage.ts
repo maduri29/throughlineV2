@@ -3,8 +3,8 @@ import { dbDelete, dbGet, dbGetAll, dbPut, metaGet, metaSet } from "./idb";
 import type { Revision } from "./boneyard/types";
 import type { CloudConflict, CloudRecord } from "./sync-protocol";
 
-export const BASELINE_KEY = "cloud-baseline-v2";
-export const CONFLICT_KEY = "cloud-conflicts-v2";
+const BASELINE_KEY = "cloud-baseline-v2";
+const CONFLICT_KEY = "cloud-conflicts-v2";
 
 /**
  * Storage seam (Feathers/Ousterhout) decoupling cloud-sync reconciliation
@@ -27,7 +27,7 @@ export interface SyncStorageAdapter {
   mergeBoneyardRevisions(revisions: Revision[]): Promise<void>;
 }
 
-export class IdbSyncStorageAdapter implements SyncStorageAdapter {
+class IdbSyncStorageAdapter implements SyncStorageAdapter {
   async getBaseline(): Promise<CloudRecord[]> {
     return (await metaGet<CloudRecord[]>(BASELINE_KEY)) ?? [];
   }
@@ -181,8 +181,4 @@ let activeSyncStorage: SyncStorageAdapter = new IdbSyncStorageAdapter();
 
 export function getSyncStorage(): SyncStorageAdapter {
   return activeSyncStorage;
-}
-
-export function setSyncStorage(adapter: SyncStorageAdapter): void {
-  activeSyncStorage = adapter;
 }

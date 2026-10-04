@@ -13,7 +13,7 @@
 // The craft guides are original wordings of standard dramaturgy, kept short
 // enough to glance at mid-draft.
 
-export type GuideLink = {
+type GuideLink = {
   label: string;
   url: string;
 };

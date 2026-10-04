@@ -13,7 +13,7 @@ import { scopeToProject } from "./scopes";
 import { applyBatch, invertBatch, isLegal, type HistoryEntry, type NodeMaps, type Op } from "./ops";
 import type { EdgeType, GraphEdge, GraphNode, NodeType } from "../types";
 
-export type SaveStatus = "booting" | "saved" | "saving" | "dirty" | "error";
+type SaveStatus = "booting" | "saved" | "saving" | "dirty" | "error";
 
 export interface GraphEngineState {
   status: SaveStatus;
@@ -43,7 +43,7 @@ export interface GraphStorageAdapter {
   deleteProjectTransaction(nodeIds: string[], edgeIds: string[], projectId: string): Promise<void>;
 }
 
-export const defaultIdbStorageAdapter: GraphStorageAdapter = {
+const defaultIdbStorageAdapter: GraphStorageAdapter = {
   getAllNodes: () => dbGetAll<GraphNode>("nodes"),
   getAllEdges: () => dbGetAll<GraphEdge>("edges"),
   putNodes: (nodes) => dbPut("nodes", nodes),

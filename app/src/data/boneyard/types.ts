@@ -1,4 +1,4 @@
-export type IdeaDisposition = "active" | "aside" | "trash";
+type IdeaDisposition = "active" | "aside" | "trash";
 export type Idea = {
   id: string;
   title: string;
@@ -22,14 +22,14 @@ export type Thought = {
 };
 export type Collection = { id: string; title: string; description: string; deleted: boolean };
 export type Membership = { id: string; ideaId: string; collectionId: string; deleted: boolean };
-export type IdeaConnection = {
+type IdeaConnection = {
   id: string;
   from: string;
   to: string;
   note: string;
   deleted: boolean;
 };
-export type Evolution = {
+type Evolution = {
   id: string;
   sourceIds: string[];
   destinationId: string;
@@ -57,7 +57,7 @@ export type Revision = {
     value: EntityMap[K];
   };
 }[Kind];
-export type Conflict = { entityId: string; kind: Kind; versions: Revision[] };
+type Conflict = { entityId: string; kind: Kind; versions: Revision[] };
 export type BoneyardSnapshot = {
   ideas: Idea[];
   thoughts: Thought[];

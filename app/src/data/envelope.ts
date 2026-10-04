@@ -208,7 +208,7 @@ class EnvelopeError extends Error {
  * Parse and validate envelope with Effect.
  * Returns an Effect that fails with EnvelopeError or succeeds with validated Envelope.
  */
-export function parseEnvelopeEffect(text: string): Effect.Effect<Envelope, EnvelopeError> {
+function parseEnvelopeEffect(text: string): Effect.Effect<Envelope, EnvelopeError> {
   return Effect.gen(function* () {
     const raw = yield* Effect.try({
       try: () => JSON.parse(text),

@@ -14,7 +14,7 @@ const time = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v >=
  * Validate Boneyard revisions using Effect.
  * Validates at both the backup and network boundaries, before any write.
  */
-export function parseRevisionsEffect(input: unknown): Effect.Effect<Revision[], Error> {
+function parseRevisionsEffect(input: unknown): Effect.Effect<Revision[], Error> {
   return Effect.gen(function* () {
     if (!Array.isArray(input) || input.length > 100_000) {
       return yield* Effect.fail(new Error("Invalid Boneyard records."));
@@ -106,7 +106,7 @@ export function parseRevisions(input: unknown): Revision[] {
 /**
  * Validate acyclic DAG history of revisions using Effect.
  */
-export function validateHistoryEffect(records: Revision[]): Effect.Effect<void, Error> {
+function validateHistoryEffect(records: Revision[]): Effect.Effect<void, Error> {
   return Effect.gen(function* () {
     const byId = new Map(records.map((r) => [r.id, r]));
     const visited = new Set<string>();

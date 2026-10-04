@@ -77,7 +77,7 @@ type Actions = {
   syncNow: () => Promise<void>;
 };
 
-export const graphEngine = new GraphEngine();
+const graphEngine = new GraphEngine();
 
 export const useGraphStore = create<State & Actions>()((set, get) => {
   // Synchronize Zustand reactive state whenever graphEngine state updates

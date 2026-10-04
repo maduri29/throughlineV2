@@ -35,7 +35,7 @@ export const COL_W = 300;
 export const LANE_Y_MAX = 40;
 export const BAND_TOP = 40;
 
-export const RAIL_TYPES = new Set(["character", "location", "theme", "project", "seed"]);
+const RAIL_TYPES = new Set(["character", "location", "theme", "project", "seed"]);
 export const EMPTY_ORDER: string[] = [];
 
 /** Which filter chip governs a node's visibility; null = always visible. */

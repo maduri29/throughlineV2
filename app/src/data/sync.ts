@@ -13,7 +13,7 @@ import {
   type CloudConflict,
 } from "./sync-protocol";
 
-export function getSyncConflictsEffect(
+function getSyncConflictsEffect(
   storage: SyncStorageAdapter = getSyncStorage(),
 ): Effect.Effect<CloudConflict[], unknown> {
   return Effect.gen(function* () {
@@ -127,7 +127,7 @@ export type SyncResult = {
   deleted?: boolean;
 };
 
-export function executeSyncEffect(
+function executeSyncEffect(
   beforeApply?: () => Promise<void>,
   storage: SyncStorageAdapter = getSyncStorage(),
 ): Effect.Effect<SyncResult, never> {

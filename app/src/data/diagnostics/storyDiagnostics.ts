@@ -2,9 +2,9 @@ import { Effect } from "effect";
 import type { GraphEdge, GraphNode } from "../../types";
 
 export type DiagnosticSeverity = "error" | "warning" | "info";
-export type DiagnosticCategory = "flow" | "timeline" | "characters" | "structure";
+type DiagnosticCategory = "flow" | "timeline" | "characters" | "structure";
 
-export type DiagnosticIssue = {
+type DiagnosticIssue = {
   id: string;
   severity: DiagnosticSeverity;
   category: DiagnosticCategory;
@@ -14,7 +14,7 @@ export type DiagnosticIssue = {
   nodeIds: string[];
 };
 
-export type StoryHealthRating =
+type StoryHealthRating =
   | "Flawless Narrative Architecture"
   | "Strong Story Structure"
   | "Needs Revision"
@@ -396,7 +396,7 @@ function detectStructureAndBeats(nodes: Record<string, GraphNode>): Effect.Effec
 /**
  * Composable Effect program that analyzes story health and structural integrity.
  */
-export function analyzeStoryHealthEffect(
+function analyzeStoryHealthEffect(
   nodes: Record<string, GraphNode>,
   edges: Record<string, GraphEdge>,
 ): Effect.Effect<StoryHealthReport> {

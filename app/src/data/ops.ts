@@ -24,7 +24,7 @@ export type NodeMaps = {
 };
 
 /** Apply one op to maps that the caller has already shallow-cloned. Mutates in place. */
-export function applyOp(m: NodeMaps, op: Op): void {
+function applyOp(m: NodeMaps, op: Op): void {
   switch (op.t) {
     case "addNode":
       m.nodes[op.node.id] = op.node;
