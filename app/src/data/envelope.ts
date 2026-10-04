@@ -9,7 +9,7 @@
 // Import validates rather than trusts. A hand-edited or half-written file that
 // merges silently would corrupt the graph in ways undo cannot reach, so every
 // record is checked and anything unrecognised is rejected with a reason.
-import { Effect, Schema } from "effect";
+import { Effect } from "effect";
 import {
   EDGE_TYPES,
   NODE_TYPES,
@@ -25,7 +25,7 @@ import {
 } from "../types";
 
 /** Bumped only for shape changes that need a migration. */
-export const ENVELOPE_VERSION = 1;
+const ENVELOPE_VERSION = 1;
 
 export type Envelope = {
   schemaVersion: number;
@@ -36,79 +36,6 @@ export type Envelope = {
 };
 
 export type ImportResult = { ok: true; envelope: Envelope } | { ok: false; error: string };
-
-/* --------------------------------- Effect Schemas --------------------------------- */
-
-export const NodeTypeSchema = Schema.Literal(...NODE_TYPES);
-export const EdgeTypeSchema = Schema.Literal(...EDGE_TYPES);
-export const TodSchema = Schema.Literal(...TODS);
-
-export const StoryTimeSchema = Schema.Struct({
-  storyDay: Schema.NullOr(Schema.Number),
-  tod: Schema.NullOr(TodSchema),
-  eraLabel: Schema.NullOr(Schema.String),
-});
-
-export const BeatSchema = Schema.Struct({
-  id: Schema.String,
-  name: Schema.String,
-  done: Schema.Boolean,
-  note: Schema.optional(Schema.String),
-  sceneId: Schema.optional(Schema.String),
-});
-
-export const AttachmentSchema = Schema.Struct({
-  id: Schema.String,
-  name: Schema.String,
-  mime: Schema.String,
-  size: Schema.Number,
-});
-
-export const IdeaSourceSchema = Schema.Struct({
-  id: Schema.String,
-  title: Schema.String,
-  body: Schema.String,
-});
-
-export const GraphEdgeSchema = Schema.Struct({
-  id: Schema.String,
-  type: EdgeTypeSchema,
-  from: Schema.String,
-  to: Schema.String,
-  label: Schema.optional(Schema.String),
-});
-
-export const GraphNodeSchema = Schema.Struct({
-  id: Schema.String,
-  type: NodeTypeSchema,
-  title: Schema.String,
-  sparkType: Schema.optional(
-    Schema.Literal("premise", "character", "location", "scene", "dialogue", "twist"),
-  ),
-  synopsis: Schema.optional(Schema.String),
-  storyTime: Schema.optional(StoryTimeSchema),
-  parentId: Schema.optional(Schema.String),
-  order: Schema.optional(Schema.Array(Schema.String)),
-  pos: Schema.optional(Schema.NullOr(Schema.Struct({ x: Schema.Number, y: Schema.Number }))),
-  fountain: Schema.optional(Schema.String),
-  intExt: Schema.optional(Schema.Literal("INT.", "EXT.", "EST.", "INT./EXT.")),
-  author: Schema.optional(Schema.String),
-  contact: Schema.optional(Schema.String),
-  role: Schema.optional(Schema.String),
-  backstory: Schema.optional(Schema.String),
-  url: Schema.optional(Schema.String),
-  attachments: Schema.optional(Schema.Array(AttachmentSchema)),
-  beats: Schema.optional(Schema.Array(BeatSchema)),
-  ideaSources: Schema.optional(Schema.Array(IdeaSourceSchema)),
-});
-
-export const EnvelopeSchema = Schema.Struct({
-  schemaVersion: Schema.Number,
-  exportedAt: Schema.String,
-  project: GraphNodeSchema,
-  nodes: Schema.Array(GraphNodeSchema),
-  edges: Schema.Array(GraphEdgeSchema),
-});
 
 /* --------------------------------- export --------------------------------- */
 
@@ -273,7 +200,7 @@ function readEdge(v: unknown, where: string): GraphEdge | string {
   return edge;
 }
 
-export class EnvelopeError extends Error {
+class EnvelopeError extends Error {
   readonly _tag = "EnvelopeError";
 }
 

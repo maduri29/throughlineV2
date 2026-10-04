@@ -23,7 +23,6 @@ const nextConfig: NextConfig = {
       "@codemirror/commands",
       "lucide-react",
       "effect",
-      "idb-keyval",
     ],
   },
   // The route is a static shell (the editor mounts client-side), so the build

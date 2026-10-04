@@ -2,7 +2,7 @@ import { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
 import type { Node, NodeProps } from "@xyflow/react";
 
-export type CardData = {
+type CardData = {
   kind: "scene" | "flashback" | "pill";
   /** Story-object type, purely for colour (see .tln-card--t-* in styles.css). */
   nodeType?: string;

@@ -180,7 +180,7 @@ export async function dbTransaction(
   });
 }
 
-export type MetaRec = { key: string; value: unknown };
+type MetaRec = { key: string; value: unknown };
 
 export async function metaGet<T>(key: string): Promise<T | undefined> {
   const rec = await dbGet<MetaRec>("meta", key);

@@ -29,7 +29,7 @@
 
 import type { Beat } from "../types";
 
-export type BeatTemplate = {
+type BeatTemplate = {
   /** Canonical beat name, exactly as the source gives it. */
   name: string;
   /** Position + job; becomes the beat's starting note on apply. */

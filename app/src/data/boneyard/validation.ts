@@ -1,75 +1,7 @@
-import { Effect, Schema } from "effect";
+import { Effect } from "effect";
 import type { Revision, Kind } from "./types";
 
-export const KindSchema = Schema.Literal(
-  "idea",
-  "thought",
-  "collection",
-  "membership",
-  "connection",
-  "evolution",
-);
-
 const kinds = new Set(["idea", "thought", "collection", "membership", "connection", "evolution"]);
-
-const IdSchema = Schema.String.pipe(Schema.minLength(1), Schema.maxLength(250));
-const ContentStringSchema = Schema.String.pipe(Schema.maxLength(500_000));
-const TimestampSchema = Schema.Number.pipe(Schema.filter((n) => Number.isFinite(n) && n >= 0));
-
-export const IdeaValueSchema = Schema.Struct({
-  id: IdSchema,
-  title: ContentStringSchema,
-  body: ContentStringSchema,
-  original: ContentStringSchema,
-  tags: Schema.Array(IdSchema).pipe(Schema.maxItems(10000)),
-  pinned: Schema.Boolean,
-  disposition: Schema.Literal("active", "aside", "trash"),
-  createdAt: Schema.NullOr(TimestampSchema),
-  updatedAt: TimestampSchema,
-  snoozedUntil: Schema.optional(TimestampSchema),
-  lastShownAt: Schema.optional(TimestampSchema),
-});
-
-export const ThoughtValueSchema = Schema.Struct({
-  id: IdSchema,
-  ideaId: IdSchema,
-  body: ContentStringSchema,
-  createdAt: TimestampSchema,
-  updatedAt: TimestampSchema,
-  deleted: Schema.Boolean,
-});
-
-export const CollectionValueSchema = Schema.Struct({
-  id: IdSchema,
-  title: ContentStringSchema,
-  description: ContentStringSchema,
-  deleted: Schema.Boolean,
-});
-
-export const MembershipValueSchema = Schema.Struct({
-  id: IdSchema,
-  ideaId: IdSchema,
-  collectionId: IdSchema,
-  deleted: Schema.Boolean,
-});
-
-export const ConnectionValueSchema = Schema.Struct({
-  id: IdSchema,
-  from: IdSchema,
-  to: IdSchema,
-  note: ContentStringSchema,
-  deleted: Schema.Boolean,
-}).pipe(Schema.filter((c) => c.from !== c.to));
-
-export const EvolutionValueSchema = Schema.Struct({
-  id: IdSchema,
-  sourceIds: Schema.Array(IdSchema).pipe(Schema.minItems(1), Schema.maxItems(10000)),
-  destinationId: IdSchema,
-  destinationTitle: ContentStringSchema,
-  summary: ContentStringSchema,
-  createdAt: TimestampSchema,
-  referenceId: Schema.optional(IdSchema),
-});
 
 const record = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === "object" && !Array.isArray(v);

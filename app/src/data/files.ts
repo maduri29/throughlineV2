@@ -21,7 +21,7 @@ export async function putFile(id: string, blob: Blob): Promise<void> {
   await dbPut("files", [{ id, blob } satisfies FileRecord]);
 }
 
-export async function getFile(id: string): Promise<Blob | null> {
+async function getFile(id: string): Promise<Blob | null> {
   const rec = await dbGet<FileRecord>("files", id);
   return rec?.blob ?? null;
 }
@@ -30,7 +30,7 @@ export async function deleteFile(id: string): Promise<void> {
   await dbDelete("files", [id]);
 }
 
-export async function hasBytes(id: string): Promise<boolean> {
+async function hasBytes(id: string): Promise<boolean> {
   return (await getFile(id)) !== null;
 }
 

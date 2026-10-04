@@ -39,7 +39,7 @@ export function skeletonBody(scene: GraphNode): string {
 
 /* ---------------------------------- parser -------------------------------- */
 
-export type ElType =
+type ElType =
   | "scene_heading"
   | "action"
   | "character"

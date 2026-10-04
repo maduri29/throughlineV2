@@ -2,8 +2,6 @@
 import { uuidv7 } from "./data/uuid";
 import type { EdgeType, GraphEdge, GraphNode, NodeType, StoryTime, Tod } from "./types";
 
-export { uuidv7 };
-
 export function demoGraph(): { nodes: GraphNode[]; edges: GraphEdge[] } {
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];

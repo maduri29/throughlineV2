@@ -49,14 +49,7 @@ export type EdgeType = (typeof EDGE_TYPES)[number];
 export const CHAR_ROLE_SUGGESTIONS = ["Protagonist", "Antagonist", "Supporting", "Minor"] as const;
 
 /** Spark classification tags for seeds in the Boneyard. */
-export const SPARK_TYPES = [
-  "premise",
-  "character",
-  "location",
-  "scene",
-  "dialogue",
-  "twist",
-] as const;
+const SPARK_TYPES = ["premise", "character", "location", "scene", "dialogue", "twist"] as const;
 export type SparkType = (typeof SPARK_TYPES)[number];
 
 export type GraphNode = {

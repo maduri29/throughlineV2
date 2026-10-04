@@ -4,7 +4,7 @@
 import type { GraphEdge, GraphNode } from "../types";
 import { scriptSequence } from "./fountain";
 
-export type Relation = { otherId: string; label: string | null };
+type Relation = { otherId: string; label: string | null };
 
 export type CharacterDetail = {
   /** appears_in scene ids — narrative-ranked scenes first, unranked after. */
