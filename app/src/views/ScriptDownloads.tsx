@@ -109,17 +109,17 @@ export default function ScriptDownloads({ typography }: ScriptDownloadsProps) {
             ×
           </button>
         </div>
-        <button onClick={() => exportAs("fountain")} role="menuitem">
+        <button type="button" className="script-downloads__btn" onClick={() => exportAs("fountain")} role="menuitem">
           <b>Fountain (.fountain) · Recommended</b>
           <span>
             Editable screenplay text. Best for continuing to write; import it back in Script view.
           </span>
         </button>
-        <button onClick={() => exportAs("pdf")} role="menuitem">
+        <button type="button" className="script-downloads__btn" onClick={() => exportAs("pdf")} role="menuitem">
           <b>Print / Save as PDF</b>
           <span>Formatted reading copy for sharing. Opens a print preview in a new tab.</span>
         </button>
-        <button onClick={() => exportAs("json")} role="menuitem">
+        <button type="button" className="script-downloads__btn" onClick={() => exportAs("json")} role="menuitem">
           <b>Story backup (.json)</b>
           <span>
             Restore your story, scenes, characters and connections in Throughline. Attachment files

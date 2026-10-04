@@ -30,7 +30,8 @@
 }
 
 .script-downloads summary:focus-visible,
-.script-downloads button:focus-visible {
+.script-downloads__btn:focus-visible,
+.script-downloads__close:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -76,7 +77,7 @@
   }
 }
 
-.script-downloads__menu button {
+.script-downloads__btn {
   display: block;
   width: 100%;
   text-align: left;
@@ -88,19 +89,20 @@
   cursor: pointer;
   font: inherit;
   transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
-.script-downloads__menu button:hover {
+.script-downloads__btn:hover {
   background: var(--card-elevated, var(--card));
 }
 
-.script-downloads__menu button b {
+.script-downloads__btn b {
   display: block;
   font-size: 12.5px;
   color: var(--ink);
 }
 
-.script-downloads__menu span {
+.script-downloads__btn span {
   display: block;
   margin-top: 5px;
   font-size: 11.5px;
@@ -138,7 +140,7 @@
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+    padding: 14px 16px max(16px, env(safe-area-inset-bottom));
     border-radius: 16px 16px 0 0;
     border: 1px solid var(--line-strong);
     border-bottom: none;
@@ -170,22 +172,30 @@
   .script-downloads__header > strong {
     font-size: 14px;
     font-weight: 700;
+    margin: 0;
+    color: var(--ink);
   }
 
   .script-downloads__close {
     all: unset;
     cursor: pointer;
+    box-sizing: border-box;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    font-size: 20px;
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    max-width: 30px;
+    padding: 0;
+    font-size: 18px;
     line-height: 1;
     color: var(--dim);
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 50%;
+    flex: 0 0 30px;
+    text-align: center;
     transition: all 0.15s ease;
   }
 
@@ -194,12 +204,7 @@
     background: var(--tint);
   }
 
-  .script-downloads__close:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-
-  .script-downloads__menu button {
+  .script-downloads__btn {
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -207,8 +212,8 @@
     margin-bottom: 8px;
   }
 
-  .script-downloads__menu button:hover,
-  .script-downloads__menu button:active {
+  .script-downloads__btn:hover,
+  .script-downloads__btn:active {
     background: var(--tint);
     border-color: var(--accent);
   }
